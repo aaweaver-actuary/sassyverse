@@ -1,7 +1,4 @@
-%macro mutate(stmt, data=, out=, validate=1, as_view=0);
-  %_assert_ds_exists(&data);
-  %if %length(&stmt)=0 %then %_abort(mutate() requires a statement block);
-
+%macro _mutate_emit_data(stmt, data=, out=, as_view=0);
   %if &as_view %then %do;
     data &out / view=&out;
       set &data;
@@ -14,7 +11,13 @@
       &stmt
     run;
   %end;
+%mend;
 
+%macro mutate(stmt, data=, out=, validate=1, as_view=0);
+  %_assert_ds_exists(&data);
+  %if %length(%superq(stmt))=0 %then %_abort(mutate() requires a statement block);
+
+  %_mutate_emit_data(stmt=&stmt, data=&data, out=&out, as_view=&as_view);
   %if &syserr > 4 %then %_abort(mutate() failed (SYSERR=&syserr).);
 %mend;
 
@@ -28,11 +31,8 @@
   %test_suite(Testing mutate);
     %test_case(mutate adds column);
       data work._mut;
-        input x;
-        datalines;
-2
-4
-;
+        x=2; output;
+        x=4; output;
       run;
 
       %mutate(%str(y = x * 2;), data=work._mut, out=work._mut2);
@@ -51,9 +51,18 @@
       quit;
       %assertEqual(&_min_z., 3);
     %test_summary;
+
+    %test_case(mutate helper view);
+      %_mutate_emit_data(stmt=%str(z = x + 2;), data=work._mut, out=work._mut_view, as_view=1);
+      %assertTrue(%eval(%sysfunc(exist(work._mut_view, view))=1), view created);
+      proc sql noprint;
+        select max(z) into :_max_z trimmed from work._mut_view;
+      quit;
+      %assertEqual(&_max_z., 6);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _mut _mut2 _mut3; quit;
+  proc datasets lib=work nolist; delete _mut _mut2 _mut3 _mut_view; quit;
 %mend test_mutate;
 
 %test_mutate;

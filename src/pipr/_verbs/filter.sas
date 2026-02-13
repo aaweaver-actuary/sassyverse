@@ -1,10 +1,8 @@
-%macro filter(where_expr, data=, out=, validate=1, as_view=0);
-  %_assert_ds_exists(&data);
-
+%macro _filter_emit_data(where_expr, data=, out=, as_view=0);
   %if &as_view %then %do;
     data &out / view=&out;
       set &data;
-      %if %length(&where_expr) %then %do;
+      %if %length(%superq(where_expr)) %then %do;
         if (&where_expr);
       %end;
     run;
@@ -12,12 +10,16 @@
   %else %do;
     data &out;
       set &data;
-      %if %length(&where_expr) %then %do;
+      %if %length(%superq(where_expr)) %then %do;
         if (&where_expr);
       %end;
     run;
   %end;
+%mend;
 
+%macro filter(where_expr, data=, out=, validate=1, as_view=0);
+  %_assert_ds_exists(&data);
+  %_filter_emit_data(where_expr=&where_expr, data=&data, out=&out, as_view=&as_view);
   %if &syserr > 4 %then %_abort(filter() failed (SYSERR=&syserr).);
 %mend;
 
@@ -48,12 +50,9 @@
   %test_suite(Testing filter);
     %test_case(filter and where_not);
       data work._flt;
-        input x;
-        datalines;
-1
-2
-3
-;
+        x=1; output;
+        x=2; output;
+        x=3; output;
       run;
 
       %filter(x > 1, data=work._flt, out=work._flt_gt1);
@@ -75,9 +74,18 @@
       quit;
       %assertEqual(&_cnt_all., 3);
     %test_summary;
+
+    %test_case(filter helper view);
+      %_filter_emit_data(where_expr=x > 1, data=work._flt, out=work._flt_view, as_view=1);
+      %assertTrue(%eval(%sysfunc(exist(work._flt_view, view))=1), view created);
+      proc sql noprint;
+        select count(*) into :_cnt_view trimmed from work._flt_view;
+      quit;
+      %assertEqual(&_cnt_view., 2);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _flt _flt_gt1 _flt_le1 _flt_all; quit;
+  proc datasets lib=work nolist; delete _flt _flt_gt1 _flt_le1 _flt_all _flt_view; quit;
 %mend test_filter;
 
 %test_filter;

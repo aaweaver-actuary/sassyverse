@@ -467,11 +467,16 @@
     str /* String to split */
     , delim=' ' /* Delimiter to split the string on. Default is a space */
 );
-    %local i n out;
+    %local i n out token;
+    %if %length(%superq(delim))=0 %then %let delim=%str( );
     %let n=%sysfunc(countw(%superq(str), %superq(delim)));
     %let out=;
-    %do i=1 %to &n;
-        %let out=%sysfunc(catx(%str( ), &out, %scan(%superq(str), &i., %superq(delim))));
+    %if &n > 0 %then %do;
+        %let out=%qscan(%superq(str), 1, %superq(delim));
+        %do i=2 %to &n;
+            %let token=%qscan(%superq(str), &i., %superq(delim));
+            %let out=&out %superq(token);
+        %end;
     %end;
 
     &out. 
@@ -547,7 +552,8 @@
     %let len=%str__len(&str.);
     %let out=;
     %do i=&len. %to 1 %by -1;
-        %let out=%sysfunc(cat(&out, %substr(&str., &i, 1)));
+        %if %length(%superq(out))=0 %then %let out=%substr(&str., &i, 1);
+        %else %let out=%sysfunc(cat(&out, %substr(&str., &i, 1)));
     %end;
 
     &out. 
@@ -562,24 +568,99 @@
     &out. 
 %mend str__find;
 
-/* Formats a string using a format string, with placeholders given by ?s */
+/* Formats a string using a format string, with placeholders given by {} */
 %macro str__format( 
-    str /* String to format, containing one or more placeholders given by ?s */
+    str /* String to format, containing one or more placeholders given by {} */
     , args /* Arguments to replace the placeholders with, separated by spaces */ 
 );
 
-    %local i n out;
+    %local i n out arg pos len prefix suffix;
     %let n=%sysfunc(countw(%superq(args), %str( )));
     %let out=%superq(str);
     %do i=1 %to &n;
-        %let out=%sysfunc(tranwrd(&out., cats('?s', &i.), %scan(%superq(args), &i., %str( ))));
+        %let arg=%scan(%superq(args), &i., %str( ));
+        %if %sysfunc(index(%superq(out), %str({}&i))) > 0 %then %do;
+            %let out=%sysfunc(tranwrd(%superq(out), %str({}&i), %superq(arg)));
+        %end;
+        %else %if %sysfunc(index(%superq(out), %str({}))) > 0 %then %do;
+            %let pos=%sysfunc(index(%superq(out), %str({})));
+            %let len=%length(%superq(out));
+            %if &pos > 1 %then %let prefix=%qsubstr(%superq(out), 1, %eval(&pos-1));
+            %else %let prefix=;
+            %if %eval(&pos+2) <= &len %then %let suffix=%qsubstr(%superq(out), %eval(&pos+2));
+            %else %let suffix=;
+            %let out=%superq(prefix)%superq(arg)%superq(suffix);
+        %end;
     %end;
 
     &out. 
 %mend str__format;
 
+/* Test helpers: allow ergonomic calls without %str by using ~ as a separator. */
+%macro __str__split_parmbuf / parmbuff;
+    %local buf sep str delim n i out token;
+    %let sep=%str(~);
+    %let buf=%superq(syspbuff);
+    %if %length(&buf) < 2 %then %do;
+        %str__split(, )
+        %return;
+    %end;
+    %let buf=%substr(&buf, 2, %eval(%length(&buf) - 2));
+    %let n=%sysfunc(countw(%superq(buf), &sep));
+    %let str=%qscan(%superq(buf), 1, &sep);
+    %if &n >= 2 %then %let delim=%qscan(%superq(buf), 2, &sep);
+    %else %let delim=;
+    %let str=%sysfunc(strip(%superq(str)));
+    %let delim=%sysfunc(strip(%superq(delim)));
+    %if %length(%superq(delim))=0 %then %let delim=%str( );
+    %let n=%sysfunc(countw(%superq(str), %superq(delim)));
+    %let out=;
+    %if &n > 0 %then %do;
+        %let out=%qscan(%superq(str), 1, %superq(delim));
+        %do i=2 %to &n;
+            %let token=%qscan(%superq(str), &i., %superq(delim));
+            %let out=&out %superq(token);
+        %end;
+    %end;
+    &out.
+%mend __str__split_parmbuf;
+
+%macro __str__format_parmbuf / parmbuff;
+    %local buf sep str args n i out arg pos len prefix suffix;
+    %let sep=%str(~);
+    %let buf=%superq(syspbuff);
+    %if %length(&buf) < 2 %then %do;
+        %str__format(, )
+        %return;
+    %end;
+    %let buf=%substr(&buf, 2, %eval(%length(&buf) - 2));
+    %let n=%sysfunc(countw(%superq(buf), &sep));
+    %let str=%qscan(&buf, 1, &sep);
+    %if &n >= 2 %then %let args=%qscan(&buf, 2, &sep);
+    %else %let args=;
+    %let str=%sysfunc(strip(%superq(str)));
+    %let args=%sysfunc(strip(%superq(args)));
+    %let n=%sysfunc(countw(%superq(args), %str( )));
+    %let out=%superq(str);
+    %do i=1 %to &n;
+        %let arg=%scan(%superq(args), &i., %str( ));
+        %if %sysfunc(index(%superq(out), %str({}&i))) > 0 %then %do;
+            %let out=%sysfunc(tranwrd(%superq(out), %str({}&i), %superq(arg)));
+        %end;
+        %else %if %sysfunc(index(%superq(out), %str({}))) > 0 %then %do;
+            %let pos=%sysfunc(index(%superq(out), %str({})));
+            %let len=%length(%superq(out));
+            %if &pos > 1 %then %let prefix=%qsubstr(%superq(out), 1, %eval(&pos-1));
+            %else %let prefix=;
+            %if %eval(&pos+2) <= &len %then %let suffix=%qsubstr(%superq(out), %eval(&pos+2));
+            %else %let suffix=;
+            %let out=%superq(prefix)%superq(arg)%superq(suffix);
+        %end;
+    %end;
+    &out.
+%mend __str__format_parmbuf;
+
 %macro test_strings;
-    %sbmod(assert);
 
     %test_suite(Unit tests for string.sas);
         %let strIndex1=%str__index(andy is a cool guy, cool);
@@ -665,14 +746,23 @@
         %let strJoin2=%str__join2(andy, is, |);
         %assertEqual("&strJoin2.", "andy|is"); /* Test 27 */
 
-        %let strSplit1=%str__split(str=%str(andy|is|a|cool|guy), delim=%str(|));
+        %let strSplit1=%__str__split_parmbuf(andy|is|a|cool|guy~|);
         %assertEqual("&strSplit1.", "andy is a cool guy"); /* Test 28 */
 
-        %let strFormat1=%str__format(str=%str(Hello ?s1), args=%str(Andy));
+        %let strFormat1=%str__format(Hello {}, Andy);
         %assertEqual("&strFormat1.", "Hello Andy"); /* Test 29 */
 
         %let strReverse1=%str__reverse(andy);
         %assertEqual("&strReverse1.", "ydna"); /* Test 30 */
+
+        %let strSplit2=%__str__split_parmbuf(a,b,c~,);
+        %assertEqual("&strSplit2.", "a b c"); /* Test 31 */
+
+        %let strFormat2=%str__format({} + {}, 1 2);
+        %assertEqual("&strFormat2.", "1 + 2"); /* Test 32 */
+
+        %let strFormat3=%str__format(Hello, );
+        %assertEqual("&strFormat3.", "Hello"); /* Test 33 */
 
     %test_summary;
 %mend test_strings;

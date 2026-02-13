@@ -1,16 +1,53 @@
 %macro _ds_split(ds, out_lib, out_mem);
-  %local lib mem;
+  %local _lib _mem;
   %if %index(&ds, .) > 0 %then %do;
-    %let lib=%upcase(%scan(&ds, 1, .));
-    %let mem=%upcase(%scan(&ds, 2, .));
+    %let _lib=%upcase(%scan(&ds, 1, .));
+    %let _mem=%upcase(%scan(&ds, 2, .));
   %end;
   %else %do;
-    %let lib=WORK;
-    %let mem=%upcase(&ds);
+    %let _lib=WORK;
+    %let _mem=%upcase(&ds);
   %end;
 
-  %let &out_lib=&lib;
-  %let &out_mem=&mem;
+  %let &out_lib=&_lib;
+  %let &out_mem=&_mem;
+%mend;
+
+%macro _col_exists(ds, col, out_exists);
+  %local lib mem _cnt;
+  %global &out_exists;
+  %_ds_split(&ds, lib, mem);
+
+  proc sql noprint;
+    select count(*)
+      into :_cnt trimmed
+    from sashelp.vcolumn
+    where libname="&lib"
+      and memname="&mem"
+      and upcase(name)=upcase("&col");
+  quit;
+
+  %let &out_exists=%sysfunc(ifc(&_cnt > 0, 1, 0));
+%mend;
+
+%macro _cols_missing(ds, cols, out_missing);
+  %local i n col missing;
+  %global &out_missing;
+
+  %let n=%sysfunc(countw(&cols, %str( )));
+  %if &n=0 %then %do;
+    %let &out_missing=;
+    %return;
+  %end;
+
+  %let missing=;
+  %do i=1 %to &n;
+    %let col=%upcase(%scan(&cols, &i, %str( )));
+    %_col_exists(&ds, &col, _exists);
+    %if &_exists = 0 %then %let missing=&missing &col;
+  %end;
+
+  %let &out_missing=%sysfunc(compbl(%superq(missing)));
 %mend;
 
 %macro _assert_ds_exists(ds, error_msg=);
@@ -20,37 +57,17 @@
 %mend;
 
 %macro _assert_cols_exist(ds, cols, error_msg=);
-  %local lib mem i n col missing _cnt;
-  %_ds_split(&ds, lib, mem);
-
-  %let n=%sysfunc(countw(&cols, %str( )));
-  %if &n=0 %then %return;
-
-  %let missing=;
-
-  %do i=1 %to &n;
-    %let col=%upcase(%scan(&cols, &i, %str( )));
-
-    proc sql noprint;
-      select count(*) 
-        into :_cnt trimmed
-      from sashelp.vcolumn
-      where libname="&lib" 
-        and memname="&mem" 
-        and upcase(name)="&col";
-    quit;
-
-    %if &_cnt = 0 %then %let missing=&missing &col;
-  %end;
-
-  %if %length(%sysfunc(compbl(&missing))) %then %do;
-    %_abort(Missing required columns in &ds: %sysfunc(compbl(&missing)). &error_msg);
+  %_cols_missing(&ds, &cols, missing);
+  %if %length(%superq(missing)) %then %do;
+    %_abort(Missing required columns in &ds: %superq(missing). &error_msg);
   %end;
 %mend;
 
 %macro _get_col_attr(ds, col, out_type, out_len);
   %local lib mem;
   %_ds_split(&ds, lib, mem);
+
+  %global &out_type &out_len;
 
   proc sql noprint;
     select type, length into :&out_type trimmed, :&out_len trimmed
@@ -62,23 +79,36 @@
 %mend;
 
 %macro _assert_by_vars(ds, by_list);
-  %local cleaned vars i n tok;
-  %let cleaned=%sysfunc(prxchange(s/\bdescending\b//i, -1, &by_list));
-  %let cleaned=%sysfunc(compbl(&cleaned));
-  %let n=%sysfunc(countw(&cleaned, %str( )));
+  %local cleaned vars;
+  %_clean_by_list(&by_list, cleaned);
+  %_by_vars_from_list(&cleaned, vars);
 
-  %let vars=;
-  %do i=1 %to &n;
-    %let tok=%scan(&cleaned, &i, %str( ));
-    %let vars=&vars &tok;
-  %end;
-
-  %if %length(&vars)=0 %then %_abort(arrange() requires a non-empty BY list.);
+  %if %length(%superq(vars))=0 %then %_abort(arrange() requires a non-empty BY list.);
   %_assert_cols_exist(&ds, &vars);
 %mend;
 
+%macro _clean_by_list(by_list, out_clean);
+  %global &out_clean;
+  %let &out_clean=%sysfunc(prxchange(s/\bdescending\b//i, -1, &by_list));
+  %let &out_clean=%sysfunc(compbl(%superq(&out_clean)));
+%mend;
+
+%macro _by_vars_from_list(cleaned, out_vars);
+  %local n i tok vars;
+  %global &out_vars;
+  %let n=%sysfunc(countw(%superq(cleaned), %str( )));
+
+  %let vars=;
+  %do i=1 %to &n;
+    %let tok=%scan(%superq(cleaned), &i, %str( ));
+    %let vars=&vars &tok;
+  %end;
+
+  %let &out_vars=%sysfunc(compbl(%superq(vars)));
+%mend;
+
 %macro _assert_key_compatible(left, right, keys, strict_char_len=0);
-  %local i n k lt ll rt rl;
+  %local i n k;
   %let n=%sysfunc(countw(&keys, %str( )));
   %if &n=0 %then %_abort(keys= is required for join validation);
 
@@ -87,18 +117,30 @@
     %_assert_cols_exist(&left, &k);
     %_assert_cols_exist(&right, &k);
 
-    %_get_col_attr(&left,  &k, lt, ll);
-    %_get_col_attr(&right, &k, rt, rl);
+    %_key_attr_mismatch(&left, &right, &k, lt, ll, rt, rl, type_mismatch, len_mismatch);
 
-    %if %upcase(&lt) ne %upcase(&rt) %then %do;
+    %if &type_mismatch %then %do;
       %_abort(Join key type mismatch for &k: &left=&lt vs &right=&rt);
     %end;
 
-    %if %upcase(&lt)=CHAR and (&ll ne &rl) %then %do;
+    %if &len_mismatch %then %do;
       %if &strict_char_len %then %_abort(Join key length mismatch for &k: &left=&ll vs &right=&rl);
       %else %put WARNING: Join key length differs for &k: &left=&ll vs &right=&rl. Standardize if needed.;
     %end;
   %end;
+%mend;
+
+%macro _key_attr_mismatch(left, right, key, out_lt, out_ll, out_rt, out_rl, out_type_mismatch, out_len_mismatch);
+  %global &out_lt &out_ll &out_rt &out_rl &out_type_mismatch &out_len_mismatch;
+
+  %_get_col_attr(&left,  &key, &out_lt, &out_ll);
+  %_get_col_attr(&right, &key, &out_rt, &out_rl);
+
+  %if %upcase(&&&out_lt) ne %upcase(&&&out_rt) %then %let &out_type_mismatch=1;
+  %else %let &out_type_mismatch=0;
+
+  %if %upcase(&&&out_lt)=CHAR and (&&&out_ll ne &&&out_rl) %then %let &out_len_mismatch=1;
+  %else %let &out_len_mismatch=0;
 %mend;
 
 %macro _assert_unique_key(ds, keys);
@@ -121,6 +163,8 @@
 
 %macro test_pipr_validation;
   %sbmod(assert);
+  %global _exists _missing;
+  %global _cleaned _vars _lt _ll _rt _rl _type_mis _len_mis;
 
   %test_suite(Testing pipr validation);
     %test_case(assert_cols_exist and get_col_attr);
@@ -129,10 +173,21 @@
         id=1; name='a'; output;
       run;
 
+      %global _type _len;
       %_assert_cols_exist(work._pv_left, id name);
       %_get_col_attr(work._pv_left, name, _type, _len);
-      %assertEqual(&_type., CHAR);
+      %assertEqual(%upcase(&_type.), CHAR);
       %assertEqual(&_len., 10);
+    %test_summary;
+
+    %test_case(column helpers);
+      %_col_exists(work._pv_left, id, _exists);
+      %assertEqual(&_exists., 1);
+      %_col_exists(work._pv_left, no_such_col, _exists);
+      %assertEqual(&_exists., 0);
+
+      %_cols_missing(work._pv_left, id name no_such_col, _missing);
+      %assertEqual(&_missing., NO_SUCH_COL);
     %test_summary;
 
     %test_case(assert_key_compatible and unique_key);
@@ -145,9 +200,28 @@
       %_assert_unique_key(work._pv_right, id);
       %assertTrue(1, validation passes for compatible keys);
     %test_summary;
+
+    %test_case(by-list and key helpers);
+      %_clean_by_list(%str(descending id name), _cleaned);
+      %_by_vars_from_list(&_cleaned, _vars);
+      %assertEqual(&_vars., id name);
+
+      data work._pv_left2;
+        length id $4;
+        id='a'; output;
+      run;
+      data work._pv_right2;
+        length id $8;
+        id='b'; output;
+      run;
+
+      %_key_attr_mismatch(work._pv_left2, work._pv_right2, id, _lt, _ll, _rt, _rl, _type_mis, _len_mis);
+      %assertEqual(&_type_mis., 0);
+      %assertEqual(&_len_mis., 1);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _pv_left _pv_right; quit;
+  proc datasets lib=work nolist; delete _pv_left _pv_right _pv_left2 _pv_right2; quit;
 %mend test_pipr_validation;
 
 %test_pipr_validation;

@@ -55,7 +55,10 @@
 
     %do i = 1 %to &count;
         %let item = %nth(&list, &i);
-        %if not %index(&uniqueList, &item) %then %do;
+        %if %length(%superq(uniqueList))=0 %then %do;
+            %let uniqueList = &uniqueList &item;
+        %end;
+        %else %if %sysfunc(indexw(%superq(uniqueList), &item, %str( ))) = 0 %then %do;
             %let uniqueList = &uniqueList &item;
         %end;
     %end;
@@ -101,8 +104,13 @@
 %macro pop(list);
     %local count;
     %let count = %len(&list);
-    %let list = %substr(&list, 1, %eval(%length(&list) - %length(%nth(&list, &count)) - 1));
-    &list
+    %if &count <= 1 %then %do;
+        
+    %end;
+    %else %do;
+        %let list = %substr(&list, 1, %eval(%length(&list) - %length(%nth(&list, &count)) - 1));
+        &list
+    %end;
 %mend pop;
 
 %macro concat(list1, list2);
@@ -135,6 +143,12 @@
             %assertEqual(&combo, a b c d);
         %test_summary;
 
+        %test_case(unique avoids substring false positives);
+            %let list2=a aa a;
+            %let uniq2=%unique(&list2);
+            %assertEqual(%sysfunc(compbl(&uniq2)), a aa);
+        %test_summary;
+
         %test_case(sorted numeric list);
             %let nums=3 1 2;
             %let sorted=%sorted(&nums);
@@ -143,11 +157,23 @@
 
         %test_case(transform and foreach);
             %let t=%transform(a b, surrounded_by=%str(%'), delimited_by=%str(,));
-            %assertEqual(%sysfunc(compbl(&t)), 'a' , 'b');
+            %let t_comp=%sysfunc(compbl(%superq(t)));
+            %assertEqual(%superq(t_comp), %str('a' , 'b'));
 
             %let acc=;
             %foreach(a b c, %nrstr(%let acc=&acc &item;));
             %assertEqual(%sysfunc(compbl(&acc)), a b c);
+        %test_summary;
+
+        %test_case(pop handles single item);
+            %let p=%pop(a);
+            %assertEqual(%length(&p), 0);
+        %test_summary;
+
+        %test_case(len with custom delimiters);
+            %let l=a|b|c;
+            %let lcount=%len(list=&l, delimiters=%str(|));
+            %assertEqual(&lcount, 3);
         %test_summary;
     %test_summary;
 %mend test_lists;

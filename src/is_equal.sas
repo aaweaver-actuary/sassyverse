@@ -1,5 +1,5 @@
 %MACRO is_equal(a, b);
-    %local out a_val b_val is_num;
+    %local out a_val b_val is_num_a is_num_b;
     
     /* Check if parameters are provided */
     %if %superq(a)= OR %superq(b)= %then %do;
@@ -7,9 +7,10 @@
         %return(0);
     %end;
 
-    /* Try numeric comparison first */
-    %let is_num=%sysfunc(verify(%superq(a),%str(0123456789.+-eE)));
-    %if &is_num=0 %then %do;
+    /* Try numeric comparison only if both args are numeric-like */
+    %let is_num_a=%sysfunc(verify(%superq(a),%str(0123456789.+-eE)));
+    %let is_num_b=%sysfunc(verify(%superq(b),%str(0123456789.+-eE)));
+    %if &is_num_a=0 and &is_num_b=0 %then %do;
         %let a_val=%sysevalf(%superq(a));
         %let b_val=%sysevalf(%superq(b));
         %if %sysevalf(&a_val = &b_val) %then %let out=1;
@@ -46,6 +47,11 @@
             %assertEqual(%is_equal(abc, abc), 1);
             %assertEqual(%is_equal(abc, abcd), 0);
             %assertEqual(%is_not_equal(abc, abcd), 1);
+        %test_summary;
+
+        %test_case(mixed numeric and character comparisons);
+            %assertEqual(%is_equal(10, abc), 0);
+            %assertEqual(%is_equal(abc, 10), 0);
         %test_summary;
     %test_summary;
 %mend test_is_equal;

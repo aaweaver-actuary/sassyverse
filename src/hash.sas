@@ -114,10 +114,12 @@
         %assertEqual("&dcl1.", "dcl hash h()");
 
         %let dcl2=%hash__dcl(h, dataset=work.ds);
-        %assertEqual("&dcl2.", "dcl hash h(dataset: ""work.ds"")");
+        %let exp_dcl2=%nrstr(dcl hash h(dataset: "work.ds"));
+        %assertEqual(%superq(dcl2), %superq(exp_dcl2));
 
         %let key1=%hash__key(h, id, isOne=1);
-        %assertEqual("&key1.", "h.defineKey(""id"")");
+        %let exp_key1=%nrstr(h.defineKey("id"););
+        %assertEqual(%superq(key1), %superq(exp_key1));
 
 /*        %let charVarsFromGetCharVars=%_get_char_vars( singleVar|5 );*/
 /*        %assertEqual("&charVarsFromGetCharVars.", "length singleVar $ 5;");*/

@@ -1,48 +1,67 @@
-%macro hash_for_left_join(obj, right, on=, right_keep=);
-  %local i n k;
-  %let n=%sysfunc(countw(&on,%str( )));
+%macro _left_join_call_missing(on=, right_keep=);
+  %local i total_cols n_keys n_keep k idx;
+
+  %let n_keys=%sysfunc(countw(%superq(on), %str( ), q));
+  %if %length(%superq(right_keep)) %then %let n_keep=%sysfunc(countw(%superq(right_keep), %str( ), q));
+  %else %let n_keep=0;
+
+  %let total_cols = %eval(&n_keys + &n_keep);
+
+  %do i=1 %to &total_cols;
+    call missing(
+      %if &i <= &n_keys %then %do;
+        %let k=%scan(%superq(on), &i, %str( ), q);
+        &k
+      %end;
+      %else %do;
+        %let idx = %eval(&i - &n_keys);
+        %let k=%scan(%superq(right_keep), &idx, %str( ), q);
+        &k
+      %end;
+    );
+  %end;
+%mend;
+
+%macro _left_join_hash(obj, right, on=, right_keep=);
+  %local i n_keys n_keep k;
+
+  %let n_keys=%sysfunc(countw(%superq(on), %str( ), q));
+  %if %length(%superq(right_keep)) %then %let n_keep=%sysfunc(countw(%superq(right_keep), %str( ), q));
+  %else %let n_keep=0;
   
-  /* Declare hash object for left join */
   declare hash &obj.(dataset:"&right(keep=&on &right_keep)");
 
-  /* Define key columns for left join */
-  %do i=1 %to &n;
-    %let k=%scan(&on,&i,%str( ));
+  %do i=1 %to &n_keys;
+    %let k=%scan(%superq(on), &i, %str( ), q);
     &obj..defineKey("&k");
-  %end;
-
-  /* Define data columns for left join */
-  %do i=1 %to &n;
-    %let k=%scan(&on,&i,%str( ));
     &obj..defineData("&k");
   %end;
 
-  /* Define additional columns to keep from the right dataset */
-  %if %length(&right_keep) %then %do;
-    %let n=%sysfunc(countw(&right_keep,%str( )));
-    %do i=1 %to &n;
-      %let k=%scan(&right_keep,&i,%str( ));
-      &obj..defineData("&k");
-    %end;
+  %do i=1 %to &n_keep;
+    %let k=%scan(%superq(right_keep), &i, %str( ), q);
+    &obj..defineData("&k");
   %end;
 
   &obj..defineDone();
+  %_left_join_call_missing(on=&on, right_keep=&right_keep);
+%mend;
 
-  /* Call missing to suppress warnings for uninitialized variables */
-  %let total_cols = %eval(&n + %sysfunc(countw(&right_keep, %str( ))));
-    %do i=1 %to &total_cols;
-        call missing(
-            %if &i <= &n %then %do;
-                %let k=%scan(&on,&i,%str( ));
-                &k
-            %end;
-            %else %do;
-                %let idx = %eval(&i - &n);
-                %let k=%scan(&right_keep,&idx,%str( ));
-                &k
-            %end;
-        );
-    %end;
+%macro _left_join_emit_data(obj, right, on=, data=, out=, right_keep=, as_view=0);
+  %if &as_view %then %do;
+    data &out / view=&out;
+  %end;
+  %else %do;
+    data &out;
+  %end;
+      if _n_=1 then do;
+        %_left_join_hash(&obj, &right, on=&on, right_keep=&right_keep);
+      end;
+      
+      set &data;
+      rc = &obj..find();
+      if rc = 0 then output;
+      drop rc;
+    run;
 %mend;
 
 %macro left_join_with_hash(
@@ -68,20 +87,11 @@
   %end;
 
   %if &as_view %then %do;
-    data &out / view=&out;
+    %_left_join_emit_data(obj=h, right=&right, on=&on, data=&data, out=&out, right_keep=&right_keep, as_view=1);
   %end;
   %else %do;
-    data &out;
+    %_left_join_emit_data(obj=h, right=&right, on=&on, data=&data, out=&out, right_keep=&right_keep, as_view=0);
   %end;
-        if _n_=1 then do;
-            %hash_for_left_join(h, &right, on=&on, right_keep=&right_keep);
-        end;
-        
-        set &data;
-        rc = h.find();
-        if rc = 0 then output;
-        drop rc;
-    run;
 
   %if &syserr > 4 %then %_abort(&error_msg.);
 %mend;
@@ -118,19 +128,13 @@
   %test_suite(Testing left_join);
     %test_case(left_join brings right_keep columns);
       data work._lj_left;
-        input id x;
-        datalines;
-1 10
-2 20
-;
+        id=1; x=10; output;
+        id=2; x=20; output;
       run;
 
       data work._lj_right;
-        input id r1 r2;
-        datalines;
-1 100 300
-2 200 400
-;
+        id=1; r1=100; r2=300; output;
+        id=2; r1=200; r2=400; output;
       run;
 
       %left_join(
@@ -151,9 +155,18 @@
       %assertEqual(&_sum_r1., 300);
       %assertEqual(&_cnt_r2., 0);
     %test_summary;
+
+    %test_case(left_join view helper);
+      %_left_join_emit_data(obj=h, right=work._lj_right, on=id, data=work._lj_left, out=work._lj_view, right_keep=r1, as_view=1);
+      %assertTrue(%eval(%sysfunc(exist(work._lj_view, view))=1), view created);
+      proc sql noprint;
+        select sum(r1) into :_sum_r1_view trimmed from work._lj_view;
+      quit;
+      %assertEqual(&_sum_r1_view., 300);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _lj_left _lj_right _lj_out; quit;
+  proc datasets lib=work nolist; delete _lj_left _lj_right _lj_out _lj_view; quit;
 %mend test_left_join;
 
 %test_left_join;

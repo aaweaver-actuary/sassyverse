@@ -20,11 +20,6 @@ This folder contains the core macro library plus the testing utilities. Most fil
 
 - Date convenience macros: `year`, `month`, `day`, `mdy`, and `fmt_date`.
 
-### dryrun.sas
-
-- `dryrun(macro_name, args)` resolves a macro call without executing it, useful for debugging macro expansion.
-- Writes the resolved call to the log and returns it to the caller.
-
 ### export.sas
 
 - Export helpers for CSV output: `export_to_csv`, `export_csv_copy`, `export_with_temp_file`.

@@ -100,6 +100,11 @@
 
 %macro assertEqual(actual, expected);
 	%local _is_num_a _is_num_b _eq;
+	%if %length(%superq(actual))=0 or %length(%superq(expected))=0 %then %do;
+		%if %superq(actual)=%superq(expected) %then %let _eq=1;
+		%else %let _eq=0;
+	%end;
+	%else %do;
 	%let _is_num_a=%sysfunc(verify(%superq(actual),%str(0123456789.+-eE)));
 	%let _is_num_b=%sysfunc(verify(%superq(expected),%str(0123456789.+-eE)));
 	%if &_is_num_a=0 and &_is_num_b=0 %then %do;
@@ -108,6 +113,7 @@
 	%else %do;
 		%if %superq(actual)=%superq(expected) %then %let _eq=1;
 		%else %let _eq=0;
+	%end;
 	%end;
 	%let message=Asserted that [&actual.]=[&expected.];
 	%assertTrue(%eval(&_eq), &message.);
@@ -115,6 +121,11 @@
 
 %macro assertNotEqual(actual, expected);
 	%local _is_num_a _is_num_b _eq;
+	%if %length(%superq(actual))=0 or %length(%superq(expected))=0 %then %do;
+		%if %superq(actual)=%superq(expected) %then %let _eq=1;
+		%else %let _eq=0;
+	%end;
+	%else %do;
 	%let _is_num_a=%sysfunc(verify(%superq(actual),%str(0123456789.+-eE)));
 	%let _is_num_b=%sysfunc(verify(%superq(expected),%str(0123456789.+-eE)));
 	%if &_is_num_a=0 and &_is_num_b=0 %then %do;
@@ -123,6 +134,7 @@
 	%else %do;
 		%if %superq(actual)=%superq(expected) %then %let _eq=1;
 		%else %let _eq=0;
+	%end;
 	%end;
 	%let message=Asserted that [&actual.]!=[&expected.];
 	%assertFalse(%eval(&_eq), &message.);
@@ -255,8 +267,6 @@ options cmplib=sbfuncs.fn;
 
 		%test_case(Testing DATA STEP versions of assertions);
 			data _null_;
-				length result $ 32767.;
-
 				call assertTrue('1', "1 is true DATA STEP ASSERTIONS");
 				call assertFalse('0', "0 is false");
 				call assertEqual('1', '1');

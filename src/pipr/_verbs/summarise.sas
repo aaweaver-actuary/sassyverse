@@ -1,18 +1,23 @@
+%macro _summarise_run(vars, stats, by=, data=, out=);
+  proc summary data=&data nway;
+    %if %length(%superq(by)) %then %do; class &by; %end;
+    var &vars;
+    output out=&out(drop=_type_ _freq_) &stats;
+  run;
+%mend;
+
 %macro summarise(vars, by=, data=, out=, stats=, validate=1, as_view=0);
   %_assert_ds_exists(&data);
   %if %length(&vars)=0 %then %_abort(summarise() requires vars=);
   %if %length(&stats)=0 %then %_abort(summarise() requires stats=);
+  %if &as_view %then %_abort(summarise() does not support as_view=1);
 
   %if &validate %then %do;
     %_assert_cols_exist(&data, &vars);
     %if %length(&by) %then %_assert_cols_exist(&data, &by);
   %end;
 
-  proc summary data=&data nway;
-    %if %length(&by) %then %do; class &by; %end;
-    var &vars;
-    output out=&out(drop=_type_ _freq_) &stats;
-  run;
+  %_summarise_run(vars=&vars, stats=&stats, by=&by, data=&data, out=&out);
 
   %if &syserr > 4 %then %_abort(summarise() failed (SYSERR=&syserr).);
 %mend summarise;
@@ -27,12 +32,9 @@
   %test_suite(Testing summarise);
     %test_case(summarise aggregates by group);
       data work._sum;
-        input grp $ x;
-        datalines;
-A 1
-A 3
-B 2
-;
+        grp='A'; x=1; output;
+        grp='A'; x=3; output;
+        grp='B'; x=2; output;
       run;
 
       %summarise(
@@ -67,9 +69,19 @@ B 2
 
       %assertEqual(&_avg_all., 2);
     %test_summary;
+
+    %test_case(summarise helper no by);
+      %_summarise_run(vars=x, stats=sum=total, by=, data=work._sum, out=work._sum_helper);
+
+      proc sql noprint;
+        select total into :_total_helper trimmed from work._sum_helper;
+      quit;
+
+      %assertEqual(&_total_helper., 6);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _sum _sum_out _sum_out2; quit;
+  proc datasets lib=work nolist; delete _sum _sum_out _sum_out2 _sum_helper; quit;
 %mend test_summarise;
 
 %test_summarise;

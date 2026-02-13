@@ -16,6 +16,7 @@
   %include "&root.globals.sas";
   %include "&root.assert.sas";
   %include "&root.strings.sas";
+  %include "&root.buffer.sas";
   %include "&root.lists.sas";
   %include "&root.dates.sas";
   %include "&root.is_equal.sas";
@@ -26,14 +27,16 @@
   %include "&root.export.sas";
   %include "&root.hash.sas";
   %include "&root.index.sas";
-  %include "&root.dryrun.sas";
 
   %let _incl_pipr=%upcase(%superq(include_pipr));
   %let _incl_tests=%upcase(%superq(include_tests));
-  %if %length(&_incl_pipr)=0 %then %let _incl_pipr=0;
-  %if %length(&_incl_tests)=0 %then %let _incl_tests=0;
+  %if "%superq(_incl_pipr)" = "" %then %let _incl_pipr=0;
+  %if "%superq(_incl_tests)" = "" %then %let _incl_tests=0;
 
-  %if %sysfunc(indexw(1 YES TRUE Y, &_incl_pipr)) > 0 %then %do;
+  %local _incl_pipr_is_on _incl_tests_is_on;
+  %let _incl_pipr_is_on=%sysfunc(indexw(1 YES TRUE Y, %superq(_incl_pipr)));
+  %let _incl_tests_is_on=%sysfunc(indexw(1 YES TRUE Y, %superq(_incl_tests)));
+  %if "%superq(_incl_pipr_is_on)" ne "0" %then %do;
     %include "&root.pipr/util.sas";
     %include "&root.pipr/validation.sas";
     %include "&root.pipr/_verbs/utils.sas";
@@ -43,13 +46,14 @@
     %include "&root.pipr/_verbs/join.sas";
     %include "&root.pipr/_verbs/keep.sas";
     %include "&root.pipr/_verbs/mutate.sas";
+    %include "&root.pipr/_verbs/collect_to.sas";
     %include "&root.pipr/_verbs/rename.sas";
     %include "&root.pipr/_verbs/select.sas";
     %include "&root.pipr/_verbs/summarise.sas";
     %include "&root.pipr/pipr.sas";
   %end;
 
-  %if %sysfunc(indexw(1 YES TRUE Y, &_incl_tests)) > 0 %then %do;
+  %if "%superq(_incl_tests_is_on)" ne "0" %then %do;
     %include "&root.testthat.sas";
   %end;
 %mend sassyverse_init;
@@ -61,3 +65,11 @@
     include_tests=&include_tests
   );
 %mend sassyverse_load;
+
+%macro sv_init(base_path=, include_pipr=1, include_tests=0);
+  %sassyverse_init(
+    base_path=&base_path,
+    include_pipr=&include_pipr,
+    include_tests=&include_tests
+  );
+%mend sv_init;

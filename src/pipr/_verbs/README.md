@@ -54,6 +54,11 @@ All verbs follow the same basic signature:
 - Validation includes key compatibility and optional uniqueness checks.
 - Supports `as_view=1`.
 
+### collect_to.sas
+
+- `%collect_to(out_name, ...)` writes the current pipeline output to a target dataset.
+- Alias: `%collect_into(...)`.
+
 ### summarise.sas
 
 - Aggregation support via PROC SUMMARY.
