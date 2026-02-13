@@ -12,7 +12,7 @@
     %if &is_num=0 %then %do;
         %let a_val=%sysevalf(%superq(a));
         %let b_val=%sysevalf(%superq(b));
-        %if (&a_val=&b_val) %then %let out=1;
+        %if %sysevalf(&a_val = &b_val) %then %let out=1;
         %else %let out=0;
     %end;
     %else %do;

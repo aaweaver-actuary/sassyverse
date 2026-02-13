@@ -20,7 +20,7 @@
 
 	%test_suite(Testing globals.sas);
 		%test_case(init_global_var sets to 0);
-			%let __tmpvar=;
+			%symdel __tmpvar / nowarn;
 			%init_global_var(__tmpvar);
 			%assertEqual(&__tmpvar., 0);
 		%test_summary;

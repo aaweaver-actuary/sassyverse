@@ -1,3 +1,18 @@
+%macro _ds_split(ds, out_lib, out_mem);
+  %local lib mem;
+  %if %index(&ds, .) > 0 %then %do;
+    %let lib=%upcase(%scan(&ds, 1, .));
+    %let mem=%upcase(%scan(&ds, 2, .));
+  %end;
+  %else %do;
+    %let lib=WORK;
+    %let mem=%upcase(&ds);
+  %end;
+
+  %let &out_lib=&lib;
+  %let &out_mem=&mem;
+%mend;
+
 %macro _assert_ds_exists(ds, error_msg=);
   %if not %sysfunc(exist(&ds)) %then %do;
     %_abort(Dataset does not exist: &ds. &error_msg);

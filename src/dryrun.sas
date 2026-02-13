@@ -2,7 +2,7 @@
     %local result resolved_macro sq dq;
 
     /* Attempt to resolve the macro call */
-    %let resolved_macro=%nrstr(&&macro_name(&args));
+    %let resolved_macro=%nrstr(%)&macro_name(%superq(args));
 
     /* Check for unmatched quotation marks */
     %let sq=%sysfunc(countc(%superq(resolved_macro), %str(%')));
@@ -16,8 +16,12 @@
         %return;
     %end;
 
-    /* Resolve the macro call */
-    %let result=%sysfunc(resolve(&resolved_macro));
+    /* Resolve the macro call in a data step */
+    data _null_;
+        length _res $ 32767;
+        _res = resolve(symget('resolved_macro'));
+        call symputx('result', _res, 'L');
+    run;
 
     /* Handle potential errors during resolution */
     %if &syserr ne 0 %then %do;

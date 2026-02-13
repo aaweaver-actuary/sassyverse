@@ -4,7 +4,7 @@
 
     %do i = 1 %to &count;
         %let item = %nth(&list, &i);
-        &codeblock
+        %unquote(%superq(codeblock))
     %end;
 %mend foreach;
 
@@ -21,9 +21,9 @@
     &transformedList.
 %mend transform;
 
-%macro len(list, delimiters);
+%macro len(list, delimiters=);
     %local count;
-    %if %sysfunc(length(&delimiters.)) = 0 %then 
+    %if %length(%superq(delimiters)) = 0 %then 
         %let count = %sysfunc(countw(&list));
     %else
         %let count = %sysfunc(countw(&list, &delimiters));
@@ -64,16 +64,34 @@
 %mend unique;
 
 %macro sorted(list);
-    %local i item count sortedList;
+    %local i item count ds tmp out;
     %let count = %len(&list);
 
-    %do i = 1 %to &count;
-        %let item = %nth(&list, &i);
-        %let sortedList = &sortedList &item;
+    %if &count = 0 %then %do;
+        
     %end;
+    %else %do;
+        %let tmp=%sysfunc(cats(_list_, %sysfunc(putn(%sysfunc(datetime()), hex16.))));
+        %let ds=work.&tmp;
 
-    %let sortedList = %sysfunc(sortn(&sortedList));
-    &sortedList
+        data &ds;
+            length _val 8;
+            %do i=1 %to &count;
+                _val=%scan(&list, &i, %str( )); output;
+            %end;
+        run;
+
+        proc sort data=&ds; by _val; run;
+
+        proc sql noprint;
+            select _val into :out separated by ' '
+            from &ds;
+        quit;
+
+        proc datasets lib=work nolist; delete &tmp; quit;
+
+        &out
+    %end;
 %mend sorted;
 
 %macro push(list, item);

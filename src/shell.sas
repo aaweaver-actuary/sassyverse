@@ -10,7 +10,7 @@
     %else %let _cmd=&cmd;
 
     options nosource nonotes errors=0;
-    filename command pipe "&_cmd. ";
+    filename command pipe %sysfunc(quote(%superq(_cmd)));
     options source notes errors=20;
 
     data work._null_;

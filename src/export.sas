@@ -57,8 +57,8 @@
 	%else
 		%let folder=&out_folder.;
 
-	%let ds=%sysfunc(lowcase(&dataset.));
-	%let ds=%sysfunc(tranwrd(&dataset., '.', '__'));
+	%let ds=%sysfunc(lowcase(%superq(dataset)));
+	%let ds=%sysfunc(tranwrd(&ds., %str(.), __));
 
 	%let filename=&folder./&ds..csv;
 	proc export 
@@ -103,10 +103,7 @@
 
 		%test_case(export_to_csv writes file);
 			data work._exp;
-				input x;
-				datalines;
-1
-;
+				x=1; output;
 			run;
 
 			%export_to_csv(work._exp, &out_lib.);

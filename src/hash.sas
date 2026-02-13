@@ -102,7 +102,8 @@
 %mend make_hash_obj;
 
 %macro test_hash_macros;
-%if %symexist(__unit_tests) and &__unit_tests.=1 %then %do;
+%if %symexist(__unit_tests) %then %do;
+    %if &__unit_tests.=1 %then %do;
     %sbmod(assert);
 
     %test_suite(hash.sas macro tests);
@@ -122,9 +123,7 @@
 /*        %assertEqual("&charVarsFromGetCharVars.", "length singleVar $ 5;");*/
     %test_summary;
 
-%end;
-%else %do;
-
+    %end;
 %end;
 %mend test_hash_macros;
 

@@ -1,6 +1,7 @@
 /* sassyverse.sas - Single entrypoint to load the full macro suite. */
 %macro sassyverse_init(base_path=, include_pipr=1, include_tests=0);
   %local root lastchar;
+  %local _incl_pipr _incl_tests;
 
   %if %length(%superq(base_path))=0 %then %do;
     %put ERROR: base_path= is required and should point to the sassyverse src folder.;
@@ -27,7 +28,10 @@
   %include "&root.index.sas";
   %include "&root.dryrun.sas";
 
-  %if &include_pipr %then %do;
+  %let _incl_pipr=%sysfunc(inputn(%superq(include_pipr), best.));
+  %let _incl_tests=%sysfunc(inputn(%superq(include_tests), best.));
+
+  %if &_incl_pipr = 1 %then %do;
     %include "&root.pipr/util.sas";
     %include "&root.pipr/validation.sas";
     %include "&root.pipr/_verbs/utils.sas";
@@ -43,7 +47,7 @@
     %include "&root.pipr/pipr.sas";
   %end;
 
-  %if &include_tests %then %do;
+  %if &_incl_tests = 1 %then %do;
     %include "&root.testthat.sas";
   %end;
 %mend sassyverse_init;

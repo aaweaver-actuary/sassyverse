@@ -92,11 +92,8 @@ mistake of forgetting the actual name one too many times.    */
     %test_suite(Testing index helpers);
         %test_case(make_simple_index creates index);
             data work.test_index;
-                input x y;
-                datalines;
-1 10
-2 20
-;
+                x=1; y=10; output;
+                x=2; y=20; output;
             run;
 
             %make_simple_index(test_index, x, work);
