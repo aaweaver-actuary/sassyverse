@@ -18,7 +18,7 @@
         %if &i < &count %then %let transformedList = &transformedList &delimited_by;
     %end;
 
-    &transformedList
+    &transformedList.
 %mend transform;
 
 %macro len(list, delimiters);
@@ -27,26 +27,26 @@
         %let count = %sysfunc(countw(&list));
     %else
         %let count = %sysfunc(countw(&list, &delimiters));
-    &count
+    &count.
 %mend len;
 
 %macro nth(list, n);
     %local item;
     %let item = %scan(&list, &n);
-    &item
+    &item.
 %mend nth;
 
 %macro first(list);
     %local item;
     %let item = %nth(&list, 1);
-    &item
+    &item.
 %mend first;
 
 %macro last(list);
     %local count item;
     %let count = %len(&list);
     %let item = %nth(&list, &count);
-    &item
+    &item.
 %mend last;
 
 %macro unique(list);
@@ -60,8 +60,8 @@
         %end;
     %end;
 
-    &uniqueList
-%mend unique;;
+    &uniqueList.
+%mend unique;
 
 %macro sorted(list);
     %local i item count sortedList;
@@ -97,3 +97,41 @@
 
     %let has_err = 1;
 %mend list_err;
+
+%macro test_lists;
+    %sbmod(assert);
+
+    %test_suite(Testing lists.sas);
+        %test_case(list basics);
+            %let list=a b c a;
+            %assertEqual(%len(&list), 4);
+            %assertEqual(%nth(&list, 2), b);
+            %assertEqual(%first(&list), a);
+            %assertEqual(%last(&list), a);
+        %test_summary;
+
+        %test_case(unique and concat);
+            %let uniq=%unique(&list);
+            %assertEqual(%len(&uniq), 3);
+            %let combo=%concat(a b, c d);
+            %assertEqual(&combo, a b c d);
+        %test_summary;
+
+        %test_case(sorted numeric list);
+            %let nums=3 1 2;
+            %let sorted=%sorted(&nums);
+            %assertEqual(&sorted, 1 2 3);
+        %test_summary;
+
+        %test_case(transform and foreach);
+            %let t=%transform(a b, surrounded_by=%str(%'), delimited_by=%str(,));
+            %assertEqual(%sysfunc(compbl(&t)), 'a' , 'b');
+
+            %let acc=;
+            %foreach(a b c, %let acc=&acc &item;);
+            %assertEqual(%sysfunc(compbl(&acc)), a b c);
+        %test_summary;
+    %test_summary;
+%mend test_lists;
+
+%test_lists;

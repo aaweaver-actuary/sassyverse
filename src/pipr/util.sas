@@ -15,3 +15,16 @@
 %macro _tmpds(prefix=_p);
   %sysfunc(cats(work., &prefix., %sysfunc(putn(%sysfunc(datetime()), hex16.))))
 %mend;
+
+%macro test_pipr_util;
+  %sbmod(assert);
+
+  %test_suite(Testing pipr util);
+    %test_case(tmpds uses prefix and work);
+      %let t=%_tmpds(prefix=_t_);
+      %assertTrue(%eval(%index(&t, work._t_) = 1), tmpds starts with work._t_);
+    %test_summary;
+  %test_summary;
+%mend test_pipr_util;
+
+%test_pipr_util;

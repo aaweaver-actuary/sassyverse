@@ -85,3 +85,33 @@ mistake of forgetting the actual name one too many times.    */
         %make_simple_index(&ds., &col.)
     %end;
 %mend create_simple_index;
+
+%macro test_index_macros;
+    %sbmod(assert);
+
+    %test_suite(Testing index helpers);
+        %test_case(make_simple_index creates index);
+            data work.test_index;
+                input x y;
+                datalines;
+1 10
+2 20
+;
+            run;
+
+            %make_simple_index(test_index, x, work);
+
+            proc sql noprint;
+                select count(*) into :_idx_cnt trimmed
+                from sashelp.vindex
+                where libname="WORK" and memname="TEST_INDEX" and upcase(name)="X";
+            quit;
+
+            %assertTrue(%eval(&_idx_cnt > 0), index created on X);
+        %test_summary;
+    %test_summary;
+
+    proc datasets lib=work nolist; delete test_index; quit;
+%mend test_index_macros;
+
+%test_index_macros;

@@ -6,4 +6,4 @@
 %include '_verbs/mutate.sas';
 %include '_verbs/rename.sas';
 %include '_verbs/select.sas';
-%include '_verbs/summarize.sas';
+%include '_verbs/summarise.sas';

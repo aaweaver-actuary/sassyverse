@@ -41,3 +41,43 @@
     %filter(where_expr=, data=&data, out=&out, validate=&validate, as_view=&as_view);
   %end;
 %mend;
+
+%macro test_filter;
+  %sbmod(assert);
+
+  %test_suite(Testing filter);
+    %test_case(filter and where_not);
+      data work._flt;
+        input x;
+        datalines;
+1
+2
+3
+;
+      run;
+
+      %filter(x > 1, data=work._flt, out=work._flt_gt1);
+      %where_not(x > 1, data=work._flt, out=work._flt_le1);
+
+      proc sql noprint;
+        select count(*) into :_cnt_gt1 trimmed from work._flt_gt1;
+        select count(*) into :_cnt_le1 trimmed from work._flt_le1;
+      quit;
+
+      %assertEqual(&_cnt_gt1., 2);
+      %assertEqual(&_cnt_le1., 1);
+    %test_summary;
+
+    %test_case(where_if condition toggles filter);
+      %where_if(x > 1, 0, data=work._flt, out=work._flt_all);
+      proc sql noprint;
+        select count(*) into :_cnt_all trimmed from work._flt_all;
+      quit;
+      %assertEqual(&_cnt_all., 3);
+    %test_summary;
+  %test_summary;
+
+  proc datasets lib=work nolist; delete _flt _flt_gt1 _flt_le1 _flt_all; quit;
+%mend test_filter;
+
+%test_filter;

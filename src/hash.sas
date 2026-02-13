@@ -70,8 +70,8 @@
 
 %macro _get_char_vars(char);
         %put char: &char;
-    %let items=%str__replace(&char., |, %str( ) ) );
-    %let nItems=%scan(&items., 2, %str( ));
+    %let items=%str__replace(&char., |, %str( ) );
+    %let nItems=%sysfunc(countw(&items., %str( )));
     %let nPairs=%eval(&nItems. / 2);
         %put nPairs: &nPairs.;
     %if %length(&nPairs.)>1 %then %do;
@@ -102,12 +102,21 @@
 %mend make_hash_obj;
 
 %macro test_hash_macros;
-%if &__unit_tests.=1 %then %do;
+%if %symexist(__unit_tests) and &__unit_tests.=1 %then %do;
     %sbmod(assert);
 
     %test_suite(hash.sas macro tests);
         %let charVarsFromOneCharLenStmnt=%_one_char_length_stmnt( singleVar|5 );
         %assertEqual("&charVarsFromOneCharLenStmnt.", "length singleVar $ 5;");
+
+        %let dcl1=%hash__dcl(h);
+        %assertEqual("&dcl1.", "dcl hash h()");
+
+        %let dcl2=%hash__dcl(h, dataset=work.ds);
+        %assertEqual("&dcl2.", "dcl hash h(dataset: ""work.ds"")");
+
+        %let key1=%hash__key(h, id, isOne=1);
+        %assertEqual("&key1.", "h.defineKey(""id"")");
 
 /*        %let charVarsFromGetCharVars=%_get_char_vars( singleVar|5 );*/
 /*        %assertEqual("&charVarsFromGetCharVars.", "length singleVar $ 5;");*/

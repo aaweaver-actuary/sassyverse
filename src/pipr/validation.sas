@@ -103,3 +103,36 @@
 
   proc datasets lib=work nolist; delete _dupchk; quit;
 %mend;
+
+%macro test_pipr_validation;
+  %sbmod(assert);
+
+  %test_suite(Testing pipr validation);
+    %test_case(assert_cols_exist and get_col_attr);
+      data work._pv_left;
+        length id 8 name $10;
+        id=1; name='a'; output;
+      run;
+
+      %_assert_cols_exist(work._pv_left, id name);
+      %_get_col_attr(work._pv_left, name, _type, _len);
+      %assertEqual(&_type., CHAR);
+      %assertEqual(&_len., 10);
+    %test_summary;
+
+    %test_case(assert_key_compatible and unique_key);
+      data work._pv_right;
+        length id 8 name $10;
+        id=1; name='b'; output;
+      run;
+
+      %_assert_key_compatible(work._pv_left, work._pv_right, id);
+      %_assert_unique_key(work._pv_right, id);
+      %assertTrue(1, validation passes for compatible keys);
+    %test_summary;
+  %test_summary;
+
+  proc datasets lib=work nolist; delete _pv_left _pv_right; quit;
+%mend test_pipr_validation;
+
+%test_pipr_validation;

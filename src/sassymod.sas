@@ -65,3 +65,17 @@
 %macro sassymod(module, base_path=/sas/data/project/EG/aweaver/macros, reload=NO);
     %sbmod(&module., &base_path., &reload.);
 %mend sassymod;
+
+%macro test_sassymod;
+    %sbmod(assert);
+
+    %test_suite(Testing sassymod helpers);
+        %test_case(truncate_varname caps length);
+            %let longname=_imported__this_is_a_very_long_module_name;
+            %let trunc=%truncate_varname(&longname.);
+            %assertTrue(%eval(%length(&trunc.) <= 32), truncated length <= 32);
+        %test_summary;
+    %test_summary;
+%mend test_sassymod;
+
+%test_sassymod;

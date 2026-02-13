@@ -112,3 +112,49 @@
   );
 %mend;
 
+%macro test_left_join;
+  %sbmod(assert);
+
+  %test_suite(Testing left_join);
+    %test_case(left_join brings right_keep columns);
+      data work._lj_left;
+        input id x;
+        datalines;
+1 10
+2 20
+;
+      run;
+
+      data work._lj_right;
+        input id r1 r2;
+        datalines;
+1 100 300
+2 200 400
+;
+      run;
+
+      %left_join(
+        right=work._lj_right,
+        on=id,
+        data=work._lj_left,
+        out=work._lj_out,
+        right_keep=r1
+      );
+
+      proc sql noprint;
+        select sum(r1) into :_sum_r1 trimmed from work._lj_out;
+        select count(*) into :_cnt_r2 trimmed
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_LJ_OUT" and upcase(name)="R2";
+      quit;
+
+      %assertEqual(&_sum_r1., 300);
+      %assertEqual(&_cnt_r2., 0);
+    %test_summary;
+  %test_summary;
+
+  proc datasets lib=work nolist; delete _lj_left _lj_right _lj_out; quit;
+%mend test_left_join;
+
+%test_left_join;
+

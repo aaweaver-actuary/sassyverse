@@ -1,5 +1,6 @@
 %include 'validation.sas';
 %include 'utils.sas';
+%include '_verbs/utils.sas';
 
 %macro pipe(
   data=,
@@ -68,3 +69,40 @@
     %end;
   %end;
 %mend;
+
+%macro test_pipe;
+  %sbmod(assert);
+
+  %test_suite(Testing pipe);
+    %test_case(simple pipeline with filter/mutate/select);
+      data work._pipe_in;
+        input x;
+        datalines;
+1
+2
+3
+;
+      run;
+
+      %pipe(
+        data=work._pipe_in,
+        out=work._pipe_out,
+        steps=filter(x > 1) | mutate(%str(y = x * 2;)) | select(x y),
+        use_views=0,
+        cleanup=1
+      );
+
+      proc sql noprint;
+        select count(*) into :_cnt trimmed from work._pipe_out;
+        select sum(y) into :_sum_y trimmed from work._pipe_out;
+      quit;
+
+      %assertEqual(&_cnt., 2);
+      %assertEqual(&_sum_y., 10);
+    %test_summary;
+  %test_summary;
+
+  proc datasets lib=work nolist; delete _pipe_in _pipe_out; quit;
+%mend test_pipe;
+
+%test_pipe;

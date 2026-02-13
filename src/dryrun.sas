@@ -1,17 +1,17 @@
 %macro dryrun(macro_name, args);
-    %local result resolved_macro;
+    %local result resolved_macro sq dq;
 
     /* Attempt to resolve the macro call */
     %let resolved_macro=%nrstr(&&macro_name(&args));
 
     /* Check for unmatched quotation marks */
-    %if %index(&resolved_macro, %str(%')) ne %index(&resolved_macro, %str(%'))
-        %then %do;
+    %let sq=%sysfunc(countc(%superq(resolved_macro), %str(%')));
+    %if %sysfunc(mod(&sq, 2)) ne 0 %then %do;
         %put ERROR: Unmatched single quotation marks in the macro call.;
         %return;
     %end;
-    %if %index(&resolved_macro, %str(%")) ne %index(&resolved_macro, %str(%"))
-        %then %do;
+    %let dq=%sysfunc(countc(%superq(resolved_macro), %str(%")));
+    %if %sysfunc(mod(&dq, 2)) ne 0 %then %do;
         %put ERROR: Unmatched double quotation marks in the macro call.;
         %return;
     %end;
@@ -28,9 +28,19 @@
 
     /* Print the resolved macro call to the log */
     %put &result;
+    &result
 %mend dryrun;
 
-%sbmod(logger);
+%macro test_dryrun;
+    %sbmod(assert);
 
-%info(can I log x1);
-%put %dryrun(info, can i log x2);
+    %test_suite(Testing dryrun);
+        %test_case(dryrun returns resolved macro call);
+            %macro __dryrun_echo(x); &x %mend;
+            %let out=%dryrun(__dryrun_echo, 123);
+            %assertEqual(&out., 123);
+        %test_summary;
+    %test_summary;
+%mend test_dryrun;
+
+%test_dryrun;

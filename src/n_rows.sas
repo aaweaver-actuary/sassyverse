@@ -6,7 +6,7 @@
 %mend n_rows;
 
 %macro test_n_rows;
-    %if &__unit_tests.=1 %then %do;
+    %if %symexist(__unit_tests) and &__unit_tests.=1 %then %do;
         %sbmod(assert);
         %test_suite(n_rows testing);
             %let n=%n_rows(test_data);

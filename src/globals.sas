@@ -14,3 +14,24 @@
 		%init_global_var(&x.);
 	%end;
 %mend init_global_vars;
+
+%macro test_globals;
+	%sbmod(assert);
+
+	%test_suite(Testing globals.sas);
+		%test_case(init_global_var sets to 0);
+			%let __tmpvar=;
+			%init_global_var(__tmpvar);
+			%assertEqual(&__tmpvar., 0);
+		%test_summary;
+
+		%test_case(init_global_vars creates known flags);
+			%init_global_vars;
+			%assertTrue(%symexist(imported__to_numb), imported__to_numb exists);
+			%assertTrue(%symexist(imported__logger), imported__logger exists);
+			%assertTrue(%symexist(imported__shell), imported__shell exists);
+		%test_summary;
+	%test_summary;
+%mend test_globals;
+
+%test_globals;

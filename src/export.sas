@@ -70,6 +70,9 @@
 %macro test__export_to_csv;
 	%sbmod(assert);
 
+	%local out_lib;
+	%let out_lib=%sysfunc(pathname(work));
+
 	%macro assertEqualsDataset(actual);
 		%assertEqual(&actual., dataset);
 	%mend assertEqualsDataset;

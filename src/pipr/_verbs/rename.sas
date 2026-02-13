@@ -28,3 +28,30 @@
 
   %if &syserr > 4 %then %_abort(rename() failed (SYSERR=&syserr).);
 %mend;
+
+%macro test_rename;
+  %sbmod(assert);
+
+  %test_suite(Testing rename);
+    %test_case(rename changes column names);
+      data work._ren;
+        length a b 8;
+        a=1; b=2; output;
+      run;
+
+      %rename(a=x, data=work._ren, out=work._ren2);
+
+      proc sql noprint;
+        select count(*) into :_cnt_x trimmed
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_REN2" and upcase(name)="X";
+      quit;
+
+      %assertEqual(&_cnt_x., 1);
+    %test_summary;
+  %test_summary;
+
+  proc datasets lib=work nolist; delete _ren _ren2; quit;
+%mend test_rename;
+
+%test_rename;

@@ -99,3 +99,45 @@
 		%logtype(msg=&msg., filename=&filename., dir=&dir., type=DEBUG);
 	%end;
 %mend dbg;
+
+%macro test_logging;
+	%sbmod(assert);
+
+	%local workdir logfile prev_level;
+	%let workdir=%sysfunc(pathname(work));
+	%let logfile=log_test.log;
+	%let prev_level=&log_level;
+
+	%set_log_level(DEBUG);
+
+	%test_suite(Testing logging.sas);
+		%test_case(info and dbg write lines);
+			%info(msg=hello info, filename=&logfile., dir=&workdir.);
+			%dbg(msg=hello debug, filename=&logfile., dir=&workdir.);
+
+			data work._loglines;
+				infile "&workdir./&logfile." truncover;
+				length line $32767;
+				input line $char32767.;
+			run;
+
+			proc sql noprint;
+				select count(*) into :_info_cnt trimmed
+				from work._loglines
+				where index(line, 'INFO') > 0 and index(line, 'hello info') > 0;
+				select count(*) into :_dbg_cnt trimmed
+				from work._loglines
+				where index(line, 'DEBUG') > 0 and index(line, 'hello debug') > 0;
+			quit;
+
+			%assertTrue(%eval(&_info_cnt > 0), info wrote to log file);
+			%assertTrue(%eval(&_dbg_cnt > 0), dbg wrote to log file);
+		%test_summary;
+	%test_summary;
+
+	%let log_level=&prev_level;
+
+	proc datasets lib=work nolist; delete _loglines; quit;
+%mend test_logging;
+
+%test_logging;

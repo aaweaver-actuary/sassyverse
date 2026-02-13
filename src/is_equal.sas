@@ -31,3 +31,23 @@
 
 	&out
 %MEND is_not_equal;
+
+%macro test_is_equal;
+    %sbmod(assert);
+
+    %test_suite(Testing is_equal);
+        %test_case(numeric comparisons);
+            %assertEqual(%is_equal(10, 10), 1);
+            %assertEqual(%is_equal(10.0, 10), 1);
+            %assertEqual(%is_equal(10, 11), 0);
+        %test_summary;
+
+        %test_case(character comparisons);
+            %assertEqual(%is_equal(abc, abc), 1);
+            %assertEqual(%is_equal(abc, abcd), 0);
+            %assertEqual(%is_not_equal(abc, abcd), 1);
+        %test_summary;
+    %test_summary;
+%mend test_is_equal;
+
+%test_is_equal;

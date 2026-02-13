@@ -15,3 +15,30 @@
 
   %if &syserr > 4 %then %_abort(drop() failed (SYSERR=&syserr).);
 %mend;
+
+%macro test_drop;
+  %sbmod(assert);
+
+  %test_suite(Testing drop);
+    %test_case(drop removes specified columns);
+      data work._drop;
+        length a b c 8;
+        a=1; b=2; c=3; output;
+      run;
+
+      %drop(c, data=work._drop, out=work._drop_ab);
+
+      proc sql noprint;
+        select count(*) into :_cnt_c trimmed
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_DROP_AB" and upcase(name)="C";
+      quit;
+
+      %assertEqual(&_cnt_c., 0);
+    %test_summary;
+  %test_summary;
+
+  proc datasets lib=work nolist; delete _drop _drop_ab; quit;
+%mend test_drop;
+
+%test_drop;

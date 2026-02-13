@@ -7,8 +7,8 @@
 %macro _verb_supports_view(verb);
   %local v;
   %let v=%upcase(&verb);
-  /* arrange/summarise cannot; left_join_hash can */
-  %sysfunc(indexw(FILTER MUTATE KEEP DROP LEFT_JOIN_HASH, &v))
+  /* arrange/summarise cannot; left_join can */
+  %sysfunc(indexw(FILTER MUTATE KEEP DROP LEFT_JOIN, &v))
 %mend;
 
 /* step expansion with:
@@ -70,3 +70,18 @@
     %end;
   %end;
 %mend;
+
+%macro test_pipr_verb_utils;
+  %sbmod(assert);
+
+  %test_suite(Testing pipr verb utils);
+    %test_case(positional and view support flags);
+      %assertTrue(%eval(%_is_positional_verb(filter) > 0), filter is positional);
+      %assertTrue(%eval(%_is_positional_verb(rename) = 0), rename is named args);
+      %assertTrue(%eval(%_verb_supports_view(filter) > 0), filter supports views);
+      %assertTrue(%eval(%_verb_supports_view(arrange) = 0), arrange does not support views);
+    %test_summary;
+  %test_summary;
+%mend test_pipr_verb_utils;
+
+%test_pipr_verb_utils;

@@ -84,6 +84,21 @@
       %assertEqual(&b1, 1);
     %test_summary;
 
+    %test_case(tt_nonempty_bool returns -1 for missing dataset);
+      %let b_missing=%tt_nonempty_bool(work.__missing_ds__);
+      %assertEqual(&b_missing, -1);
+    %test_summary;
+
+    %test_case(tt_require_nonempty increments failures on empty when abort=NO);
+      data work._tt_tmp5; stop; run;
+
+      %let _bfCaseFail2=&testCaseFailures;
+      %tt_require_nonempty(work._tt_tmp5, abort=NO);
+      %let _afCaseFail2=&testCaseFailures;
+
+      %assertEqual(%eval(&_afCaseFail2 - &_bfCaseFail2), 1);
+    %test_summary;
+
     /* tt_require_nonempty should PASS and not add failures when dataset is non-empty */
     %test_case(tt_require_nonempty passes on non-empty and does not add failures);
       data work._tt_tmp3; x=1; output; run;
@@ -112,7 +127,7 @@
 
   %test_summary;
 
-  proc delete data=_tt_tmp _tt_tmp2 _tt_tmp3 _tt_tmp4;
+  proc delete data=_tt_tmp _tt_tmp2 _tt_tmp3 _tt_tmp4 _tt_tmp5;
   run;
 %mend test_testthat;
 

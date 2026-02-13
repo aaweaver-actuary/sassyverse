@@ -468,9 +468,10 @@
     , delim=' ' /* Delimiter to split the string on. Default is a space */
 );
     %local i n out;
-    %let n=%str__len(&str., &delim.);
+    %let n=%sysfunc(countw(&str., &delim.));
+    %let out=;
     %do i=1 %to &n;
-        %let out=%str__join(&out., %scan(&str., &i., &delim.));
+        %let out=%sysfunc(catx(%str( ), &out, %scan(&str., &i., &delim.)));
     %end;
 
     &out. 
@@ -663,6 +664,15 @@
 
         %let strJoin2=%str__join2(andy, is, |);
         %assertEqual("&strJoin2.", "andy|is"); /* Test 27 */
+
+        %let strSplit1=%str__split(andy|is|a|cool|guy, |);
+        %assertEqual("&strSplit1.", "andy is a cool guy"); /* Test 28 */
+
+        %let strFormat1=%str__format(Hello ?s1, Andy);
+        %assertEqual("&strFormat1.", "Hello Andy"); /* Test 29 */
+
+        %let strReverse1=%str__reverse(andy);
+        %assertEqual("&strReverse1.", "ydna"); /* Test 30 */
 
     %test_summary;
 %mend test_strings;
