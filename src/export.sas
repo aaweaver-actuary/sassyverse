@@ -18,6 +18,7 @@
 %mend _get_filename;
 
 %macro export_to_csv(dataset, out_lib);
+	%local is_win;
     %let filename=%_get_filename(&dataset., &out_lib.);
 	proc export 
 		replace
@@ -26,13 +27,14 @@
 		outfile="&filename.";
 	run;
 
-/*	%let cmd=chmod 777 &filename.;*/
-/*	%shell(&cmd.);*/
-	%shell( chmod 777 &filename. );
-
-/*	%let cmd2=ls -lah &out_lib.;*/
-/*	%shell(&cmd2.);*/
-	%shell( ls -lah &out_lib. );
+	%let is_win=%_is_windows;
+	%if &is_win %then %do;
+		%shell(dir /a "&out_lib.");
+	%end;
+	%else %do;
+		%shell(chmod 777 "&filename.");
+		%shell(ls -lah "&out_lib.");
+	%end;
 %mend export_to_csv;
 
 %macro export_with_temp_file(dataset, temp_file, out_folder=/sas/data/project/EG/ActShared/SmallBusiness/Modeling/dat/raw_csv);
@@ -71,7 +73,7 @@
 	%sbmod(assert);
 
 	%local out_lib;
-	%let out_lib=%sysfunc(pathname(work));
+	%let out_lib=%sysfunc(tranwrd(%sysfunc(pathname(work)), \, /));
 
 	%macro assertEqualsDataset(actual);
 		%assertEqual(&actual., dataset);
@@ -99,7 +101,57 @@
 
 		%test_summary;
 
+		%test_case(export_to_csv writes file);
+			data work._exp;
+				input x;
+				datalines;
+1
+;
+			run;
+
+			%export_to_csv(work._exp, &out_lib.);
+
+			%let filename=%_get_filename(work._exp, &out_lib.);
+			filename _exp "&filename.";
+			%let _exists=%sysfunc(fexist(_exp));
+			filename _exp clear;
+
+			%assertEqual(&_exists., 1);
+		%test_summary;
+
+		%test_case(export_csv_copy writes file);
+			%export_csv_copy(work._exp, out_folder=&out_lib.);
+
+			%let filename2=&out_lib./work__exp.csv;
+			filename _exp2 "&filename2.";
+			%let _exists2=%sysfunc(fexist(_exp2));
+			filename _exp2 clear;
+
+			%assertEqual(&_exists2., 1);
+		%test_summary;
+
+		%test_case(export_with_temp_file writes file);
+			%export_with_temp_file(work._exp, work._exp_tmp, out_folder=&out_lib.);
+
+			%let filename3=&out_lib./work__exp.csv;
+			filename _exp3 "&filename3.";
+			%let _exists3=%sysfunc(fexist(_exp3));
+			filename _exp3 clear;
+
+			%assertEqual(&_exists3., 1);
+		%test_summary;
+
 	%test_summary;
+
+	filename _exp "&out_lib./_exp.csv";
+	data _null_; rc=fdelete('_exp'); run;
+	filename _exp clear;
+
+	filename _exp2 "&out_lib./work__exp.csv";
+	data _null_; rc=fdelete('_exp2'); run;
+	filename _exp2 clear;
+
+	proc datasets lib=work nolist; delete _exp _exp_tmp; quit;
 
 %mend test__export_to_csv;
 

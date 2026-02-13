@@ -23,7 +23,7 @@ This folder contains the core macro library plus the testing utilities. Most fil
 ### dryrun.sas
 
 - `dryrun(macro_name, args)` resolves a macro call without executing it, useful for debugging macro expansion.
-- Writes the resolved call to the log.
+- Writes the resolved call to the log and returns it to the caller.
 
 ### export.sas
 
@@ -65,7 +65,7 @@ This folder contains the core macro library plus the testing utilities. Most fil
 ### shell.sas
 
 - Convenience wrappers around OS shell commands: `shell`, `shmkdir`, `shpwd`, `shrm`, `shrm_dir`, `shchmod`, `shls`.
-- Uses Unix-like commands, so update for Windows environments.
+- Includes Windows-safe wrappers. `shchmod` is a no-op on Windows.
 
 ### strings.sas
 
@@ -80,6 +80,8 @@ This folder contains the core macro library plus the testing utilities. Most fil
 ## Tests
 
 Many modules contain auto-run test suites at the bottom of the file. This is useful during development but can be noisy or undesirable in production loads.
+
+For a full deterministic run, use the runner at [tests/run_tests.sas](tests/run_tests.sas).
 
 ## Usage
 

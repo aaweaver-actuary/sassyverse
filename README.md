@@ -40,15 +40,25 @@ Notes:
 - `testthat.sas` provides test-suite and test-case wrappers and convenience checks like `tt_require_nonempty`.
 - Many modules auto-run tests at the end of the file. This can be convenient during development but noisy in production.
 
+### Test runner
+
+Use the deterministic test runner to execute the full suite:
+
+```sas
+%include "S:/small_business/modeling/sassyverse/tests/run_tests.sas";
+%sassyverse_run_tests(base_path=S:/small_business/modeling/sassyverse/src);
+```
+
+This sets `__unit_tests=1` and loads the suite in a consistent order.
+
 ## Dependencies and assumptions
 
 - Some modules reference external paths like `/sas/data/project/EG/aweaver/macros` and expect a writable WORK library.
 - `assert.sas` references `sbfuncs` and `sb_funcs` function libraries; ensure these libraries are assigned in your environment.
-- `shell.sas` uses OS shell calls and assumes Unix-like commands (`rm`, `ls`, `chmod`). On Windows, update these commands or wrap them.
+- `shell.sas` includes Windows-safe wrappers for common operations. `shchmod` is a no-op on Windows.
 
 ## Known gaps and follow-ups
 
-- `src/pipr/_verbs/summarise.sas` is currently empty. This is a placeholder for future aggregation support.
 - `src/pipr/verbs.sas` includes all verbs, but you can also include specific verb files if you want a smaller footprint.
 - Several modules hardcode default directories. Consider centralizing configuration in one place for portability.
 

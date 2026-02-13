@@ -56,7 +56,8 @@ All verbs follow the same basic signature:
 
 ### summarise.sas
 
-- Placeholder for aggregation support. Not yet implemented.
+- Aggregation support via PROC SUMMARY.
+- Alias: `%summarize(...)`.
 
 ## Pipeline integration
 

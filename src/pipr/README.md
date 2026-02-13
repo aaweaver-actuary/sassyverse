@@ -55,9 +55,9 @@ Currently implemented verbs include:
 - `select`, `keep`, `drop`
 - `rename`
 - `left_join` (hash-based)
+- `summarise`, `summarize`
 
 ## Notes
 
-- `summarise` is currently a placeholder in `_verbs/summarise.sas`.
 - Some verbs are positional (for example `filter` and `mutate`). The pipeline will auto-quote the first argument for those verbs.
 - `left_join` uses hash joins and can enforce unique keys via `require_unique=1`.
