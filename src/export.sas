@@ -32,8 +32,8 @@
 		%shell(dir /a "&out_lib.");
 	%end;
 	%else %do;
-		%shell(chmod 777 "&filename.");
-		%shell(ls -lah "&out_lib.");
+		%shell(chmod 777 &filename.);
+		%shell(ls -lah &out_lib.);
 	%end;
 %mend export_to_csv;
 
@@ -119,7 +119,7 @@
 		%test_case(export_csv_copy writes file);
 			%export_csv_copy(work._exp, out_folder=&out_lib.);
 
-			%let filename2=&out_lib./work__exp.csv;
+			%let filename2=&out_lib./work___exp.csv;
 			filename _exp2 "&filename2.";
 			%let _exists2=%sysfunc(fexist(_exp2));
 			filename _exp2 clear;
@@ -130,7 +130,7 @@
 		%test_case(export_with_temp_file writes file);
 			%export_with_temp_file(work._exp, work._exp_tmp, out_folder=&out_lib.);
 
-			%let filename3=&out_lib./work__exp.csv;
+			%let filename3=&out_lib./work___exp.csv;
 			filename _exp3 "&filename3.";
 			%let _exists3=%sysfunc(fexist(_exp3));
 			filename _exp3 clear;
@@ -144,7 +144,7 @@
 	data _null_; rc=fdelete('_exp'); run;
 	filename _exp clear;
 
-	filename _exp2 "&out_lib./work__exp.csv";
+	filename _exp2 "&out_lib./work___exp.csv";
 	data _null_; rc=fdelete('_exp2'); run;
 	filename _exp2 clear;
 

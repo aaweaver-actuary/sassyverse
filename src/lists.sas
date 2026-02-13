@@ -64,33 +64,33 @@
 %mend unique;
 
 %macro sorted(list);
-    %local i item count ds tmp out;
+    %local i j count tmp;
     %let count = %len(&list);
 
     %if &count = 0 %then %do;
         
     %end;
     %else %do;
-        %let tmp=%sysfunc(cats(_list_, %sysfunc(putn(%sysfunc(datetime()), hex16.))));
-        %let ds=work.&tmp;
+        %do i=1 %to &count;
+            %let item&i=%scan(&list, &i, %str( ));
+        %end;
 
-        data &ds;
-            length _val 8;
-            %do i=1 %to &count;
-                _val=%scan(&list, &i, %str( )); output;
+        %do i=1 %to %eval(&count-1);
+            %do j=%eval(&i+1) %to &count;
+                %if %sysevalf(&&item&i > &&item&j) %then %do;
+                    %let tmp=&&item&i;
+                    %let item&i=&&item&j;
+                    %let item&j=&tmp;
+                %end;
             %end;
-        run;
+        %end;
 
-        proc sort data=&ds; by _val; run;
-
-        proc sql noprint;
-            select _val into :out separated by ' '
-            from &ds;
-        quit;
-
-        proc datasets lib=work nolist; delete &tmp; quit;
-
-        &out
+        %local out;
+        %let out=;
+        %do i=1 %to &count;
+            %let out=&out &&item&i;
+        %end;
+        %sysfunc(compbl(&out))
     %end;
 %mend sorted;
 
@@ -146,7 +146,7 @@
             %assertEqual(%sysfunc(compbl(&t)), 'a' , 'b');
 
             %let acc=;
-            %foreach(a b c, %let acc=&acc &item;);
+            %foreach(a b c, %nrstr(%let acc=&acc &item;));
             %assertEqual(%sysfunc(compbl(&acc)), a b c);
         %test_summary;
     %test_summary;

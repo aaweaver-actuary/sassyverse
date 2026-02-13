@@ -28,10 +28,12 @@
   %include "&root.index.sas";
   %include "&root.dryrun.sas";
 
-  %let _incl_pipr=%sysfunc(inputn(%superq(include_pipr), best.));
-  %let _incl_tests=%sysfunc(inputn(%superq(include_tests), best.));
+  %let _incl_pipr=%upcase(%superq(include_pipr));
+  %let _incl_tests=%upcase(%superq(include_tests));
+  %if %length(&_incl_pipr)=0 %then %let _incl_pipr=0;
+  %if %length(&_incl_tests)=0 %then %let _incl_tests=0;
 
-  %if &_incl_pipr = 1 %then %do;
+  %if %sysfunc(indexw(1 YES TRUE Y, &_incl_pipr)) > 0 %then %do;
     %include "&root.pipr/util.sas";
     %include "&root.pipr/validation.sas";
     %include "&root.pipr/_verbs/utils.sas";
@@ -47,7 +49,7 @@
     %include "&root.pipr/pipr.sas";
   %end;
 
-  %if &_incl_tests = 1 %then %do;
+  %if %sysfunc(indexw(1 YES TRUE Y, &_incl_tests)) > 0 %then %do;
     %include "&root.testthat.sas";
   %end;
 %mend sassyverse_init;

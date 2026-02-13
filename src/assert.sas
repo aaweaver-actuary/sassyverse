@@ -99,13 +99,33 @@
 %mend;
 
 %macro assertEqual(actual, expected);
+	%local _is_num_a _is_num_b _eq;
+	%let _is_num_a=%sysfunc(verify(%superq(actual),%str(0123456789.+-eE)));
+	%let _is_num_b=%sysfunc(verify(%superq(expected),%str(0123456789.+-eE)));
+	%if &_is_num_a=0 and &_is_num_b=0 %then %do;
+		%let _eq=%sysevalf(%superq(actual) = %superq(expected));
+	%end;
+	%else %do;
+		%if %superq(actual)=%superq(expected) %then %let _eq=1;
+		%else %let _eq=0;
+	%end;
 	%let message=Asserted that [&actual.]=[&expected.];
-	%assertTrue(%eval(&actual=&expected), &message.);
+	%assertTrue(%eval(&_eq), &message.);
 %mend;
 
 %macro assertNotEqual(actual, expected);
+	%local _is_num_a _is_num_b _eq;
+	%let _is_num_a=%sysfunc(verify(%superq(actual),%str(0123456789.+-eE)));
+	%let _is_num_b=%sysfunc(verify(%superq(expected),%str(0123456789.+-eE)));
+	%if &_is_num_a=0 and &_is_num_b=0 %then %do;
+		%let _eq=%sysevalf(%superq(actual) = %superq(expected));
+	%end;
+	%else %do;
+		%if %superq(actual)=%superq(expected) %then %let _eq=1;
+		%else %let _eq=0;
+	%end;
 	%let message=Asserted that [&actual.]!=[&expected.];
-	%assertFalse(%eval(&actual=&expected), &message.);
+	%assertFalse(%eval(&_eq), &message.);
 %mend;
 
 options nonotes nosource nodetails; /* Suppress warnings that these functions were previously compiled */
