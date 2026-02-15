@@ -1,14 +1,24 @@
 %macro _is_positional_verb(verb);
   %local v;
   %let v=%upcase(&verb);
-  %sysfunc(indexw(FILTER MUTATE ARRANGE KEEP DROP SELECT RENAME SUMMARISE SUMMARIZE WHERE WHERE_NOT MASK WHERE_IF SORT LEFT_JOIN COLLECT_TO COLLECT_INTO, &v))
+  %sysfunc(indexw(
+    FILTER MUTATE ARRANGE KEEP DROP SELECT RENAME SUMMARISE SUMMARIZE
+    WHERE WHERE_NOT MASK WHERE_IF SORT
+    LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL
+    COLLECT_TO COLLECT_INTO, &v.))
 %mend;
 
 %macro _verb_supports_view(verb);
   %local v;
   %let v=%upcase(&verb);
   /* arrange/summarise cannot; left_join can */
-  %sysfunc(indexw(FILTER MUTATE KEEP DROP LEFT_JOIN SELECT RENAME WHERE WHERE_NOT MASK WHERE_IF COLLECT_TO COLLECT_INTO, &v))
+  %sysfunc(indexw(
+      FILTER MUTATE KEEP DROP
+      LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL
+      SELECT RENAME WHERE WHERE_NOT MASK WHERE_IF
+      COLLECT_TO COLLECT_INTO,
+      &v
+    ))
 %mend;
 
 %macro _step_parse(step, out_verb, out_args);
