@@ -152,8 +152,13 @@
 
 %mend test__export_to_csv;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test__export_to_csv;
-  %end;
-%end;
+/* Macro to run export tests when __unit_tests is set */
+%macro run_export_tests;
+	%if %symexist(__unit_tests) %then %do;
+		%if %superq(__unit_tests)=1 %then %do;
+			%test__export_to_csv;
+		%end;
+	%end;
+%mend run_export_tests;
+
+%run_export_tests;

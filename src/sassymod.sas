@@ -5,10 +5,9 @@
 %mend truncate_varname;
 
 %macro import_variable(varname);
-/* This is the main import code block. It runs when all the applicable
-   conditions pass. */
+/* This is the main import code block. It runs when all the applicable conditions pass. */
     %global &varname.;
-    %if %qsubstr(%superq(base_path), %length(%superq(base_path)), 1)=/ %then
+    %if "%qsubstr(%superq(base_path), %length(%superq(base_path)), 1)" = "/" %then
         %let file=&base_path.&module..sas;
     %else
         %let file=&base_path/&module..sas;
@@ -85,8 +84,12 @@
     %test_summary;
 %mend test_sassymod;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_sassymod;
-  %end;
-%end;
+%macro run_sassymod_tests;
+    %if %symexist(__unit_tests) %then %do;
+    %if %superq(__unit_tests)=1 %then %do;
+        %test_sassymod;
+    %end;
+    %end;
+%mend run_sassymod_tests;
+
+%run_sassymod_tests;

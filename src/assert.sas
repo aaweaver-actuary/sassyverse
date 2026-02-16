@@ -191,9 +191,20 @@ options cmplib=sbfuncs.fn;
 	%reset_test_counts;
 %mend test_suite;
 
-%macro test_case(title);
+
+%macro test_case / parmbuff;
 	%global currentTestCaseName isCurrentlyInTestCase testCaseCount testCaseFailures testCaseErrors;
-	%let currentTestCaseName=&title.;
+	%local _buf _title _len;
+	%let _buf=%superq(syspbuff);
+	%let _len=%length(%superq(_buf));
+	%if &_len >= 2 %then %do;
+		%if %qsubstr(%superq(_buf), 1, 1)=%str(%() and %qsubstr(%superq(_buf), &_len, 1)=%str(%)) %then %do;
+			%let _title=%qsubstr(%superq(_buf), 2, %eval(&_len-2));
+		%end;
+		%else %let _title=%superq(_buf);
+	%end;
+	%else %let _title=%superq(_buf);
+	%let currentTestCaseName=%unquote(%superq(_title));
 	%put======================>> Running test case: [&currentTestCaseName.];
 	%let isCurrentlyInTestCase=1;
 	%let testCaseCount=0;
@@ -279,8 +290,13 @@ options cmplib=sbfuncs.fn;
 	%test_summary;
 %mend test_assertions;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_assertions;
-  %end;
-%end;
+/* Macro to run assertion tests when __unit_tests is set */
+%macro run_assertion_tests;
+	%if %symexist(__unit_tests) %then %do;
+		%if %superq(__unit_tests)=1 %then %do;
+			%test_assertions;
+		%end;
+	%end;
+%mend run_assertion_tests;
+
+%run_assertion_tests;

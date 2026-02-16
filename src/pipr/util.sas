@@ -30,7 +30,7 @@
     depth = 0;
     seg = '';
     quote = '';
-    seg_count = 0;
+   __seg_count = 0;
 
     do i = 1 to length(buf);
       ch = substr(buf, i, 1);
@@ -43,19 +43,19 @@
       else if ch = quote then quote = '';
 
       if quote = '' and depth = 0 and ch = ',' then do;
-        seg_count + 1;
-        call symputx(cats(symget('out_prefix'), seg_count), strip(seg), 'L');
+       __seg_count + 1;
+        call symputx(cats(symget('out_prefix'),__seg_count), strip(seg), 'G');
         seg = '';
       end;
       else seg = cats(seg, ch);
     end;
 
     if length(strip(seg)) then do;
-      seg_count + 1;
-      call symputx(cats(symget('out_prefix'), seg_count), strip(seg), 'L');
+     __seg_count + 1;
+      call symputx(cats(symget('out_prefix'),__seg_count), strip(seg), 'G');
     end;
 
-    call symputx(symget('out_n'), seg_count, 'L');
+    call symputx(symget('out_n'),__seg_count, 'G');
   run;
 %mend;
 

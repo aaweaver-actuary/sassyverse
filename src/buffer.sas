@@ -114,8 +114,13 @@
     %symdel buf1 buf2 buf3 buf_n esc1 esc_n emp1 emp2 emp3 emp4 emp_n bar1 bar2 bar_n / nowarn;
 %mend test_parmbuf_parser;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_parmbuf_parser;
-  %end;
-%end;
+/* Macro to run buffer tests when __unit_tests is set */
+%macro run_parmbuf_parser_tests;
+    %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_parmbuf_parser;
+        %end;
+    %end;
+%mend run_parmbuf_parser_tests;
+
+%run_parmbuf_parser_tests;

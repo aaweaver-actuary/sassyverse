@@ -178,8 +178,13 @@
     %test_summary;
 %mend test_lists;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_lists;
-  %end;
-%end;
+/* Macro to run lists tests when __unit_tests is set */
+%macro run_lists_tests;
+    %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_lists;
+        %end;
+    %end;
+%mend run_lists_tests;
+
+%run_lists_tests;

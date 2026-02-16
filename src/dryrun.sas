@@ -47,8 +47,13 @@
     %test_summary;
 %mend test_dryrun;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_dryrun;
-  %end;
-%end;
+/* Macro to run dryrun tests when __unit_tests is set */
+%macro run_dryrun_tests;
+    %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_dryrun;
+        %end;
+    %end;
+%mend run_dryrun_tests;
+
+%run_dryrun_tests;

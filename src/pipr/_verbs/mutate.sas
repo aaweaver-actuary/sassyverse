@@ -186,7 +186,7 @@
       %assertEqual(&_sum_y., 12);
     %test_summary;
 
-    %test_case(mutate supports expressions with commas without explicit %str);
+    %test_case(%nrstr(mutate supports expressions with commas without explicit %str));
       %mutate(y = ifc(x > 2, 1, 0), data=work._mut, out=work._mut_ifc);
       proc sql noprint;
         select sum(y) into :_sum_y_ifc trimmed from work._mut_ifc;

@@ -56,8 +56,13 @@
     %test_summary;
 %mend test_is_equal;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_is_equal;
-  %end;
-%end;
+/* Macro to run is_equal tests when __unit_tests is set */
+%macro run_is_equal_tests;
+    %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_is_equal;
+        %end;
+    %end;
+%mend run_is_equal_tests;
+
+%run_is_equal_tests;

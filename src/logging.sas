@@ -1,4 +1,8 @@
-%if not %sysmacexist(shell) %then %sbmod(shell);
+%macro _logging_bootstrap;
+	%if not %sysmacexist(shell) %then %sbmod(shell);
+%mend _logging_bootstrap;
+
+%_logging_bootstrap;
 
 %global log_level;
 %let log_level=INFO;
@@ -140,8 +144,13 @@
 	proc datasets lib=work nolist; delete _loglines; quit;
 %mend test_logging;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_logging;
-  %end;
-%end;
+/* Macro to run logging tests when __unit_tests is set */
+%macro run_logging_tests;
+	%if %symexist(__unit_tests) %then %do;
+		%if %superq(__unit_tests)=1 %then %do;
+			%test_logging;
+		%end;
+	%end;
+%mend run_logging_tests;
+
+%run_logging_tests;

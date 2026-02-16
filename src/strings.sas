@@ -767,8 +767,13 @@
     %test_summary;
 %mend test_strings;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_strings;
-  %end;
-%end;
+/* Macro to run string tests when __unit_tests is set */
+%macro run_string_tests;
+    %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_strings;
+        %end;
+    %end;
+%mend run_string_tests;
+
+%run_string_tests;

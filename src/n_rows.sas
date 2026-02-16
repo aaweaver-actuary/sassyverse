@@ -48,8 +48,13 @@
   %end;
 %mend test_n_rows;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_n_rows;
+/* Macro to run n_rows tests when __unit_tests is set */
+%macro run_n_rows_tests;
+  %if %symexist(__unit_tests) %then %do;
+    %if %superq(__unit_tests)=1 %then %do;
+      %test_n_rows;
+    %end;
   %end;
-%end;
+%mend run_n_rows_tests;
+
+%run_n_rows_tests;

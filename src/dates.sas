@@ -45,8 +45,13 @@
     %test_summary;
 %mend test_fmt_date;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_fmt_date;
-  %end;
-%end;
+/* Macro to run date tests when __unit_tests is set */
+%macro run_fmt_date_tests;
+     %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_fmt_date;
+        %end;
+    %end;
+%mend run_fmt_date_tests;
+
+%run_fmt_date_tests;

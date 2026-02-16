@@ -34,8 +34,12 @@
 	%test_summary;
 %mend test_globals;
 
+%macro run_global_tests;
 %if %symexist(__unit_tests) %then %do;
   %if %superq(__unit_tests)=1 %then %do;
     %test_globals;
   %end;
 %end;
+%mend run_global_tests;
+
+%run_global_tests;

@@ -89,8 +89,13 @@ run;
     
 %mend _test_roundto;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %_test_roundto;
-  %end;
-%end;
+/* Macro to run round_to tests when __unit_tests is set */
+%macro run_round_to_tests;
+    %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %_test_roundto;
+        %end;
+    %end;
+%mend run_round_to_tests;
+
+%run_round_to_tests;

@@ -1,4 +1,8 @@
-%if not %sysmacexist(str__replace) %then %sbmod(strings);
+%macro _hash_bootstrap;
+    %if not %sysmacexist(str__replace) %then %sbmod(strings);
+%mend _hash_bootstrap;
+
+%_hash_bootstrap;
 
 %macro hash__dcl(
 	hashObj /* Variable representing the hash object */
@@ -129,8 +133,13 @@
 %end;
 %mend test_hash_macros;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_hash_macros;
-  %end;
-%end;
+/* Macro to run hash tests when __unit_tests is set */
+%macro run_hash_tests;
+    %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_hash_macros;
+        %end;
+    %end;
+%mend run_hash_tests;
+
+%run_hash_tests;

@@ -111,8 +111,13 @@ mistake of forgetting the actual name one too many times.    */
     proc datasets lib=work nolist; delete test_index; quit;
 %mend test_index_macros;
 
-%if %symexist(__unit_tests) %then %do;
-  %if %superq(__unit_tests)=1 %then %do;
-    %test_index_macros;
-  %end;
-%end;
+/* Macro to run index tests when __unit_tests is set */
+%macro run_index_tests;
+    %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_index_macros;
+        %end;
+    %end;
+%mend run_index_tests;
+
+%run_index_tests;
