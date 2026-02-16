@@ -35,12 +35,13 @@
 
     %do i=1 %to &seg_count;
       %let seg=%superq(seg&i);
-      %let seg_head=%upcase(%scan(%superq(seg), 1, =));
+      %let seg_head=%upcase(%sysfunc(strip(%scan(%superq(seg), 1, =))));
 
       %if %sysfunc(indexw(DATA OUT VALIDATE USE_VIEWS VIEW_OUTPUT DEBUG CLEANUP STEPS, &seg_head)) > 0 %then %do;
         %let eq_pos=%index(%superq(seg), %str(=));
         %if &eq_pos > 0 %then %let seg_val=%substr(%superq(seg), %eval(&eq_pos+1));
         %else %let seg_val=;
+
         %if &seg_head=DATA %then %let &out_data=%sysfunc(strip(%superq(seg_val)));
         %else %if &seg_head=OUT %then %let &out_out=%sysfunc(strip(%superq(seg_val)));
         %else %if &seg_head=VALIDATE %then %let &out_validate=%sysfunc(strip(%superq(seg_val)));
@@ -49,55 +50,46 @@
         %else %if &seg_head=DEBUG %then %let &out_debug=%sysfunc(strip(%superq(seg_val)));
         %else %if &seg_head=CLEANUP %then %let &out_cleanup=%sysfunc(strip(%superq(seg_val)));
         %else %if &seg_head=STEPS %then %let &out_steps=%sysfunc(strip(%superq(seg_val)));
-        %else %if %length(%superq(&out_steps))=0 %then %let &out_steps=%superq(seg);
       %end;
-      %else %if %length(%superq(&out_steps))=0 %then %let &out_steps=%superq(seg);
+      %else %if %length(%superq(&out_steps))=0 %then %let &out_steps=%sysfunc(strip(%superq(seg)));
     %end;
   %end;
 %mend;
 
 %macro _pipe_split_parmbuff_segments(buf=, out_n=, out_prefix=seg);
   %global &out_n;
+
   data _null_;
     length buf seg $32767 ch $1;
     buf = symget('buf');
-    if length(buf) >= 2 then buf = substr(buf, 2, length(buf) - 2);
-    depth=0; seg=''; seg_count=0;
-    do i=1 to length(buf);
-      ch = substr(buf, i, 1);
-      if ch='(' then depth = depth + 1;
-      else if ch=')' then depth = depth - 1;
 
-      if ch=',' and depth=0 then do;
-        seg_count+1;
+    if length(buf) >= 2 and substr(buf, 1, 1) = '(' and substr(buf, length(buf), 1) = ')' then
+      buf = substr(buf, 2, length(buf) - 2);
+
+    depth = 0;
+    seg = '';
+    seg_count = 0;
+
+    do i = 1 to length(buf);
+      ch = substr(buf, i, 1);
+      if ch = '(' then depth + 1;
+      else if ch = ')' then depth + (-1);
+
+      if ch = ',' and depth = 0 then do;
+        seg_count + 1;
         call symputx(cats(symget('out_prefix'), seg_count), strip(seg), 'L');
-        seg='';
+        seg = '';
       end;
-      else seg=cats(seg, ch);
+      else seg = cats(seg, ch);
     end;
+
     if length(seg) then do;
-      seg_count+1;
+      seg_count + 1;
       call symputx(cats(symget('out_prefix'), seg_count), strip(seg), 'L');
     end;
+
     call symputx(symget('out_n'), seg_count, 'L');
   run;
-%mend;
-
-%macro _pipe_infer_data(steps_in=, data_in=, out_steps=, out_data=);
-  %local steps first_step is_data new_steps;
-  %let steps=%superq(steps_in);
-  %let &out_steps=%superq(steps_in);
-  %let &out_data=%superq(data_in);
-
-  %if %length(%superq(data_in))=0 %then %do;
-    %_pipe_first_step(steps=%superq(steps), out_step=first_step);
-    %_pipe_is_data_step(step=%superq(first_step), out_is=is_data);
-    %if &is_data %then %do;
-      %let &out_data=&first_step;
-      %_pipe_steps_without_first(steps=%superq(steps), out_steps=new_steps);
-      %let &out_steps=%superq(new_steps);
-    %end;
-  %end;
 %mend;
 
 %macro _pipe_first_step(steps=, out_step=);
@@ -108,52 +100,40 @@
 
 %macro _pipe_is_data_step(step=, out_is=);
   %global &out_is;
-  %if %length(%superq(step)) and %index(%superq(step), %str(%())=0 %then %let &out_is=1;
+  %if %length(%superq(step)) and %index(%superq(step), %str(%()) = 0 %then %let &out_is=1;
   %else %let &out_is=0;
 %mend;
 
 %macro _pipe_steps_without_first(steps=, out_steps=);
   %local n i token new_steps;
   %global &out_steps;
+
   %let n=%sysfunc(countw(%superq(steps), |, m));
   %let new_steps=;
+
   %do i=2 %to &n;
     %let token=%scan(%superq(steps), &i, |, m);
-    %if %length(%sysfunc(strip(&token))) %then %do;
+    %if %length(%sysfunc(strip(%superq(token)))) %then %do;
       %if %length(%superq(new_steps)) %then %let new_steps=&new_steps | &token;
       %else %let new_steps=&token;
     %end;
   %end;
+
   %let &out_steps=%superq(new_steps);
 %mend;
 
-%macro _pipe_extract_collect_out(steps_in=, out_in=, out_steps=, out_out=, out_collect_out=);
-  %local steps n last_step last_verb args collect_out token new_steps i is_collect;
-  %let steps=%superq(steps_in);
+%macro _pipe_infer_data(steps_in=, data_in=, out_steps=, out_data=);
+  %local first_step is_data new_steps;
   %let &out_steps=%superq(steps_in);
-  %let &out_out=%superq(out_in);
-  %let &out_collect_out=;
+  %let &out_data=%superq(data_in);
 
-  %_pipe_get_last_step(steps=%superq(steps), out_last=last_step, out_n=n);
-  %if &n > 0 %then %do;
-    %let last_step=%sysfunc(strip(&last_step));
-    %let last_verb=%upcase(%scan(%superq(last_step), 1, %str(%())));
-    %_pipe_is_collect_verb(verb=&last_verb, out_is=is_collect);
-    %if &is_collect > 0 %then %do;
-      %_pipe_collect_args(step=%superq(last_step), out_args=args);
-      %let collect_out=%sysfunc(strip(%superq(args)));
-      %let &out_collect_out=&collect_out;
-      %if %length(%superq(out_in))=0 %then %let &out_out=&collect_out;
-      %else %put WARNING: collect_to() ignored because out= is already provided.;
+  %if %length(%superq(data_in))=0 %then %do;
+    %_pipe_first_step(steps=%superq(steps_in), out_step=first_step);
+    %_pipe_is_data_step(step=%superq(first_step), out_is=is_data);
 
-      %let new_steps=;
-      %do i=1 %to %eval(&n-1);
-        %let token=%scan(%superq(steps), &i, |, m);
-        %if %length(%sysfunc(strip(&token))) %then %do;
-          %if %length(%superq(new_steps)) %then %let new_steps=&new_steps | &token;
-          %else %let new_steps=&token;
-        %end;
-      %end;
+    %if &is_data %then %do;
+      %let &out_data=%superq(first_step);
+      %_pipe_steps_without_first(steps=%superq(steps_in), out_steps=new_steps);
       %let &out_steps=%superq(new_steps);
     %end;
   %end;
@@ -188,6 +168,41 @@
   %let &out_args=%superq(args);
 %mend;
 
+%macro _pipe_extract_collect_out(steps_in=, out_in=, out_steps=, out_out=, out_collect_out=);
+  %local n last_step last_verb args collect_out token new_steps i is_collect;
+
+  %let &out_steps=%superq(steps_in);
+  %let &out_out=%superq(out_in);
+  %let &out_collect_out=;
+
+  %_pipe_get_last_step(steps=%superq(steps_in), out_last=last_step, out_n=n);
+  %if &n > 0 %then %do;
+    %let last_step=%sysfunc(strip(%superq(last_step)));
+    %let last_verb=%upcase(%scan(%superq(last_step), 1, %str(%())));
+    %_pipe_is_collect_verb(verb=&last_verb, out_is=is_collect);
+
+    %if &is_collect > 0 %then %do;
+      %_pipe_collect_args(step=%superq(last_step), out_args=args);
+      %let collect_out=%sysfunc(strip(%superq(args)));
+
+      %let &out_collect_out=%superq(collect_out);
+      %if %length(%superq(out_in))=0 %then %let &out_out=%superq(collect_out);
+      %else %put WARNING: collect_to() ignored because out= is already provided.;
+
+      %let new_steps=;
+      %do i=1 %to %eval(&n-1);
+        %let token=%scan(%superq(steps_in), &i, |, m);
+        %if %length(%sysfunc(strip(%superq(token)))) %then %do;
+          %if %length(%superq(new_steps)) %then %let new_steps=&new_steps | &token;
+          %else %let new_steps=&token;
+        %end;
+      %end;
+
+      %let &out_steps=%superq(new_steps);
+    %end;
+  %end;
+%mend;
+
 %macro _pipe_plan_step(
   i=,
   n=,
@@ -206,9 +221,17 @@
   %end;
   %else %do;
     %let &out_as_view=%sysfunc(ifc((&use_views=1) and (&supports_view>0), 1, 0));
-    %if %eval(%sysfunc(mod(&i,2))=1) %then %let &out_next=&tmp1;
+    %if %eval(%sysfunc(mod(&i, 2))=1) %then %let &out_next=&tmp1;
     %else %let &out_next=&tmp2;
   %end;
+%mend;
+
+%macro _pipe_steps_count(steps=, out_n=);
+  %let &out_n=%sysfunc(countw(%superq(steps), |, m));
+%mend;
+
+%macro _pipe_get_step(steps=, index=, out_step=);
+  %let &out_step=%scan(%superq(steps), &index, |, m);
 %mend;
 
 %macro _pipe_validate_inputs(data=, out=, steps=);
@@ -218,12 +241,63 @@
   %if %length(%superq(steps))=0 %then %_abort(pipe() requires steps delimited by '|'.);
 %mend;
 
-%macro _pipe_steps_count(steps=, out_n=);
-  %let &out_n=%sysfunc(countw(%superq(steps), |, m));
+%macro _pipe_execute_step(
+  step=,
+  i=,
+  n=,
+  cur=,
+  out=,
+  tmp1=,
+  tmp2=,
+  use_views=,
+  view_output=,
+  debug=,
+  validate=,
+  out_next=
+);
+  %local verb supports_view as_view nxt;
+  %global &out_next;
+
+  %let verb=%scan(%superq(step), 1, %str(%());
+  %if %length(%superq(verb))=0 %then %_abort(Bad step token: %superq(step));
+
+  %let supports_view=%_verb_supports_view(&verb);
+
+  %_pipe_plan_step(
+    i=&i,
+    n=&n,
+    out=&out,
+    tmp1=&tmp1,
+    tmp2=&tmp2,
+    use_views=&use_views,
+    view_output=&view_output,
+    supports_view=&supports_view,
+    out_as_view=as_view,
+    out_next=nxt
+  );
+
+  %if &debug %then %do;
+    %put NOTE: PIPE step &i/&n: %superq(step);
+    %put NOTE:   verb=&verb supports_view=&supports_view planned_as_view=&as_view;
+    %put NOTE:   in=&cur;
+    %put NOTE:   out=&nxt;
+  %end;
+
+  %_apply_step(%superq(step), &cur, &nxt, &validate, &as_view);
+  %_assert_ds_exists(&nxt, error_msg=Step &i did not create expected output. Step token: %superq(step));
+
+  %let &out_next=&nxt;
 %mend;
 
-%macro _pipe_get_step(steps=, index=, out_step=);
-  %let &out_step=%scan(%superq(steps), &index, |, m);
+%macro _pipe_cleanup_temps(tmp1=, tmp2=, out=, cleanup=1);
+  %if &cleanup %then %do;
+    %if %upcase(&tmp1) ne %upcase(&out) %then %do;
+      proc datasets lib=work nolist; delete %scan(&tmp1, 2, .); quit;
+    %end;
+    %if %upcase(&tmp2) ne %upcase(&out) %then %do;
+      proc datasets lib=work nolist; delete %scan(&tmp2, 2, .); quit;
+    %end;
+  %end;
 %mend;
 
 %macro _pipe_execute(
@@ -247,84 +321,98 @@
 
   %do i=1 %to &n;
     %_pipe_get_step(steps=%superq(steps), index=&i, out_step=step);
-    %let verb=%scan(&step, 1, %str(%());
-    %if %length(&verb)=0 %then %_abort(Bad step token: &step);
-
-    %let supports_view=%_verb_supports_view(&verb);
-
-    /* Plan whether this step writes a view. */
-    %_pipe_plan_step(
+    %_pipe_execute_step(
+      step=%superq(step),
       i=&i,
       n=&n,
+      cur=&cur,
       out=&out,
       tmp1=&tmp1,
       tmp2=&tmp2,
       use_views=&use_views,
       view_output=&view_output,
-      supports_view=&supports_view,
-      out_as_view=as_view,
+      debug=&debug,
+      validate=&validate,
       out_next=nxt
-    %do i=1 %to &n;
-      %_pipe_get_step(steps=%superq(steps), index=&i, out_step=step);
-      %_pipe_execute_step(
-        step=%superq(step),
-        i=&i,
-        n=&n,
-        cur=&cur,
-        out=&out,
-        tmp1=&tmp1,
-        tmp2=&tmp2,
-        use_views=&use_views,
-        view_output=&view_output,
-        debug=&debug,
-        validate=&validate,
-        out_next=nxt
-      );
-      %let cur=&nxt;
-    %end;
+    );
+    %let cur=&nxt;
+  %end;
 
-    %_pipe_cleanup_temps(tmp1=&tmp1, tmp2=&tmp2, out=&out, cleanup=&cleanup);
-    validate_in=&validate,
-    use_views_in=&use_views,
-    view_output_in=&view_output,
-    debug_in=&debug,
-    cleanup_in=&cleanup,
+  %_pipe_cleanup_temps(tmp1=&tmp1, tmp2=&tmp2, out=&out, cleanup=&cleanup);
+%mend;
+
+%macro pipe(
+  steps=,
+  data=,
+  out=,
+  validate=1,
+  use_views=1,
+  view_output=0,
+  debug=0,
+  cleanup=1
+) / parmbuff;
+  %local steps_work data_work out_work validate_work use_views_work view_output_work debug_work cleanup_work;
+  %local collect_out;
+
+  %_pipe_parse_parmbuff(
+    steps_in=%superq(steps),
+    data_in=%superq(data),
+    out_in=%superq(out),
+    validate_in=%superq(validate),
+    use_views_in=%superq(use_views),
+    view_output_in=%superq(view_output),
+    debug_in=%superq(debug),
+    cleanup_in=%superq(cleanup),
     out_steps=steps_work,
-    out_data=data,
-    out_out=out,
-    out_validate=validate,
-    out_use_views=use_views,
-    out_view_output=view_output,
-    out_debug=debug,
-    out_cleanup=cleanup
+    out_data=data_work,
+    out_out=out_work,
+    out_validate=validate_work,
+    out_use_views=use_views_work,
+    out_view_output=view_output_work,
+    out_debug=debug_work,
+    out_cleanup=cleanup_work
   );
+
   %if %length(%superq(steps_work))=0 %then %_abort(pipe() requires steps delimited by '|'.);
 
-  /* If data= is not provided, assume the first step is the input dataset name. */
-  %_pipe_infer_data(steps_in=%superq(steps_work), data_in=%superq(data), out_steps=steps_work, out_data=data);
+  %_pipe_infer_data(
+    steps_in=%superq(steps_work),
+    data_in=%superq(data_work),
+    out_steps=steps_work,
+    out_data=data_work
+  );
 
-  /* If out= is not provided, allow a final collect_to/collect_into step. */
   %_pipe_extract_collect_out(
     steps_in=%superq(steps_work),
-    out_in=%superq(out),
+    out_in=%superq(out_work),
     out_steps=steps_work,
-    out_out=out,
+    out_out=out_work,
     out_collect_out=collect_out
   );
 
-  %_pipe_validate_inputs(data=&data, out=&out, steps=&steps_work);
+  %let validate_work=%_pipr_bool(%superq(validate_work), default=1);
+  %let use_views_work=%_pipr_bool(%superq(use_views_work), default=1);
+  %let view_output_work=%_pipr_bool(%superq(view_output_work), default=0);
+  %let debug_work=%_pipr_bool(%superq(debug_work), default=0);
+  %let cleanup_work=%_pipr_bool(%superq(cleanup_work), default=1);
+
+  %_pipe_validate_inputs(data=&data_work, out=&out_work, steps=&steps_work);
 
   %_pipe_execute(
     steps=%superq(steps_work),
-    data=&data,
-    out=&out,
-    validate=&validate,
-    use_views=&use_views,
-    view_output=&view_output,
-    debug=&debug,
-    cleanup=&cleanup
+    data=&data_work,
+    out=&out_work,
+    validate=&validate_work,
+    use_views=&use_views_work,
+    view_output=&view_output_work,
+    debug=&debug_work,
+    cleanup=&cleanup_work
   );
 %mend;
+
+/* ---------------------- */
+/* Tests for pipr.sas     */
+/* ---------------------- */
 
 %macro _pipe_parse_parmbuff_test(
   steps=,
@@ -369,7 +457,7 @@
 %mend;
 
 %macro test_pipe_helpers;
-  %sbmod(assert);
+  %_pipr_require_assert;
   %global _pd_steps _pd_data _pc_steps _pc_out _pc_collect;
   %global _ps_n _ps_step _ps_as_view _ps_next;
   %global _pl_last _pl_n _pl_is _pl_args;
@@ -487,65 +575,6 @@
         supports_view=1,
         out_as_view=_ps_as_view,
         out_next=_ps_next
-
-      %macro _pipe_execute_step(
-        step=,
-        i=,
-        n=,
-        cur=,
-        out=,
-        tmp1=,
-        tmp2=,
-        use_views=,
-        view_output=,
-        debug=,
-        validate=,
-        out_next=
-      );
-        %local verb supports_view as_view nxt;
-        %global &out_next;
-
-        %let verb=%scan(%superq(step), 1, %str(%());
-        %if %length(&verb)=0 %then %_abort(Bad step token: &step);
-
-        %let supports_view=%_verb_supports_view(&verb);
-
-        %_pipe_plan_step(
-          i=&i,
-          n=&n,
-          out=&out,
-          tmp1=&tmp1,
-          tmp2=&tmp2,
-          use_views=&use_views,
-          view_output=&view_output,
-          supports_view=&supports_view,
-          out_as_view=as_view,
-          out_next=nxt
-        );
-
-        %if &debug %then %do;
-          %put NOTE: PIPE step &i/&n: &step;
-          %put NOTE:   verb=&verb supports_view=&supports_view planned_as_view=&as_view;
-          %put NOTE:   in=&cur;
-          %put NOTE:   out=&nxt;
-        %end;
-
-        %_apply_step(&step, &cur, &nxt, &validate, &as_view);
-        %_assert_ds_exists(&nxt, error_msg=Step &i did not create expected output. Step token: &step);
-
-        %let &out_next=&nxt;
-      %mend;
-
-      %macro _pipe_cleanup_temps(tmp1=, tmp2=, out=, cleanup=1);
-        %if &cleanup %then %do;
-          %if %upcase(&tmp1) ne %upcase(&out) %then %do;
-            proc datasets lib=work nolist; delete %scan(&tmp1,2,.); quit;
-          %end;
-          %if %upcase(&tmp2) ne %upcase(&out) %then %do;
-            proc datasets lib=work nolist; delete %scan(&tmp2,2,.); quit;
-          %end;
-        %end;
-      %mend;
       );
       %assertEqual(&_ps_as_view., 1);
       %assertEqual(&_ps_next., work._final);
@@ -605,7 +634,7 @@
 %mend;
 
 %macro test_pipe;
-  %sbmod(assert);
+  %_pipr_require_assert;
 
   %test_suite(Testing pipe);
     %test_case(simple pipeline with filter/mutate/select);
@@ -676,10 +705,35 @@
 
       %assertEqual(&_sum_z., 11);
     %test_summary;
+
+    %test_case(string booleans are normalized);
+      data work._pipe_bool_in;
+        x=1; output;
+        x=2; output;
+        x=3; output;
+      run;
+
+      %pipe(
+        data=work._pipe_bool_in,
+        out=work._pipe_bool_out,
+        steps=filter(x > 1),
+        validate=TRUE,
+        use_views=NO,
+        cleanup=YES
+      );
+
+      proc sql noprint;
+        select count(*) into :_cnt_bool trimmed from work._pipe_bool_out;
+      quit;
+
+      %assertEqual(&_cnt_bool., 2);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _pipe_in _pipe_out _pipe_out2 _pipe_right _pipe_in2 _pipe_out3; quit;
+  proc datasets lib=work nolist;
+    delete _pipe_in _pipe_out _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out;
+  quit;
 %mend test_pipe;
 
-%test_pipe_helpers;
-%test_pipe;
+%_pipr_autorun_tests(test_pipe_helpers);
+%_pipr_autorun_tests(test_pipe);

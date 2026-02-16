@@ -1,4 +1,6 @@
-%sbmod(sbfuncs);
+%if %sysfunc(libref(sbfuncs)) ne 0 %then %do;
+  libname sbfuncs "%sysfunc(pathname(work))";
+%end;
 
 %put======================>> Loading assert.sas;
 
@@ -277,4 +279,8 @@ options cmplib=sbfuncs.fn;
 	%test_summary;
 %mend test_assertions;
 
-%test_assertions;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_assertions;
+  %end;
+%end;

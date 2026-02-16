@@ -14,10 +14,12 @@
 %mend;
 
 %macro mutate(stmt, data=, out=, validate=1, as_view=0);
+  %local _as_view;
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
   %_assert_ds_exists(&data);
   %if %length(%superq(stmt))=0 %then %_abort(mutate() requires a statement block);
 
-  %_mutate_emit_data(stmt=&stmt, data=&data, out=&out, as_view=&as_view);
+  %_mutate_emit_data(stmt=&stmt, data=&data, out=&out, as_view=&_as_view);
   %if &syserr > 4 %then %_abort(mutate() failed (SYSERR=&syserr).);
 %mend;
 
@@ -26,7 +28,7 @@
 %mend;
 
 %macro test_mutate;
-  %sbmod(assert);
+  %_pipr_require_assert;
 
   %test_suite(Testing mutate);
     %test_case(mutate adds column);
@@ -65,4 +67,4 @@
   proc datasets lib=work nolist; delete _mut _mut2 _mut3 _mut_view; quit;
 %mend test_mutate;
 
-%test_mutate;
+%_pipr_autorun_tests(test_mutate);

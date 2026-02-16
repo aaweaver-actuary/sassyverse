@@ -12,16 +12,19 @@
 %mend;
 
 %macro select(cols, data=, out=, validate=1, as_view=0);
+  %local _validate _as_view;
+  %let _validate=%_pipr_bool(%superq(validate), default=1);
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
   %_assert_ds_exists(&data);
-  %if &validate %then %_assert_cols_exist(&data, &cols);
+  %if &_validate %then %_assert_cols_exist(&data, &cols);
 
-  %_select_emit_data(cols=&cols, data=&data, out=&out, as_view=&as_view);
+  %_select_emit_data(cols=&cols, data=&data, out=&out, as_view=&_as_view);
 
   %if &syserr > 4 %then %_abort(select() failed (SYSERR=&syserr).);
 %mend;
 
 %macro test_select;
-  %sbmod(assert);
+  %_pipr_require_assert;
 
   %test_suite(Testing select);
     %test_case(select keeps columns);
@@ -56,4 +59,4 @@
   proc datasets lib=work nolist; delete _sel _sel_ac _sel_view; quit;
 %mend test_select;
 
-%test_select;
+%_pipr_autorun_tests(test_select);

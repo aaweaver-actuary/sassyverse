@@ -1,5 +1,5 @@
 /* testthat.sas - Higher-level SAS macro testing with tests. */
-%sbmod(assert);
+%if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
 /* Return the (numeric) row count, or -1 if the data set cannot be opened. */
 %macro nobs(ds);
@@ -132,4 +132,8 @@
 %mend test_testthat;
 
 /* Auto-runs the test suite on module load. */
-%test_testthat;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_testthat;
+  %end;
+%end;

@@ -7,14 +7,17 @@
 %mend;
 
 %macro summarise(vars, by=, data=, out=, stats=, validate=1, as_view=0);
+  %local _validate _as_view;
+  %let _validate=%_pipr_bool(%superq(validate), default=1);
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
   %_assert_ds_exists(&data);
-  %if %length(&vars)=0 %then %_abort(summarise() requires vars=);
-  %if %length(&stats)=0 %then %_abort(summarise() requires stats=);
-  %if &as_view %then %_abort(summarise() does not support as_view=1);
+  %if %length(%superq(vars))=0 %then %_abort(summarise() requires vars=);
+  %if %length(%superq(stats))=0 %then %_abort(summarise() requires stats=);
+  %if &_as_view %then %_abort(summarise() does not support as_view=1);
 
-  %if &validate %then %do;
+  %if &_validate %then %do;
     %_assert_cols_exist(&data, &vars);
-    %if %length(&by) %then %_assert_cols_exist(&data, &by);
+    %if %length(%superq(by)) %then %_assert_cols_exist(&data, &by);
   %end;
 
   %_summarise_run(vars=&vars, stats=&stats, by=&by, data=&data, out=&out);
@@ -27,7 +30,7 @@
 %mend summarize;
 
 %macro test_summarise;
-  %sbmod(assert);
+  %_pipr_require_assert;
 
   %test_suite(Testing summarise);
     %test_case(summarise aggregates by group);
@@ -84,4 +87,4 @@
   proc datasets lib=work nolist; delete _sum _sum_out _sum_out2 _sum_helper; quit;
 %mend test_summarise;
 
-%test_summarise;
+%_pipr_autorun_tests(test_summarise);

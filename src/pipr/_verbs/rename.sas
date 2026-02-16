@@ -35,18 +35,21 @@
 %mend;
 
 %macro rename(rename_pairs, data=, out=, validate=1, as_view=0);
+  %local _validate _as_view;
+  %let _validate=%_pipr_bool(%superq(validate), default=1);
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
   %_assert_ds_exists(&data);
 
   %_rename_parse_pairs(&rename_pairs., _rn_old, _rn_map);
-  %if &validate %then %_assert_cols_exist(&data, &&_rn_old);
+  %if &_validate %then %_assert_cols_exist(&data, &&_rn_old);
 
-  %_rename_emit_data(rename_map=&&_rn_map, data=&data, out=&out, as_view=&as_view);
+  %_rename_emit_data(rename_map=&&_rn_map, data=&data, out=&out, as_view=&_as_view);
 
   %if &syserr > 4 %then %_abort(rename() failed (SYSERR=&syserr).);
 %mend;
 
 %macro test_rename;
-  %sbmod(assert);
+  %_pipr_require_assert;
 
   %test_suite(Testing rename);
     %test_case(rename changes column names);
@@ -85,4 +88,4 @@
   proc datasets lib=work nolist; delete _ren _ren2 _ren_view; quit;
 %mend test_rename;
 
-%test_rename;
+%_pipr_autorun_tests(test_rename);

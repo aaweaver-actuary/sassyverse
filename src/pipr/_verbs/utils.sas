@@ -1,24 +1,28 @@
+%macro _verb_positional_list;
+  FILTER MUTATE ARRANGE KEEP DROP SELECT RENAME SUMMARISE SUMMARIZE
+  WHERE WHERE_NOT MASK WHERE_IF SORT
+  LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL
+  COLLECT_TO COLLECT_INTO
+%mend;
+
+%macro _verb_view_supported_list;
+  FILTER MUTATE KEEP DROP
+  LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL
+  SELECT RENAME WHERE WHERE_NOT MASK WHERE_IF
+  COLLECT_TO COLLECT_INTO
+%mend;
+
 %macro _is_positional_verb(verb);
   %local v;
   %let v=%upcase(&verb);
-  %sysfunc(indexw(
-    FILTER MUTATE ARRANGE KEEP DROP SELECT RENAME SUMMARISE SUMMARIZE
-    WHERE WHERE_NOT MASK WHERE_IF SORT
-    LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL
-    COLLECT_TO COLLECT_INTO, &v.))
+  %sysfunc(indexw(%_verb_positional_list, &v))
 %mend;
 
 %macro _verb_supports_view(verb);
   %local v;
   %let v=%upcase(&verb);
   /* arrange/summarise cannot; left_join can */
-  %sysfunc(indexw(
-      FILTER MUTATE KEEP DROP
-      LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL
-      SELECT RENAME WHERE WHERE_NOT MASK WHERE_IF
-      COLLECT_TO COLLECT_INTO,
-      &v
-    ))
+  %sysfunc(indexw(%_verb_view_supported_list, &v))
 %mend;
 
 %macro _step_parse(step, out_verb, out_args);
@@ -113,7 +117,7 @@
 %mend;
 
 %macro test_pipr_verb_utils;
-  %sbmod(assert);
+  %_pipr_require_assert;
   %global _sp_verb _sp_args _sp_has;
 
   %test_suite(Testing pipr verb utils);
@@ -164,4 +168,4 @@
   proc datasets lib=work nolist; delete _ut_in _ut_out; quit;
 %mend test_pipr_verb_utils;
 
-%test_pipr_verb_utils;
+%_pipr_autorun_tests(test_pipr_verb_utils);

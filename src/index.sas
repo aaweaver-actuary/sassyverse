@@ -87,7 +87,7 @@ mistake of forgetting the actual name one too many times.    */
 %mend create_simple_index;
 
 %macro test_index_macros;
-    %sbmod(assert);
+    %if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
     %test_suite(Testing index helpers);
         %test_case(make_simple_index creates index);
@@ -111,4 +111,8 @@ mistake of forgetting the actual name one too many times.    */
     proc datasets lib=work nolist; delete test_index; quit;
 %mend test_index_macros;
 
-%test_index_macros;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_index_macros;
+  %end;
+%end;

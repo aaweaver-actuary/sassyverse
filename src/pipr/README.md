@@ -37,11 +37,15 @@
 - `use_views=1` allows intermediate steps to be written as views when the verb supports it.
 - `view_output=1` makes the final output a view if the final verb supports it.
 - `cleanup=1` removes temporary datasets created during the pipeline.
+- Boolean options accept `1/0`, `YES/NO`, `TRUE/FALSE`, `ON/OFF`.
 
 ## Supporting files
 
 - `validation.sas` contains safety checks used by verbs and `pipe()`.
-- `util.sas` provides `_abort` and `_tmpds` helpers.
+- `util.sas` provides shared helpers:
+  - `_abort`, `_tmpds`
+  - `_pipr_bool` for consistent boolean parsing
+  - `_pipr_require_assert` and `_pipr_autorun_tests` for standardized test bootstrapping
 - `_verbs/utils.sas` defines the verb registry and the step expansion logic.
 
 ## Verbs
@@ -61,3 +65,4 @@ Currently implemented verbs include:
 
 - Some verbs are positional (for example `filter` and `mutate`). The pipeline will auto-quote the first argument for those verbs.
 - `left_join` uses hash joins and can enforce unique keys via `require_unique=1`.
+- `pipe()` is implemented as small helpers (`_pipe_parse_parmbuff`, `_pipe_infer_data`, `_pipe_extract_collect_out`, `_pipe_execute_step`, `_pipe_execute`) to keep behavior modular and testable.

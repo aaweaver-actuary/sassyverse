@@ -1,9 +1,12 @@
 /* keep/drop */
 %macro keep(vars, data=, out=, validate=1, as_view=0);
+  %local _validate _as_view;
+  %let _validate=%_pipr_bool(%superq(validate), default=1);
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
   %_assert_ds_exists(&data);
-  %if &validate %then %_assert_cols_exist(&data, &vars);
+  %if &_validate %then %_assert_cols_exist(&data, &vars);
 
-  %if &as_view %then %do;
+  %if &_as_view %then %do;
     data &out / view=&out;
       set &data(keep=&vars);
     run;
@@ -18,7 +21,7 @@
 %mend;
 
 %macro test_keep;
-  %sbmod(assert);
+  %_pipr_require_assert;
 
   %test_suite(Testing keep);
     %test_case(keep retains specified columns);
@@ -42,4 +45,4 @@
   proc datasets lib=work nolist; delete _keep _keep_ab; quit;
 %mend test_keep;
 
-%test_keep;
+%_pipr_autorun_tests(test_keep);

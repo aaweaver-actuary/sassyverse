@@ -162,7 +162,7 @@
 %mend;
 
 %macro test_pipr_validation;
-  %sbmod(assert);
+  %_pipr_require_assert;
   %global _exists _missing;
   %global _cleaned _vars _lt _ll _rt _rl _type_mis _len_mis;
 
@@ -224,4 +224,4 @@
   proc datasets lib=work nolist; delete _pv_left _pv_right _pv_left2 _pv_right2; quit;
 %mend test_pipr_validation;
 
-%test_pipr_validation;
+%_pipr_autorun_tests(test_pipr_validation);

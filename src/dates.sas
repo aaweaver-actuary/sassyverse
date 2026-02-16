@@ -23,7 +23,7 @@
 %mend mdy;
 
 %macro test_fmt_date;
-    %sbmod(assert);
+    %if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
     %test_suite(Test date macros:);
         %let date=%sysfunc(mdy(11, 26, 1987));
@@ -45,4 +45,8 @@
     %test_summary;
 %mend test_fmt_date;
 
-%test_fmt_date;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_fmt_date;
+  %end;
+%end;

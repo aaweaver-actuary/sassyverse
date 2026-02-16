@@ -11,6 +11,7 @@ All verbs follow the same basic signature:
 - `data` and `out` are the input and output datasets.
 - `validate=1` runs safety checks (dataset existence, column existence, and key compatibility).
 - `as_view=1` writes the output as a view for verbs that support it.
+- Boolean flags accept `1/0`, `YES/NO`, `TRUE/FALSE`, and `ON/OFF`.
 
 ## Verbs
 
@@ -69,3 +70,8 @@ All verbs follow the same basic signature:
 `_verbs/utils.sas` defines:
 - The verb registry (which verbs support views and which are positional).
 - Step expansion and argument injection for `pipe()`.
+
+## Testing convention
+
+- Use `%_pipr_require_assert;` at the start of test macros.
+- Use `%_pipr_autorun_tests(test_macro_name);` at file end for deterministic auto-run behavior when `__unit_tests=1`.

@@ -2,6 +2,7 @@
 %macro sassyverse_init(base_path=, include_pipr=1, include_tests=0);
   %local root lastchar;
   %local _incl_pipr _incl_tests;
+  %global _sassyverse_base_path;
 
   %if %length(%superq(base_path))=0 %then %do;
     %put ERROR: base_path= is required and should point to the sassyverse src folder.;
@@ -11,6 +12,7 @@
   %let root=%sysfunc(tranwrd(%superq(base_path), \, /));
   %let lastchar=%substr(&root, %length(&root), 1);
   %if "&lastchar" ne "/" %then %let root=&root./;
+  %let _sassyverse_base_path=%superq(root);
 
   %include "&root.sassymod.sas";
   %include "&root.globals.sas";

@@ -125,7 +125,7 @@
 %mend list_err;
 
 %macro test_lists;
-    %sbmod(assert);
+    %if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
     %test_suite(Testing lists.sas);
         %test_case(list basics);
@@ -178,4 +178,8 @@
     %test_summary;
 %mend test_lists;
 
-%test_lists;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_lists;
+  %end;
+%end;

@@ -6,45 +6,50 @@
 %mend n_rows;
 
 %macro test_n_rows;
-    %if %symexist(__unit_tests) %then %do;
-        %if &__unit_tests.=1 %then %do;
-        %sbmod(assert);
-        %test_suite(n_rows testing);
-            %let n=%n_rows(test_data);
-            %assertEqual(&n., 4);
+  %if %symexist(__unit_tests) %then %do;
+    %if %superq(__unit_tests)=1 %then %do;
+      %if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
-            %let n=%n_rows(test2);
-            %assertEqual(&n., 1);
-        %test_summary;
-        %end;
-    %end;
-
-    proc delete data=test_data test2;
-    run;
-%mend test_n_rows;
-
-data test_data;
-    input col1 col2 col3 $;
-    datalines;
+      data test_data;
+        input col1 col2 col3 $;
+        datalines;
 1 1 a
 2 2 b
 3 3 c
 4 4 d
 ;
-run;
+      run;
 
-data test_data;
-    set test_data;
-    if _n_=2 then col1=.;    
-    if _n_=3 then do;
-        col1=.;
-        col2=.;
-    end;
-run;
+      data test_data;
+        set test_data;
+        if _n_=2 then col1=.;
+        if _n_=3 then do;
+          col1=.;
+          col2=.;
+        end;
+      run;
 
-data test2;
-    set test_data;
-    if col1=1;
-run;
+      data test2;
+        set test_data;
+        if col1=1;
+      run;
 
-%test_n_rows;
+      %test_suite(n_rows testing);
+        %let n=%n_rows(test_data);
+        %assertEqual(&n., 4);
+
+        %let n=%n_rows(test2);
+        %assertEqual(&n., 1);
+      %test_summary;
+
+      proc delete data=test_data test2;
+      run;
+    %end;
+  %end;
+%mend test_n_rows;
+
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_n_rows;
+  %end;
+%end;

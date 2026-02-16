@@ -1,4 +1,4 @@
-%sbmod(shell);
+%if not %sysmacexist(shell) %then %sbmod(shell);
 
 %global log_level;
 %let log_level=INFO;
@@ -101,7 +101,7 @@
 %mend dbg;
 
 %macro test_logging;
-	%sbmod(assert);
+	%if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
 	%local workdir logfile prev_level;
 	%let workdir=%sysfunc(pathname(work));
@@ -140,4 +140,8 @@
 	proc datasets lib=work nolist; delete _loglines; quit;
 %mend test_logging;
 
-%test_logging;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_logging;
+  %end;
+%end;

@@ -767,4 +767,8 @@
     %test_summary;
 %mend test_strings;
 
-%test_strings;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_strings;
+  %end;
+%end;

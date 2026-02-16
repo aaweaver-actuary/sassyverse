@@ -70,7 +70,7 @@
 %mend export_csv_copy;
 
 %macro test__export_to_csv;
-	%sbmod(assert);
+	%if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
 	%local out_lib;
 	%let out_lib=%sysfunc(tranwrd(%sysfunc(pathname(work)), \, /));
@@ -152,4 +152,8 @@
 
 %mend test__export_to_csv;
 
-%test__export_to_csv;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test__export_to_csv;
+  %end;
+%end;

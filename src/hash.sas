@@ -1,4 +1,4 @@
-%sbmod(strings);
+%if not %sysmacexist(str__replace) %then %sbmod(strings);
 
 %macro hash__dcl(
 	hashObj /* Variable representing the hash object */
@@ -103,8 +103,8 @@
 
 %macro test_hash_macros;
 %if %symexist(__unit_tests) %then %do;
-    %if &__unit_tests.=1 %then %do;
-    %sbmod(assert);
+    %if %superq(__unit_tests)=1 %then %do;
+    %if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
     %test_suite(hash.sas macro tests);
         %let charVarsFromOneCharLenStmnt=%_one_char_length_stmnt( singleVar|5 );
@@ -129,4 +129,8 @@
 %end;
 %mend test_hash_macros;
 
-%test_hash_macros;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_hash_macros;
+  %end;
+%end;

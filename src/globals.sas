@@ -16,7 +16,7 @@
 %mend init_global_vars;
 
 %macro test_globals;
-	%sbmod(assert);
+	%if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
 	%test_suite(Testing globals.sas);
 		%test_case(init_global_var sets to 0);
@@ -34,4 +34,8 @@
 	%test_summary;
 %mend test_globals;
 
-%test_globals;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_globals;
+  %end;
+%end;

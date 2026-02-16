@@ -18,8 +18,10 @@
 %mend;
 
 %macro filter(where_expr, data=, out=, validate=1, as_view=0);
+  %local _as_view;
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
   %_assert_ds_exists(&data);
-  %_filter_emit_data(where_expr=&where_expr, data=&data, out=&out, as_view=&as_view);
+  %_filter_emit_data(where_expr=&where_expr, data=&data, out=&out, as_view=&_as_view);
   %if &syserr > 4 %then %_abort(filter() failed (SYSERR=&syserr).);
 %mend;
 
@@ -36,7 +38,9 @@
 %mend;
 
 %macro where_if(where_expr, condition, data=, out=, validate=1, as_view=0);
-  %if &condition %then %do;
+  %local _condition;
+  %let _condition=%_pipr_bool(%superq(condition), default=0);
+  %if &_condition %then %do;
     %filter(where_expr=&where_expr, data=&data, out=&out, validate=&validate, as_view=&as_view);
   %end;
   %else %do;
@@ -45,7 +49,7 @@
 %mend;
 
 %macro test_filter;
-  %sbmod(assert);
+  %_pipr_require_assert;
 
   %test_suite(Testing filter);
     %test_case(filter and where_not);
@@ -88,4 +92,4 @@
   proc datasets lib=work nolist; delete _flt _flt_gt1 _flt_le1 _flt_all _flt_view; quit;
 %mend test_filter;
 
-%test_filter;
+%_pipr_autorun_tests(test_filter);

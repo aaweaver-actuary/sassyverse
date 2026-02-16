@@ -29,17 +29,44 @@
 
 /* Abort if right_keep contains any join keys. Duplicate column names in output
    are a common source of brittle downstream failures. */
-%macro _join_assert_right_keep_not_keys(on=, right_keep=, error_msg=);
-  %local i n k;
-  %if %length(%superq(right_keep))=0 %then %return;
+%macro _join_right_keep_key_overlap(on=, right_keep=, out_has_overlap=, out_key=);
+  %local i n k has_overlap overlap_key;
+  %global &out_has_overlap &out_key;
+
+  %let has_overlap=0;
+  %let overlap_key=;
+  %if %length(%superq(right_keep))=0 %then %do;
+    %let &out_has_overlap=0;
+    %let &out_key=;
+    %return;
+  %end;
 
   %let n=%sysfunc(countw(%superq(on), %str( ), q));
   %do i=1 %to &n;
     %let k=%scan(%superq(on), &i, %str( ), q);
     %if %sysfunc(indexw(%upcase(%superq(right_keep)), %upcase(&k))) > 0 %then %do;
-      %if %length(%superq(error_msg)) %then %_abort(&error_msg);
-      %else %_abort(right_keep must not include join key &k);
+      %let has_overlap=1;
+      %let overlap_key=%superq(k);
+      %goto overlap_done;
     %end;
+  %end;
+
+%overlap_done:
+  %let &out_has_overlap=&has_overlap;
+  %let &out_key=&overlap_key;
+%mend;
+
+%macro _join_assert_right_keep_not_keys(on=, right_keep=, error_msg=);
+  %local _has_overlap _overlap_key;
+  %_join_right_keep_key_overlap(
+    on=&on,
+    right_keep=&right_keep,
+    out_has_overlap=_has_overlap,
+    out_key=_overlap_key
+  );
+  %if &_has_overlap %then %do;
+    %if %length(%superq(error_msg)) %then %_abort(&error_msg);
+    %else %_abort(right_keep must not include join key &_overlap_key);
   %end;
 %mend;
 
@@ -87,10 +114,11 @@
 %mend;
 
 %macro _join_hash_emit(join_type=LEFT, obj=h, right=, on=, data=, out=, right_keep=, as_view=0);
-  %local jt;
+  %local jt _as_view;
   %let jt=%upcase(&join_type);
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
 
-  %if &as_view %then %do;
+  %if &_as_view %then %do;
     data &out / view=&out;
   %end;
   %else %do;
@@ -159,10 +187,11 @@
 %mend;
 
 %macro _join_sql_emit(join_type=LEFT, right=, on=, data=, out=, right_keep=, as_view=0);
-  %local jt create_kw;
+  %local jt create_kw _as_view;
   %let jt=%upcase(&join_type);
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
 
-  %if &as_view %then %let create_kw=create view;
+  %if &_as_view %then %let create_kw=create view;
   %else %let create_kw=create table;
 
   proc sql;
@@ -274,7 +303,9 @@
   auto_overhead_factor=2.5,
   auto_prefer_hash=0
 );
-  %local is_view nobs row_bytes cols mem_est_bytes mem_cap_bytes;
+  %local is_view nobs row_bytes cols mem_est_bytes mem_cap_bytes _require_unique _auto_prefer_hash;
+  %let _require_unique=%_pipr_bool(%superq(require_unique), default=1);
+  %let _auto_prefer_hash=%_pipr_bool(%superq(auto_prefer_hash), default=0);
 
   %if %length(&out_method)=0 %then %_abort(_join_auto_pick_method requires out_method=);
 
@@ -283,7 +314,7 @@
        - HASH: first match wins
        - SQL: multiplies rows
      So default to SQL unless user explicitly asks for HASH. */
-  %if &require_unique = 0 %then %do;
+  %if &_require_unique = 0 %then %do;
     %let &out_method=SQL;
     %global PIPR_JOIN_LAST_METHOD;
     %let PIPR_JOIN_LAST_METHOD=SQL;
@@ -306,7 +337,7 @@
 
   /* If NOBS unknown and auto_prefer_hash=0, choose SQL conservatively. */
   %if %length(&nobs)=0 %then %do;
-    %if &auto_prefer_hash %then %do;
+    %if &_auto_prefer_hash %then %do;
       %let &out_method=HASH;
     %end;
     %else %do;
@@ -331,7 +362,7 @@
 
   %if %length(&row_bytes)=0 %then %do;
     /* no estimate => conservative */
-    %if &auto_prefer_hash %then %let &out_method=HASH;
+    %if &_auto_prefer_hash %then %let &out_method=HASH;
     %else %let &out_method=SQL;
 
     %global PIPR_JOIN_LAST_METHOD;
@@ -363,6 +394,9 @@
   strict_char_len=0,
   error_msg=
 );
+  %local _validate _require_unique;
+  %let _validate=%_pipr_bool(%superq(validate), default=1);
+  %let _require_unique=%_pipr_bool(%superq(require_unique), default=1);
   %_assert_ds_exists(&data);
   %_assert_ds_exists(&right);
 
@@ -371,7 +405,7 @@
     %else %_abort(join requires on=);
   %end;
 
-  %if &validate %then %do;
+  %if &_validate %then %do;
     %_assert_key_compatible(&data, &right, &on, strict_char_len=&strict_char_len);
     %if %length(%superq(right_keep)) %then %_assert_cols_exist(&right, &right_keep);
   %end;
@@ -380,7 +414,7 @@
 
   /* For HASH joins, uniqueness is strongly recommended; for SQL joins, this is optional
      but provided for consistency and to prevent accidental row multiplication. */
-  %if &require_unique %then %do;
+  %if &_require_unique %then %do;
     %_assert_unique_key(&right, &on);
   %end;
 %mend;
@@ -556,19 +590,21 @@
   auto_prefer_hash=0,
   error_msg=left_join() failed due to invalid input parameters
 );
-  %local m picked;
+  %local m picked _require_unique _as_view;
+  %let _require_unique=%_pipr_bool(%superq(require_unique), default=1);
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
 
   %let m=%upcase(&method);
 
-  %if &m = AUTO %then %do;
+  %if "%superq(m)" = "AUTO" %then %do;
     %let picked=;
     %_join_auto_pick_method(
       data=&data,
       right=&right,
       on=&on,
       right_keep=&right_keep,
-      require_unique=&require_unique,
-      as_view=&as_view,
+      require_unique=&_require_unique,
+      as_view=&_as_view,
       out_method=picked,
       auto_max_obs=&auto_max_obs,
       auto_max_mem_mb=&auto_max_mem_mb,
@@ -578,13 +614,13 @@
     %let m=%upcase(&picked);
   %end;
 
-  %if &m = HASH %then %do;
+  %if "%superq(m)" = "HASH" %then %do;
     %left_join_hash(&right, on=&on, data=&data, out=&out, right_keep=&right_keep,
-      validate=&validate, require_unique=&require_unique, strict_char_len=&strict_char_len, as_view=&as_view, error_msg=&error_msg);
+      validate=&validate, require_unique=&_require_unique, strict_char_len=&strict_char_len, as_view=&_as_view, error_msg=&error_msg);
   %end;
-  %else %if &m = SQL %then %do;
+  %else %if "%superq(m)" = "SQL" %then %do;
     %left_join_sql(&right, on=&on, data=&data, out=&out, right_keep=&right_keep,
-      validate=&validate, require_unique=&require_unique, strict_char_len=&strict_char_len, as_view=&as_view, error_msg=&error_msg);
+      validate=&validate, require_unique=&_require_unique, strict_char_len=&strict_char_len, as_view=&_as_view, error_msg=&error_msg);
   %end;
   %else %do;
     %_abort(left_join(): unknown method=&method (expected HASH, SQL, or AUTO));
@@ -610,19 +646,21 @@
   auto_prefer_hash=0,
   error_msg=inner_join() failed due to invalid input parameters
 );
-  %local m picked;
+  %local m picked _require_unique _as_view;
+  %let _require_unique=%_pipr_bool(%superq(require_unique), default=1);
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
 
   %let m=%upcase(&method);
 
-  %if &m = AUTO %then %do;
+  %if "%superq(m)" = "AUTO" %then %do;
     %let picked=;
     %_join_auto_pick_method(
       data=&data,
       right=&right,
       on=&on,
       right_keep=&right_keep,
-      require_unique=&require_unique,
-      as_view=&as_view,
+      require_unique=&_require_unique,
+      as_view=&_as_view,
       out_method=picked,
       auto_max_obs=&auto_max_obs,
       auto_max_mem_mb=&auto_max_mem_mb,
@@ -632,13 +670,13 @@
     %let m=%upcase(&picked);
   %end;
 
-  %if &m = HASH %then %do;
+  %if "%superq(m)" = "HASH" %then %do;
     %inner_join_hash(&right, on=&on, data=&data, out=&out, right_keep=&right_keep,
-      validate=&validate, require_unique=&require_unique, strict_char_len=&strict_char_len, as_view=&as_view, error_msg=&error_msg);
+      validate=&validate, require_unique=&_require_unique, strict_char_len=&strict_char_len, as_view=&_as_view, error_msg=&error_msg);
   %end;
-  %else %if &m = SQL %then %do;
+  %else %if "%superq(m)" = "SQL" %then %do;
     %inner_join_sql(&right, on=&on, data=&data, out=&out, right_keep=&right_keep,
-      validate=&validate, require_unique=&require_unique, strict_char_len=&strict_char_len, as_view=&as_view, error_msg=&error_msg);
+      validate=&validate, require_unique=&_require_unique, strict_char_len=&strict_char_len, as_view=&_as_view, error_msg=&error_msg);
   %end;
   %else %do;
     %_abort(inner_join(): unknown method=&method (expected HASH, SQL, or AUTO));
@@ -647,10 +685,10 @@
 
 /*==============================================================================
   Unit tests (style consistent with your repo: testthat-like macros)
-  NOTE: In your repo, tests currently auto-run on include. Consider gating these.
 ==============================================================================*/
 
 %macro test_join();
+  %_pipr_require_assert;
   %test_suite(join);
 
   /*-----------------------
@@ -743,10 +781,14 @@
     Guard: right_keep cannot include key
   -----------------------*/
   %test_case(right_keep may not include join key);
-    /* Expect abort: cannot easily assert abort with current framework.
-       Instead, call helper directly and assert it aborts manually in dev.
-       If you later add %assertAbort, replace this. */
-    %_join_assert_right_keep_not_keys(on=id, right_keep=id r1, error_msg=expected_failure);
+    %_join_right_keep_key_overlap(
+      on=id,
+      right_keep=id r1,
+      out_has_overlap=_j_has_overlap,
+      out_key=_j_overlap_key
+    );
+    %assertEqual(&_j_has_overlap., 1);
+    %assertEqual(&_j_overlap_key., id);
   %test_summary;
 
   %test_summary; /* suite */
@@ -758,6 +800,7 @@
 
 
 %macro test_join_auto();
+  %_pipr_require_assert;
   %test_suite(join_auto);
 
   data work._a_left;
@@ -811,3 +854,6 @@
 
   %test_summary;
 %mend;
+
+%_pipr_autorun_tests(test_join);
+%_pipr_autorun_tests(test_join_auto);

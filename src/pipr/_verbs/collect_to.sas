@@ -1,9 +1,11 @@
 %macro collect_to(out_name, data=, out=, validate=1, as_view=0);
+  %local _as_view;
+  %let _as_view=%_pipr_bool(%superq(as_view), default=0);
   %_assert_ds_exists(&data);
   %if %length(%superq(out))=0 %then %let out=&out_name;
   %if %length(%superq(out))=0 %then %_abort(collect_to() requires an output dataset name.);
 
-  %if &as_view %then %do;
+  %if &_as_view %then %do;
     data &out / view=&out;
       set &data;
     run;
@@ -22,7 +24,7 @@
 %mend;
 
 %macro test_collect_to;
-  %sbmod(assert);
+  %_pipr_require_assert;
 
   %test_suite(Testing collect_to);
     %test_case(collect_to writes output);
@@ -38,4 +40,4 @@
   proc datasets lib=work nolist; delete _ct_in _ct_out; quit;
 %mend test_collect_to;
 
-%test_collect_to;
+%_pipr_autorun_tests(test_collect_to);

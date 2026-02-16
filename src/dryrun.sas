@@ -36,7 +36,7 @@
 %mend dryrun;
 
 %macro test_dryrun;
-    %sbmod(assert);
+    %if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
     %test_suite(Testing dryrun);
         %test_case(dryrun returns resolved macro call);
@@ -47,4 +47,8 @@
     %test_summary;
 %mend test_dryrun;
 
-%test_dryrun;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_dryrun;
+  %end;
+%end;

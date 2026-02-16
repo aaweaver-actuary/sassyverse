@@ -8,7 +8,10 @@
 /* This is the main import code block. It runs when all the applicable
    conditions pass. */
     %global &varname.;
-    %let file=&base_path/&module..sas;
+    %if %qsubstr(%superq(base_path), %length(%superq(base_path)), 1)=/ %then
+        %let file=&base_path.&module..sas;
+    %else
+        %let file=&base_path/&module..sas;
 
     %if %sysfunc(fileexist(&file.)) %then %do;
         %include "&file.";
@@ -26,7 +29,7 @@
 
 %macro sbmod(
     module /* Module name to import */
-    , base_path=/sas/data/project/EG/aweaver/macros /* Folder containing the module to import */
+    , base_path= /* Folder containing the module to import */
     , reload=NO /* If the module has already been defined in this session, should it be redefined? Generally no, but during macro development this could make sense. */);
 	/*
 		The `sbmod` macro is used to import a module into the global scope.			
@@ -47,6 +50,10 @@
     %let varname=_imported__&module.;
 	%if %length(&varname.) >= 32 %then
 		%let varname=%truncate_varname(&varname.);
+    %if %length(%superq(base_path))=0 %then %do;
+        %if %symexist(_sassyverse_base_path) %then %let base_path=%superq(_sassyverse_base_path);
+        %else %let base_path=/sas/data/project/EG/aweaver/macros;
+    %end;
 
     %if %symexist(&varname.) ne 1 %then %do;
         %import_variable(&varname.);
@@ -62,12 +69,12 @@
     %end;
 %mend sbmod;
 
-%macro sassymod(module, base_path=/sas/data/project/EG/aweaver/macros, reload=NO);
+%macro sassymod(module, base_path=, reload=NO);
     %sbmod(&module., &base_path., &reload.);
 %mend sassymod;
 
 %macro test_sassymod;
-    %sbmod(assert);
+    %if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
     %test_suite(Testing sassymod helpers);
         %test_case(truncate_varname caps length);
@@ -78,4 +85,8 @@
     %test_summary;
 %mend test_sassymod;
 
-%test_sassymod;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_sassymod;
+  %end;
+%end;

@@ -34,7 +34,7 @@
 %MEND is_not_equal;
 
 %macro test_is_equal;
-    %sbmod(assert);
+    %if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
     %test_suite(Testing is_equal);
         %test_case(numeric comparisons);
@@ -56,4 +56,8 @@
     %test_summary;
 %mend test_is_equal;
 
-%test_is_equal;
+%if %symexist(__unit_tests) %then %do;
+  %if %superq(__unit_tests)=1 %then %do;
+    %test_is_equal;
+  %end;
+%end;
