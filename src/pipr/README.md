@@ -14,7 +14,7 @@ Main idea:
 %pipe(
   data=work.input,
   out=work.output,
-  steps=filter(x > 0) | mutate(%str(y = x * 2;)) | select(x y),
+  steps=filter(x > 0) | mutate(y = x * 2) | select(x y),
   use_views=0
 );
 ```
@@ -25,7 +25,7 @@ Equivalent positional style:
 %pipe(
   work.input
   | filter(x > 0)
-  | mutate(%str(y = x * 2;))
+  | mutate(y = x * 2)
   | collect_into(work.output)
   , use_views=0
 );
@@ -103,12 +103,18 @@ Notes:
 %pipe(
   work.policies
   | filter(premium > 1000)
-  | mutate(%str(premium_band = ifc(premium >= 2000, 'HIGH', 'STD');))
+  | mutate(premium_band = ifc(premium >= 2000, 'HIGH', 'STD'))
   | select(policy_id premium premium_band)
   | collect_into(work.policy_features)
   , use_views=0
 );
 ```
+
+`mutate(...)` ergonomics:
+
+- Preferred: `mutate(new_col = expression)`
+- Trailing `;` is optional for single assignments
+- Multi-statement blocks are still valid with `%str(...)`
 
 ### 2. Join lookup data
 

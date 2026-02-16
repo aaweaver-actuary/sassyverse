@@ -38,7 +38,7 @@ run;
 %pipe(
   work.policies
   | filter(premium >= 1500)
-  | mutate(%str(premium_band = 'HIGH';))
+  | mutate(premium_band = 'HIGH')
   | select(policy_id policy_type premium premium_band)
   | collect_into(work.policy_high_premium)
   , use_views=0
@@ -70,6 +70,11 @@ Useful selector helpers:
 - `like('%pattern%')`
 - `matches('regex')`
 - `cols_where(predicate)` with `~...` or `lambda(...)`
+
+Mutate style:
+
+- Preferred: `mutate(new_column = expression)`
+- You no longer need `%str(...)` for the common single-assignment case
 
 ### 2. Join lookup data
 

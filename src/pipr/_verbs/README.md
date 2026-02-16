@@ -21,7 +21,7 @@ Typical pipeline:
 %pipe(
   work.input
   | filter(x > 0)
-  | mutate(%str(y = x * 2;))
+  | mutate(y = x * 2)
   | select(x y)
   | collect_into(work.output)
   , use_views=0
@@ -61,12 +61,17 @@ Examples:
 - `%mutate(stmt, ...)` adds or updates columns using a statement block.
 - Alias: `%with_column(col_name, col_expr, ...)`.
 - Supports `as_view=1`.
+- For the common case, use assignment form directly: `mutate(new_col = expression)`.
+- `mutate` auto-appends a trailing `;` when missing.
 
 Examples:
 
 ```sas
-%mutate(%str(loss_ratio = losses / premium;), data=work.policies, out=work.with_ratio);
+%mutate(loss_ratio = losses / premium, data=work.policies, out=work.with_ratio);
 %with_column(premium_k, premium / 1000, data=work.policies, out=work.with_k);
+
+/* multi-statement blocks are still supported */
+%mutate(%str(a = x + 1; b = a * 2;), data=work.policies, out=work.multi_stmt);
 ```
 
 ### select.sas
@@ -186,7 +191,7 @@ Example:
 %pipe(
   data=work.input,
   out=work.fast_path,
-  steps=select(x y) | mutate(%str(z = x + y;)),
+  steps=select(x y) | mutate(z = x + y),
   validate=0,
   use_views=0
 );

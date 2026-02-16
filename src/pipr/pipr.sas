@@ -495,7 +495,7 @@
 
     %test_case(parse steps with equals);
       %_pipe_parse_parmbuff_test(
-        steps=filter(x > 1) | mutate(%str(y = x * 2;)) | select(x y),
+        steps=filter(x > 1) | mutate(y = x * 2) | select(x y),
         data=work._pipe_in,
         out=work._pipe_out,
         use_views=0,
@@ -648,7 +648,7 @@
       %pipe(
         data=work._pipe_in,
         out=work._pipe_out,
-        steps=filter(x > 1) | mutate(%str(y = x * 2;)) | select(x y),
+        steps=filter(x > 1) | mutate(y = x * 2) | select(x y),
         use_views=0,
         cleanup=1
       );
@@ -662,11 +662,27 @@
       %assertEqual(&_sum_y., 10);
     %test_summary;
 
+    %test_case(mutate with comma-based function expression without explicit %str);
+      %pipe(
+        data=work._pipe_in,
+        out=work._pipe_out_ifc,
+        steps=mutate(flag = ifc(x > 2, 1, 0)),
+        use_views=0,
+        cleanup=1
+      );
+
+      proc sql noprint;
+        select sum(flag) into :_sum_flag trimmed from work._pipe_out_ifc;
+      quit;
+
+      %assertEqual(&_sum_flag., 1);
+    %test_summary;
+
     %test_case(positional steps with collect_to);
       %pipe(
         work._pipe_in
         | filter(x > 1)
-        | mutate(%str(y = x * 2;))
+        | mutate(y = x * 2)
         | collect_to(work._pipe_out2)
         , use_views=0
         , cleanup=1
@@ -800,7 +816,7 @@
   %test_summary;
 
   proc datasets lib=work nolist;
-    delete _pipe_in _pipe_out _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2;
+    delete _pipe_in _pipe_out _pipe_out_ifc _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2;
   quit;
 %mend test_pipe;
 
