@@ -1,0 +1,51 @@
+{
+  "invariant_issues": [
+    "runtime_errors mismatch: expected 1307, got 62209",
+    "runtime_warnings mismatch: expected 58, got 200",
+    "unique_signatures mismatch: expected 36, got 5",
+    "predicates include count mismatch: expected 1305, got 62205",
+    "category A mismatch: expected 3, got 0",
+    "category B mismatch: expected 108, got 0",
+    "category C mismatch: expected 60, got 0",
+    "category D mismatch: expected 1134, got 62205",
+    "categorized total mismatch: expected 62209, got 62207",
+    "unclassified errors present: 2"
+  ],
+  "log_path": "log-with-errors.txt",
+  "runtime_error_count": 62209,
+  "runtime_warning_count": 200,
+  "summary": {
+    "category_counts": {
+      "D": 62205,
+      "E": 2,
+      "UNCLASSIFIED": 2
+    },
+    "context_counts": {
+      "/parm_share/small_business/modeling/sassyverse/src/pipr/pipr.sas | SV_INIT.SASSYVERSE_INIT._SASSYVERSE_INCLUDE_LIST._SASSYVERSE_INCLUDE | ERROR: Expected %DO not found.": 1,
+      "/parm_share/small_business/modeling/sassyverse/src/pipr/pipr.sas | SV_INIT.SASSYVERSE_INIT._SASSYVERSE_INCLUDE_LIST._SASSYVERSE_INCLUDE | ERROR: Skipping to next %END statement.": 1,
+      "/parm_share/small_business/modeling/sassyverse/src/pipr/predicates.sas | SV_INIT.SASSYVERSE_INIT._SASSYVERSE_INCLUDE_LIST._SASSYVERSE_INCLUDE.GEN_PREDICATE._PRED_COMPILE_MACRO._PRED_REGISTRY_ADD | ERROR: Maximum level of nesting of macro functions exceeded.": 52144,
+      "/parm_share/small_business/modeling/sassyverse/src/pipr/predicates.sas | SV_INIT.SASSYVERSE_INIT._SASSYVERSE_INCLUDE_LIST._SASSYVERSE_INCLUDE._PRED_REGISTRY_ADD | ERROR: Maximum level of nesting of macro functions exceeded.": 10061,
+      "/parm_share/small_business/modeling/sassyverse/src/testthat.sas | PIPE._PIPE_EXECUTE._PIPE_EXECUTE_STEP._ASSERT_DS_EXISTS._ABORT | ERROR: Dataset or view does not exist: policy_keys Step 1 did not create expected output. Step token: select(sb_policy_key)": 1,
+      "/parm_share/small_business/modeling/sassyverse/src/testthat.sas | PIPE._PIPE_EXECUTE._PIPE_EXECUTE_STEP._ASSERT_DS_EXISTS._ABORT | ERROR: Execution canceled by an %ABORT CANCEL statement.": 1
+    },
+    "first_occurrence": {
+      "ERROR: Dataset or view does not exist: policy_keys Step 1 did not create expected output. Step token: select(sb_policy_key)": 110073,
+      "ERROR: Execution canceled by an %ABORT CANCEL statement.": 110075,
+      "ERROR: Expected %DO not found.": 106653,
+      "ERROR: Maximum level of nesting of macro functions exceeded.": 6407,
+      "ERROR: Skipping to next %END statement.": 106654
+    },
+    "include_counts": {
+      "/parm_share/small_business/modeling/sassyverse/src/pipr/pipr.sas": 2,
+      "/parm_share/small_business/modeling/sassyverse/src/pipr/predicates.sas": 62205,
+      "/parm_share/small_business/modeling/sassyverse/src/testthat.sas": 2
+    },
+    "signature_counts": {
+      "ERROR: Dataset or view does not exist: policy_keys Step 1 did not create expected output. Step token: select(sb_policy_key)": 1,
+      "ERROR: Execution canceled by an %ABORT CANCEL statement.": 1,
+      "ERROR: Expected %DO not found.": 1,
+      "ERROR: Maximum level of nesting of macro functions exceeded.": 62205,
+      "ERROR: Skipping to next %END statement.": 1
+    }
+  }
+}

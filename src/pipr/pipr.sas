@@ -1,7 +1,13 @@
 /* Required includes are handled by sassyverse_init; keep this file standalone-safe if needed. */
-%if not %sysmacexist(_abort) %then %include 'util.sas';
-%if not %sysmacexist(_assert_ds_exists) %then %include 'validation.sas';
-%if not %sysmacexist(_verb_supports_view) %then %include '_verbs/utils.sas';
+%if not %sysmacexist(_abort) %then %do;
+  %include 'util.sas';
+%end;
+%if not %sysmacexist(_assert_ds_exists) %then %do;
+  %include 'validation.sas';
+%end;
+%if not %sysmacexist(_verb_supports_view) %then %do;
+  %include '_verbs/utils.sas';
+%end;
 %if (not %sysmacexist(filter)) or (not %sysmacexist(mutate)) or (not %sysmacexist(select)) %then %do;
   %include 'verbs.sas';
 %end;

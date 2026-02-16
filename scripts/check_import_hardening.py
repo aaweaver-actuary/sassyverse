@@ -85,6 +85,24 @@ def main() -> int:
         ),
         check_pattern(
             predicates,
+            r"(?im)^\s*%global\s+_pipr_fn_count\b",
+            "predicates_indexed_registry_present",
+            "predicates should use indexed registry state (_pipr_fn_count) for stable lookups.",
+        ),
+        check_no_pattern(
+            predicates,
+            r"(?is)countw\s*\(\s*%superq\(_pipr_functions\)",
+            "predicates_no_countw_on_registry_list",
+            "predicates should avoid countw() directly on _pipr_functions list state.",
+        ),
+        check_no_pattern(
+            predicates,
+            r"(?is)%scan\s*\(\s*%superq\(_pipr_functions\)",
+            "predicates_no_scan_on_registry_list",
+            "predicates should avoid %scan() directly on _pipr_functions list state.",
+        ),
+        check_pattern(
+            predicates,
             r"(?is)%macro\s+is_not_missing\s*\(",
             "predicates_explicit_is_not_missing",
             "is_not_missing should be an explicit macro definition.",
@@ -101,11 +119,35 @@ def main() -> int:
             "predicates_explicit_is_between_dates",
             "is_between_dates should be an explicit macro definition.",
         ),
+        check_pattern(
+            predicates,
+            r"(?im)^\s*%_pred_registry_reset\s*;",
+            "predicates_registry_reset_on_load",
+            "predicates should reset registry state on load for deterministic imports.",
+        ),
         check_no_pattern(
             pipr,
             r"(?im)^\s*%global\s+__seg_count\s*;",
             "pipe_no_global_seg_count",
             "pipe parser should keep __seg_count local to avoid scope leakage.",
+        ),
+        check_pattern(
+            pipr,
+            r"(?is)%if\s+not\s+%sysmacexist\(_abort\)\s*%then\s*%do\s*;\s*%include\s+'util\.sas'\s*;\s*%end\s*;",
+            "pipe_util_include_guard_block_form",
+            "pipr util include guard should use explicit %DO/%END block form.",
+        ),
+        check_pattern(
+            pipr,
+            r"(?is)%if\s+not\s+%sysmacexist\(_assert_ds_exists\)\s*%then\s*%do\s*;\s*%include\s+'validation\.sas'\s*;\s*%end\s*;",
+            "pipe_validation_include_guard_block_form",
+            "pipr validation include guard should use explicit %DO/%END block form.",
+        ),
+        check_pattern(
+            pipr,
+            r"(?is)%if\s+not\s+%sysmacexist\(_verb_supports_view\)\s*%then\s*%do\s*;\s*%include\s+'_verbs/utils\.sas'\s*;\s*%end\s*;",
+            "pipe_verb_utils_include_guard_block_form",
+            "pipr verb-utils include guard should use explicit %DO/%END block form.",
         ),
         check_pattern(
             pipr,
