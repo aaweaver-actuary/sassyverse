@@ -819,6 +819,29 @@
   %_pipr_require_assert;
 
   %test_suite(Testing pipr predicates);
+    %test_case(core parser helpers normalize quoted text and regex forms);
+      %_pred_strip_quotes(text=%str('abc'), out_text=_pp_strip1);
+      %assertEqual(%superq(_pp_strip1), abc);
+
+      %_pred_strip_quotes(text=%str("xyz"), out_text=_pp_strip2);
+      %assertEqual(%superq(_pp_strip2), xyz);
+
+      %_pred_trim_expr(text=%str(a=1;), out_text=_pp_trim1);
+      %assertEqual(%superq(_pp_trim1), a=1);
+
+      %_pred_escape_regex(text=%str(a+b?c), out_text=_pp_esc1);
+      %assertEqual(%superq(_pp_esc1), %str(a\+b\?c));
+
+      %_pred_regex_to_prx(regex=%str(state$), ignore_case=0, out_prx=_pp_rx1);
+      %assertEqual(%superq(_pp_rx1), %str(/state$/));
+
+      %_pred_regex_to_prx(regex=%str(/^state$/), ignore_case=1, out_prx=_pp_rx2);
+      %assertEqual(%superq(_pp_rx2), %str(/^state$/i));
+
+      %_pred_sql_like_to_prx(pattern=%nrstr(A_%C), ignore_case=0, out_prx=_pp_like_rx);
+      %assertEqual(%superq(_pp_like_rx), %str(/^A..*C$/));
+    %test_summary;
+
     %test_case(gen_function creates ad hoc function macros);
       %gen_function(%str(((&x) > (&thr))), %str(x, thr=0), gt_thr, overwrite=1, kind=PREDICATE);
       %assertTrue(%eval(%sysmacexist(gt_thr)=1), gt_thr macro was generated);
@@ -836,6 +859,24 @@
         select count(*) into :_pp_gen_n trimmed from work._pp_gen_out;
       quit;
       %assertEqual(&_pp_gen_n., 1);
+    %test_summary;
+
+    %test_case(gen_function positional arguments and predicate spec parser);
+      %gen_function(%str(((&x) = (&y))), %str(x, y), eq_val, 1, GENERIC);
+      %assertTrue(%eval(%sysmacexist(eq_val)=1), eq_val generated via positional parameters);
+
+      %_pred_parse_pred_spec(spec=%str(is_zero(tol=0.01)), out_kind=_pp_pk, out_name=_pp_pn, out_args=_pp_pa, out_lambda=_pp_pl);
+      %assertEqual(%upcase(&_pp_pk.), CALL);
+      %assertEqual(%upcase(&_pp_pn.), IS_ZERO);
+      %assertEqual(%superq(_pp_pa), %str(tol=0.01));
+
+      %_pred_parse_pred_spec(spec=%str(~.x=0), out_kind=_pp_pk2, out_name=_pp_pn2, out_args=_pp_pa2, out_lambda=_pp_pl2);
+      %assertEqual(%upcase(&_pp_pk2.), LAMBDA);
+      %assertEqual(%superq(_pp_pl2), %str(~.x=0));
+
+      %_pred_parse_pred_spec(spec=%str(is_missing), out_kind=_pp_pk3, out_name=_pp_pn3, out_args=_pp_pa3, out_lambda=_pp_pl3);
+      %assertEqual(%upcase(&_pp_pk3.), NAME);
+      %assertEqual(%upcase(&_pp_pn3.), IS_MISSING);
     %test_summary;
 
     %test_case(gen_predicate and numeric predicates);
@@ -871,6 +912,16 @@
       %assertEqual(&_pp_mult_n., 2);
     %test_summary;
 
+    %test_case(list_functions reports registered names by kind);
+      %gen_function(name=id_fn, args=x, expr=%str((&x)), overwrite=1);
+      %list_functions(kind=PREDICATE, out_list=_pp_pred_list);
+      %assertTrue(%eval(%sysfunc(indexw(%upcase(&_pp_pred_list.), IS_MISSING)) > 0), predicate registry includes IS_MISSING);
+      %assertTrue(%eval(%sysfunc(indexw(%upcase(&_pp_pred_list.), IF_ANY)) > 0), predicate registry includes IF_ANY);
+
+      %list_functions(kind=GENERIC, out_list=_pp_generic_list);
+      %assertTrue(%eval(%sysfunc(indexw(%upcase(&_pp_generic_list.), ID_FN)) > 0), generic registry includes ad hoc generated function);
+    %test_summary;
+
     %test_case(missingness and equality predicates);
       data work._pp_misc;
         length c $8;
@@ -895,6 +946,24 @@
         select count(*) into :_pp_eq_n trimmed from work._pp_eq;
       quit;
       %assertEqual(&_pp_eq_n., 1);
+
+      data work._pp_na_like;
+        set work._pp_misc;
+        if %is_na_like(c, values='ABC');
+      run;
+      proc sql noprint;
+        select count(*) into :_pp_na_like_n trimmed from work._pp_na_like;
+      quit;
+      %assertEqual(&_pp_na_like_n., 2);
+
+      data work._pp_not_missing;
+        set work._pp_misc;
+        if %is_not_missing(c);
+      run;
+      proc sql noprint;
+        select count(*) into :_pp_not_missing_n trimmed from work._pp_not_missing;
+      quit;
+      %assertEqual(&_pp_not_missing_n., 1);
     %test_summary;
 
     %test_case(string predicates);
@@ -931,6 +1000,74 @@
         select count(*) into :_pp_match_n trimmed from work._pp_match;
       quit;
       %assertEqual(&_pp_match_n., 1);
+
+      data work._pp_contains_plain;
+        set work._pp_str;
+        if %contains(s, 'POLICY', ignore_case=0, regex=0);
+      run;
+      proc sql noprint;
+        select count(*) into :_pp_contains_plain_n trimmed from work._pp_contains_plain;
+      quit;
+      %assertEqual(&_pp_contains_plain_n., 0);
+
+      data work._pp_contains_rx;
+        set work._pp_str;
+        if %contains(s, %str(^policy), ignore_case=1, regex=1);
+      run;
+      proc sql noprint;
+        select count(*) into :_pp_contains_rx_n trimmed from work._pp_contains_rx;
+      quit;
+      %assertEqual(&_pp_contains_rx_n., 1);
+    %test_summary;
+
+    %test_case(interval and membership predicates);
+      data work._pp_rng;
+        x=0; output;
+        x=1; output;
+        x=2; output;
+        x=3; output;
+      run;
+
+      data work._pp_rng_left;
+        set work._pp_rng;
+        if %is_between(x, 1, 3, inclusive=LEFT);
+      run;
+      data work._pp_rng_right;
+        set work._pp_rng;
+        if %is_between(x, 1, 3, inclusive=RIGHT);
+      run;
+      data work._pp_rng_none;
+        set work._pp_rng;
+        if %is_between(x, 1, 3, inclusive=NONE);
+      run;
+      data work._pp_rng_out;
+        set work._pp_rng;
+        if %is_outside(x, 1, 2);
+      run;
+      data work._pp_in;
+        set work._pp_rng;
+        if %is_in(x, 1, 3);
+      run;
+      data work._pp_not_in;
+        set work._pp_rng;
+        if %is_not_in(x, 1, 3);
+      run;
+
+      proc sql noprint;
+        select count(*) into :_pp_rng_left_n trimmed from work._pp_rng_left;
+        select count(*) into :_pp_rng_right_n trimmed from work._pp_rng_right;
+        select count(*) into :_pp_rng_none_n trimmed from work._pp_rng_none;
+        select count(*) into :_pp_rng_out_n trimmed from work._pp_rng_out;
+        select count(*) into :_pp_in_n trimmed from work._pp_in;
+        select count(*) into :_pp_not_in_n trimmed from work._pp_not_in;
+      quit;
+
+      %assertEqual(&_pp_rng_left_n., 2);
+      %assertEqual(&_pp_rng_right_n., 2);
+      %assertEqual(&_pp_rng_none_n., 1);
+      %assertEqual(&_pp_rng_out_n., 2);
+      %assertEqual(&_pp_in_n., 2);
+      %assertEqual(&_pp_not_in_n., 2);
     %test_summary;
 
     %test_case(date predicates);
@@ -1008,6 +1145,33 @@
         select count(*) into :_pp_all_n trimmed from work._pp_all_out;
       quit;
       %assertEqual(&_pp_all_n., 1);
+
+      data work._pp_any_tol;
+        set work._pp_any;
+        if %if_any(a b c, is_zero(), tol=0.01);
+      run;
+      proc sql noprint;
+        select count(*) into :_pp_any_tol_n trimmed from work._pp_any_tol;
+      quit;
+      %assertEqual(&_pp_any_tol_n., 1);
+
+      data work._pp_all_positional;
+        set work._pp_any;
+        if %if_all(a b c, is_not_missing());
+      run;
+      proc sql noprint;
+        select count(*) into :_pp_all_positional_n trimmed from work._pp_all_positional;
+      quit;
+      %assertEqual(&_pp_all_positional_n., 1);
+
+      data work._pp_any_callspec;
+        set work._pp_any;
+        if %if_any(cols=a b c, pred=is_between(0, 1));
+      run;
+      proc sql noprint;
+        select count(*) into :_pp_any_callspec_n trimmed from work._pp_any_callspec;
+      quit;
+      %assertEqual(&_pp_any_callspec_n., 1);
     %test_summary;
 
     %test_case(expander resolves bare predicate calls without percent prefix);
@@ -1055,11 +1219,20 @@
         select count(*) into :_pp_lambda_n trimmed from work._pp_lambda_out;
       quit;
       %assertEqual(&_pp_lambda_n., 2);
+
+      data work._pp_lambda_out2;
+        set work._pp_lambda;
+        if %if_all(cols=c1 c2, pred=lambda(prxmatch('/^[A-Z][0-9]$/', strip(.x)) > 0));
+      run;
+      proc sql noprint;
+        select count(*) into :_pp_lambda_n2 trimmed from work._pp_lambda_out2;
+      quit;
+      %assertEqual(&_pp_lambda_n2., 3);
     %test_summary;
   %test_summary;
 
   proc datasets lib=work nolist;
-    delete _pp_gen _pp_gen_out _pp_num _pp_num_out _pp_mult _pp_misc _pp_missing _pp_eq _pp_str _pp_sw _pp_like _pp_match _pp_date _pp_date_out _pp_qual _pp_numstr _pp_datestr _pp_fmt _pp_any _pp_any_out _pp_all_out _pp_expand _pp_expand_out1 _pp_expand_out2 _pp_lambda _pp_lambda_out;
+    delete _pp_gen _pp_gen_out _pp_num _pp_num_out _pp_mult _pp_misc _pp_missing _pp_eq _pp_na_like _pp_not_missing _pp_str _pp_sw _pp_like _pp_match _pp_contains_plain _pp_contains_rx _pp_rng _pp_rng_left _pp_rng_right _pp_rng_none _pp_rng_out _pp_in _pp_not_in _pp_date _pp_date_out _pp_qual _pp_numstr _pp_datestr _pp_fmt _pp_any _pp_any_out _pp_all_out _pp_any_tol _pp_all_positional _pp_any_callspec _pp_expand _pp_expand_out1 _pp_expand_out2 _pp_lambda _pp_lambda_out _pp_lambda_out2;
   quit;
 %mend test_pipr_predicates;
 

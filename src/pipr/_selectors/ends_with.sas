@@ -28,6 +28,11 @@
       %_selector_ends_with(ds=work._sew, suffix=code, out_cols=_sew_cols);
       %assertEqual(%upcase(&_sew_cols.), POLICY_CODE HOME_CODE);
     %test_summary;
+
+    %test_case(ends_with matching is case-insensitive);
+      %_selector_ends_with(ds=work._sew, suffix=CoDe, out_cols=_sew_cols2);
+      %assertEqual(%upcase(&_sew_cols2.), POLICY_CODE HOME_CODE);
+    %test_summary;
   %test_summary;
 
   proc datasets lib=work nolist; delete _sew; quit;

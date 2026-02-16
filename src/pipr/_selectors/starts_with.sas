@@ -28,6 +28,11 @@
       %_selector_starts_with(ds=work._ssw, prefix=policy, out_cols=_ssw_cols);
       %assertEqual(%upcase(&_ssw_cols.), POLICY_ID POLICY_TYPE);
     %test_summary;
+
+    %test_case(starts_with matching is case-insensitive);
+      %_selector_starts_with(ds=work._ssw, prefix=PoLiCy, out_cols=_ssw_cols2);
+      %assertEqual(%upcase(&_ssw_cols2.), POLICY_ID POLICY_TYPE);
+    %test_summary;
   %test_summary;
 
   proc datasets lib=work nolist; delete _ssw; quit;

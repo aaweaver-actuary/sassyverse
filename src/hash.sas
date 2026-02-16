@@ -125,6 +125,30 @@
         %let exp_key1=%nrstr(h.defineKey("id"););
         %assertEqual(%superq(key1), %superq(exp_key1));
 
+        %let key2=%hash__key(h, %str(id grp), isOne=0);
+        %let exp_key2=%nrstr(h.defineKey("id", "grp"););
+        %assertEqual(%superq(key2), %superq(exp_key2));
+
+        %let data1=%hash__data(h, r1, isOne=1);
+        %let exp_data1=%nrstr(h.defineData("r1"););
+        %assertEqual(%superq(data1), %superq(exp_data1));
+
+        %let data2=%hash__data(h, %str(r1 r2), isOne=0);
+        %let exp_data2=%nrstr(h.defineData("r1", "r2"););
+        %assertEqual(%superq(data2), %superq(exp_data2));
+
+        %let miss1=%hash__missing(h, miss_a, isOne=1);
+        %let exp_miss1=%nrstr(call missing(miss_a););
+        %assertEqual(%superq(miss1), %superq(exp_miss1));
+
+        %let miss2=%hash__missing(h, %str(miss_a miss_b), isOne=0);
+        %let exp_miss2=%nrstr(call missing(miss_a, miss_b););
+        %assertEqual(%superq(miss2), %superq(exp_miss2));
+
+        %let add1=%hash__add(h, id, value);
+        %let exp_add1=%nrstr(h.add(key: "id", data: "value"););
+        %assertEqual(%superq(add1), %superq(exp_add1));
+
 /*        %let charVarsFromGetCharVars=%_get_char_vars( singleVar|5 );*/
 /*        %assertEqual("&charVarsFromGetCharVars.", "length singleVar $ 5;");*/
     %test_summary;

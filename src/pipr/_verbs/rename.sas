@@ -83,9 +83,31 @@
       quit;
       %assertEqual(&_cnt_view., 1);
     %test_summary;
+
+    %test_case(rename supports multiple pairs and validate=NO);
+      %rename(rename_pairs=%str(a=x b=y), data=work._ren, out=work._ren3, validate=NO, as_view=0);
+      proc sql noprint;
+        select count(*) into :_cnt_xy trimmed
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_REN3" and upcase(name) in ("X","Y");
+      quit;
+      %assertEqual(&_cnt_xy., 2);
+    %test_summary;
+
+    %test_case(rename supports as_view at verb level);
+      %rename(rename_pairs=a=x, data=work._ren, out=work._ren_view2, validate=YES, as_view=TRUE);
+      %assertEqual(%sysfunc(exist(work._ren_view2, view)), 1);
+      proc sql noprint;
+        select count(*) into :_cnt_view2 trimmed from work._ren_view2;
+      quit;
+      %assertEqual(&_cnt_view2., 1);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _ren _ren2 _ren_view; quit;
+  proc datasets lib=work nolist;
+    delete _ren _ren2 _ren3;
+    delete _ren_view _ren_view2 / memtype=view;
+  quit;
 %mend test_rename;
 
 %_pipr_autorun_tests(test_rename);

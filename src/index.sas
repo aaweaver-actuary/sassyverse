@@ -106,6 +106,56 @@ mistake of forgetting the actual name one too many times.    */
 
             %assertTrue(%eval(&_idx_cnt > 0), index created on X);
         %test_summary;
+
+        %test_case(make_simple_indices supports multi-column list);
+            %make_simple_indices(test_index, x y, work);
+
+            proc sql noprint;
+                select count(*) into :_idx_xy_cnt trimmed
+                from sashelp.vindex
+                where libname="WORK" and memname="TEST_INDEX" and upcase(name) in ("X","Y");
+            quit;
+
+            %assertTrue(%eval(&_idx_xy_cnt >= 2), indices created on X and Y);
+        %test_summary;
+
+        %test_case(make_comp_index creates composite key index);
+            %make_comp_index(test_index, x y, work);
+
+            proc sql noprint;
+                select count(*) into :_idx_comp_cnt trimmed
+                from sashelp.vindex
+                where libname="WORK" and memname="TEST_INDEX" and upcase(name)="XY";
+            quit;
+
+            %assertTrue(%eval(&_idx_comp_cnt > 0), composite index created);
+        %test_summary;
+
+        %test_case(alias helpers call index creators with optional lib);
+            %create_simple_index(test_index, x);
+            %create_simple_indices(test_index, y);
+
+            proc sql noprint;
+                select count(*) into :_idx_alias_cnt trimmed
+                from sashelp.vindex
+                where libname="WORK" and memname="TEST_INDEX" and upcase(name) in ("X","Y");
+            quit;
+
+            %assertTrue(%eval(&_idx_alias_cnt >= 2), alias helpers created expected indexes);
+        %test_summary;
+
+        %test_case(alias helpers accept explicit lib argument);
+            %create_simple_index(test_index, x, work);
+            %create_simple_indices(test_index, y, work);
+
+            proc sql noprint;
+                select count(*) into :_idx_alias_lib_cnt trimmed
+                from sashelp.vindex
+                where libname="WORK" and memname="TEST_INDEX" and upcase(name) in ("X","Y");
+            quit;
+
+            %assertTrue(%eval(&_idx_alias_lib_cnt >= 2), alias helpers with lib created expected indexes);
+        %test_summary;
     %test_summary;
 
     proc datasets lib=work nolist; delete test_index; quit;

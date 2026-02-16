@@ -38,11 +38,21 @@
         %let n=%n_rows(test_data);
         %assertEqual(&n., 4);
 
+        %let n=%n_rows(work.test_data);
+        %assertEqual(&n., 4);
+
         %let n=%n_rows(test2);
         %assertEqual(&n., 1);
+
+        data test_empty;
+          length col1 8;
+          stop;
+        run;
+        %let n=%n_rows(test_empty);
+        %assertEqual(&n., 0);
       %test_summary;
 
-      proc delete data=test_data test2;
+      proc delete data=test_data test2 test_empty;
       run;
     %end;
   %end;

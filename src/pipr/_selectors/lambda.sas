@@ -65,6 +65,15 @@
       );
       %assertEqual(%superq(_lam_norm2), %str(.is_num and .name='POLICY_ID'));
     %test_summary;
+
+    %test_case(lambda wrapper supports expr= named argument and normalize strips leading tilde);
+      %let _lam_expr=%lambda(expr=%str(.is_char and .x='HOME_STATE'));
+      %_sel_lambda_normalize(expr=%superq(_lam_expr), out_expr=_lam_norm3);
+      %assertEqual(%superq(_lam_norm3), %str(.is_char and .x='HOME_STATE'));
+
+      %_sel_lambda_normalize(expr=%str(~.is_char), out_expr=_lam_norm4);
+      %assertEqual(%superq(_lam_norm4), %str(.is_char));
+    %test_summary;
   %test_summary;
 %mend test_selector_lambda;
 

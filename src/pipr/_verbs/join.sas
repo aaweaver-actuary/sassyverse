@@ -791,10 +791,145 @@
     %assertEqual(&_j_overlap_key., id);
   %test_summary;
 
+  %test_case(join SQL helper emitters build expected fragments);
+    %let _j_on_single=%sysfunc(compbl(%_join_sql_on_clause(on=id, l=l, r=r)));
+    %assertTrue(%eval(%index(%superq(_j_on_single), %str(l.id = r.id)) > 0), single-key ON clause emitted);
+
+    %let _j_on_multi=%sysfunc(compbl(%_join_sql_on_clause(on=%str(id grp), l=l, r=r)));
+    %assertTrue(%eval(%index(%superq(_j_on_multi), %str(l.id = r.id)) > 0), multi-key ON clause includes first key);
+    %assertTrue(%eval(%index(%superq(_j_on_multi), %str(and l.grp = r.grp)) > 0), multi-key ON clause includes second key);
+
+    %let _j_sel_right=%sysfunc(compbl(%_join_sql_select_right(right_keep=%str(r1 r2), r=r)));
+    %assertTrue(%eval(%index(%superq(_j_sel_right), %str(r.r1)) > 0), right select includes first keep column);
+    %assertTrue(%eval(%index(%superq(_j_sel_right), %str(r.r2)) > 0), right select includes second keep column);
+  %test_summary;
+
+  %test_case(dataset/view detector distinguishes memtypes);
+    data work._j_view_src;
+      id=1;
+      output;
+    run;
+    data work._j_view / view=work._j_view;
+      set work._j_view_src;
+    run;
+
+    %assertEqual(%_ds_is_view(work._j_view_src), 0);
+    %assertEqual(%_ds_is_view(work._j_view), 1);
+  %test_summary;
+
+  %test_case(left_join wrapper with method=HASH matches rowcount);
+    %left_join(
+      work._j_right,
+      on=id,
+      data=work._j_left,
+      out=work._j_lw_hash,
+      right_keep=r1,
+      method=HASH,
+      validate=YES,
+      require_unique=1,
+      as_view=0
+    );
+
+    proc sql noprint;
+      select count(*) into :_n_lw_hash trimmed from work._j_lw_hash;
+    quit;
+    %assertEqual(&_n_lw_hash., 4);
+  %test_summary;
+
+  %test_case(left_join wrapper accepts lowercase method values);
+    %left_join(
+      work._j_right,
+      on=id,
+      data=work._j_left,
+      out=work._j_lw_hash_lc,
+      right_keep=r1,
+      method=hash,
+      validate=YES,
+      require_unique=1,
+      as_view=0
+    );
+
+    proc sql noprint;
+      select count(*) into :_n_lw_hash_lc trimmed from work._j_lw_hash_lc;
+    quit;
+    %assertEqual(&_n_lw_hash_lc., 4);
+  %test_summary;
+
+  %test_case(inner_join wrapper with method=SQL matches rows);
+    %inner_join(
+      work._j_right,
+      on=id,
+      data=work._j_left,
+      out=work._j_iw_sql,
+      right_keep=r1,
+      method=SQL,
+      validate=YES,
+      require_unique=0,
+      as_view=0
+    );
+
+    proc sql noprint;
+      select count(*) into :_n_iw_sql trimmed from work._j_iw_sql;
+      select sum(r1) into :_sum_iw_sql trimmed from work._j_iw_sql;
+    quit;
+    %assertEqual(&_n_iw_sql., 2);
+    %assertEqual(&_sum_iw_sql., 400);
+  %test_summary;
+
+  %test_case(join SQL and HASH support as_view outputs);
+    %left_join_sql(
+      work._j_right,
+      on=id,
+      data=work._j_left,
+      out=work._j_ls_view,
+      right_keep=r1,
+      as_view=TRUE
+    );
+    %assertEqual(%sysfunc(exist(work._j_ls_view, view)), 1);
+
+    %left_join_hash(
+      work._j_right,
+      on=id,
+      data=work._j_left,
+      out=work._j_lh_view,
+      right_keep=r1,
+      require_unique=1,
+      as_view=TRUE
+    );
+    %assertEqual(%sysfunc(exist(work._j_lh_view, view)), 1);
+
+    proc sql noprint;
+      select count(*) into :_n_ls_view trimmed from work._j_ls_view;
+      select count(*) into :_n_lh_view trimmed from work._j_lh_view;
+    quit;
+    %assertEqual(&_n_ls_view., 4);
+    %assertEqual(&_n_lh_view., 4);
+  %test_summary;
+
+  %test_case(inner_join wrapper supports as_view output);
+    %inner_join(
+      work._j_right,
+      on=id,
+      data=work._j_left,
+      out=work._j_iw_view,
+      right_keep=r1,
+      method=sql,
+      validate=YES,
+      require_unique=0,
+      as_view=TRUE
+    );
+    %assertEqual(%sysfunc(exist(work._j_iw_view, view)), 1);
+    proc sql noprint;
+      select count(*) into :_n_iw_view trimmed from work._j_iw_view;
+    quit;
+    %assertEqual(&_n_iw_view., 2);
+  %test_summary;
+
   %test_summary; /* suite */
 
   proc datasets lib=work nolist;
-    delete _j_left _j_right _j_lh _j_ih _j_ls _j_is;
+    delete _j_left _j_right _j_lh _j_ih _j_ls _j_is _j_lw_hash _j_lw_hash_lc _j_iw_sql _j_view_src;
+    delete _j_ls_view _j_lh_view _j_iw_view _j_view / memtype=view;
   quit;
 %mend test_join;
 
@@ -848,8 +983,17 @@
     %assertEqual(&PIPR_JOIN_LAST_METHOD., SQL);
   %test_summary;
 
+  %test_case(inner_join AUTO records chosen method);
+    %let PIPR_JOIN_LAST_METHOD=;
+    %inner_join(work._a_right_small, on=id, data=work._a_left, out=work._a_out4,
+      right_keep=r1, method=AUTO, require_unique=1,
+      auto_max_obs=1000000, auto_max_mem_mb=512, auto_overhead_factor=2.5, auto_prefer_hash=0);
+
+    %assertEqual(&PIPR_JOIN_LAST_METHOD., HASH);
+  %test_summary;
+
   proc datasets lib=work nolist;
-    delete _a_left _a_right_small _a_out1 _a_out2 _a_out3;
+    delete _a_left _a_right_small _a_out1 _a_out2 _a_out3 _a_out4;
   quit;
 
   %test_summary;

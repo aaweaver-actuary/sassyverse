@@ -95,6 +95,7 @@
 
 %macro test_pipr_util;
   %_pipr_require_assert;
+  %local _ut_saved;
 
   %test_suite(Testing pipr util);
     %test_case(tmpds uses prefix and work);
@@ -106,9 +107,21 @@
       %assertEqual(%_pipr_bool(1), 1);
       %assertEqual(%_pipr_bool(YES), 1);
       %assertEqual(%_pipr_bool(true), 1);
+      %assertEqual(%_pipr_bool(on), 1);
       %assertEqual(%_pipr_bool(0), 0);
       %assertEqual(%_pipr_bool(NO), 0);
+      %assertEqual(%_pipr_bool(OFF), 0);
+      %assertEqual(%_pipr_bool(, default=1), 1);
       %assertEqual(%_pipr_bool(unknown, default=1), 1);
+    %test_summary;
+
+    %test_case(unit-test flag helper reflects __unit_tests and defaults);
+      %assertEqual(%_pipr_in_unit_tests, 1);
+
+      %let _ut_saved=%superq(__unit_tests);
+      %let __unit_tests=0;
+      %assertEqual(%_pipr_in_unit_tests, 0);
+      %let __unit_tests=&_ut_saved;
     %test_summary;
 
     %test_case(parmbuff splitter handles nested commas and quotes);

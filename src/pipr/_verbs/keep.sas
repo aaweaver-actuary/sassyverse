@@ -40,9 +40,32 @@
 
       %assertEqual(&_cnt_cols., 2);
     %test_summary;
+
+    %test_case(keep supports as_view and boolean flags);
+      %keep(a b, data=work._keep, out=work._keep_ab_view, validate=YES, as_view=TRUE);
+      %assertEqual(%sysfunc(exist(work._keep_ab_view, view)), 1);
+
+      proc sql noprint;
+        select count(*) into :_cnt_keep_view trimmed from work._keep_ab_view;
+      quit;
+      %assertEqual(&_cnt_keep_view., 1);
+    %test_summary;
+
+    %test_case(keep validate=NO path on valid columns);
+      %keep(a, data=work._keep, out=work._keep_a_nv, validate=NO, as_view=0);
+      proc sql noprint;
+        select count(*) into :_cnt_keep_a trimmed
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_KEEP_A_NV" and upcase(name)="A";
+      quit;
+      %assertEqual(&_cnt_keep_a., 1);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _keep _keep_ab; quit;
+  proc datasets lib=work nolist;
+    delete _keep _keep_ab _keep_a_nv;
+    delete _keep_ab_view / memtype=view;
+  quit;
 %mend test_keep;
 
 %_pipr_autorun_tests(test_keep);

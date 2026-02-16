@@ -269,6 +269,17 @@
   %_pipr_require_assert;
 
   %test_suite(Testing selector utils);
+    %test_case(unquote helper handles quoted and unquoted text);
+      %_sel_unquote(text=%str('policy_state'), out_text=_stu_uq1);
+      %assertEqual(%superq(_stu_uq1), policy_state);
+
+      %_sel_unquote(text=%str("home_state"), out_text=_stu_uq2);
+      %assertEqual(%superq(_stu_uq2), home_state);
+
+      %_sel_unquote(text=company_numb, out_text=_stu_uq3);
+      %assertEqual(%superq(_stu_uq3), company_numb);
+    %test_summary;
+
     %test_case(tokenizer splits selector expression);
       %_sel_tokenize(
         expr=%str(starts_with('policy') company_numb ends_with('code') like('%state%')),
@@ -318,6 +329,11 @@
       );
       %assertEqual(&_stu_is., 1);
       %assertEqual(&_stu_name., COLS_WHERE);
+
+      %_sel_parse_call(token=%str(unknown_fn('x')), out_is=_stu_is, out_name=_stu_name, out_arg=_stu_arg);
+      %assertEqual(&_stu_is., -1);
+      %assertEqual(&_stu_name., UNKNOWN_FN);
+      %assertEqual(&_stu_arg., 'x');
     %test_summary;
 
     %test_case(list append unique preserves order);
@@ -328,6 +344,9 @@
     %test_case(regex and cols_where predicate helpers);
       %_sel_regex_to_prx(regex=state$, out_prx=_stu_prx);
       %assertEqual(%superq(_stu_prx), /state$/i);
+
+      %_sel_regex_to_prx(regex=%str(/^state$/), out_prx=_stu_prx2);
+      %assertEqual(%superq(_stu_prx2), %str(/^state$/));
 
       %_sel_cols_where_predicate(
         predicate=%str(lambda(.is_char and prxmatch('/state/i', .name) > 0)),
@@ -372,6 +391,26 @@
         empty_msg=No char STATE columns.
       );
       %assertEqual(%upcase(&_stu_pred_cols.), HOME_STATE POLICY_STATE STATE_CODE);
+    %test_summary;
+
+    %test_case(expand helper honors validate=NO);
+      %_sel_expand(
+        ds=work._stu,
+        expr=%str(home_state no_such_col),
+        out_cols=_stu_expand_nv,
+        validate=0
+      );
+      %assertEqual(%upcase(&_stu_expand_nv.), HOME_STATE NO_SUCH_COL);
+    %test_summary;
+
+    %test_case(expand helper deduplicates columns while preserving first-seen order);
+      %_sel_expand(
+        ds=work._stu,
+        expr=%str(company_numb starts_with('policy') company_numb contains('state')),
+        out_cols=_stu_expand_dedupe,
+        validate=1
+      );
+      %assertEqual(%upcase(&_stu_expand_dedupe.), COMPANY_NUMB POLICY_STATE HOME_STATE STATE_CODE);
     %test_summary;
   %test_summary;
 

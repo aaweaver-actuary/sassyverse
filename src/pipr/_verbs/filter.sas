@@ -296,6 +296,26 @@
         select count(*) into :_cnt_all trimmed from work._flt_all;
       quit;
       %assertEqual(&_cnt_all., 3);
+
+      %where_if(where_expr=x > 1, condition=YES, data=work._flt, out=work._flt_if_true, validate=NO, as_view=TRUE);
+      %assertEqual(%sysfunc(exist(work._flt_if_true, view)), 1);
+      proc sql noprint;
+        select count(*) into :_cnt_if_true trimmed from work._flt_if_true;
+      quit;
+      %assertEqual(&_cnt_if_true., 2);
+    %test_summary;
+
+    %test_case(where and mask aliases with boolean flags);
+      %where(x >= 2, data=work._flt, out=work._flt_where, validate=YES, as_view=NO);
+      %mask(x > 1, data=work._flt, out=work._flt_mask, validate=NO, as_view=0);
+
+      proc sql noprint;
+        select count(*) into :_cnt_where trimmed from work._flt_where;
+        select count(*) into :_cnt_mask trimmed from work._flt_mask;
+      quit;
+
+      %assertEqual(&_cnt_where., 2);
+      %assertEqual(&_cnt_mask., 1);
     %test_summary;
 
     %test_case(filter helper view);
@@ -305,6 +325,15 @@
         select count(*) into :_cnt_view trimmed from work._flt_view;
       quit;
       %assertEqual(&_cnt_view., 2);
+    %test_summary;
+
+    %test_case(filter supports as_view at verb level);
+      %filter(x > 1, data=work._flt, out=work._flt_view2, validate=YES, as_view=TRUE);
+      %assertEqual(%sysfunc(exist(work._flt_view2, view)), 1);
+      proc sql noprint;
+        select count(*) into :_cnt_view2 trimmed from work._flt_view2;
+      quit;
+      %assertEqual(&_cnt_view2., 2);
     %test_summary;
 
     %if %sysmacexist(if_any) and %sysmacexist(if_all) %then %do;
@@ -345,7 +374,8 @@
   %test_summary;
 
   proc datasets lib=work nolist;
-    delete _flt _flt_gt1 _flt_le1 _flt_all _flt_view _flt_any _flt_any_out _flt_all_out _flt_pos _flt_between;
+    delete _flt _flt_gt1 _flt_le1 _flt_all _flt_where _flt_mask _flt_any _flt_any_out _flt_all_out _flt_pos _flt_between;
+    delete _flt_view _flt_view2 _flt_if_true / memtype=view;
   quit;
 %mend test_filter;
 

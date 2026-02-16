@@ -39,9 +39,32 @@
 
       %assertEqual(&_cnt_c., 0);
     %test_summary;
+
+    %test_case(drop supports as_view and boolean flags);
+      %drop(c, data=work._drop, out=work._drop_ab_view, validate=YES, as_view=TRUE);
+      %assertEqual(%sysfunc(exist(work._drop_ab_view, view)), 1);
+
+      proc sql noprint;
+        select count(*) into :_cnt_drop_view trimmed from work._drop_ab_view;
+      quit;
+      %assertEqual(&_cnt_drop_view., 1);
+    %test_summary;
+
+    %test_case(drop validate=NO path on valid columns);
+      %drop(c, data=work._drop, out=work._drop_ab_nv, validate=NO, as_view=0);
+      proc sql noprint;
+        select count(*) into :_cnt_drop_c_nv trimmed
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_DROP_AB_NV" and upcase(name)="C";
+      quit;
+      %assertEqual(&_cnt_drop_c_nv., 0);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _drop _drop_ab; quit;
+  proc datasets lib=work nolist;
+    delete _drop _drop_ab _drop_ab_nv;
+    delete _drop_ab_view / memtype=view;
+  quit;
 %mend test_drop;
 
 %_pipr_autorun_tests(test_drop);

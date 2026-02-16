@@ -44,6 +44,20 @@
         out_cols=_scw_states
       );
       %assertEqual(%upcase(&_scw_states.), HOME_STATE CLAIM_STATE);
+
+      %_selector_cols_where(
+        ds=work._scw,
+        predicate=%str(.is_char and prxmatch('/policy/i', .x) > 0),
+        out_cols=_scw_x_alias
+      );
+      %assertEqual(%upcase(&_scw_x_alias.), POLICY_CODE);
+
+      %_selector_cols_where(
+        ds=work._scw,
+        predicate=%str(.type='num' and .length=8 and .column='AMOUNT'),
+        out_cols=_scw_num_meta
+      );
+      %assertEqual(%upcase(&_scw_num_meta.), AMOUNT);
     %test_summary;
   %test_summary;
 

@@ -82,9 +82,45 @@
 
       %assertEqual(&_total_helper., 6);
     %test_summary;
+
+    %test_case(summarise supports validate boolean flags);
+      %summarise(
+        vars=x,
+        by=grp,
+        data=work._sum,
+        out=work._sum_out_nv,
+        stats=sum=total,
+        validate=NO,
+        as_view=0
+      );
+
+      proc sql noprint;
+        select sum(total) into :_sum_total_nv trimmed from work._sum_out_nv;
+      quit;
+
+      %assertEqual(&_sum_total_nv., 6);
+    %test_summary;
+
+    %test_case(summarize alias supports validate=YES);
+      %summarize(
+        vars=x,
+        by=grp,
+        data=work._sum,
+        out=work._sum_out_alias,
+        stats=sum=total,
+        validate=YES,
+        as_view=0
+      );
+
+      proc sql noprint;
+        select sum(total) into :_sum_total_alias trimmed from work._sum_out_alias;
+      quit;
+
+      %assertEqual(&_sum_total_alias., 6);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _sum _sum_out _sum_out2 _sum_helper; quit;
+  proc datasets lib=work nolist; delete _sum _sum_out _sum_out2 _sum_helper _sum_out_nv _sum_out_alias; quit;
 %mend test_summarise;
 
 %_pipr_autorun_tests(test_summarise);

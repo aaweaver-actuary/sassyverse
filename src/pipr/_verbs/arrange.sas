@@ -55,9 +55,28 @@
       %assertEqual(&first_x2., 1);
       %assertEqual(&last_x2., 3);
     %test_summary;
+
+    %test_case(sort alias supports descending and boolean validate flags);
+      %sort(descending x, data=work._arr, out=work._arr_sorted_desc, validate=YES, as_view=1);
+
+      data _null_;
+        set work._arr_sorted_desc end=last;
+        if _n_=1 then call symputx('first_x_desc', x);
+        if last then call symputx('last_x_desc', x);
+      run;
+
+      %assertEqual(&first_x_desc., 3);
+      %assertEqual(&last_x_desc., 1);
+      %assertEqual(%sysfunc(exist(work._arr_sorted_desc, view)), 0);
+    %test_summary;
+
+    %test_case(arrange validate=NO still runs on valid by list);
+      %arrange(x, data=work._arr, out=work._arr_sorted_nv, validate=NO);
+      %assertEqual(%sysfunc(exist(work._arr_sorted_nv)), 1);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _arr _arr_sorted _arr_sorted2; quit;
+  proc datasets lib=work nolist; delete _arr _arr_sorted _arr_sorted2 _arr_sorted_desc _arr_sorted_nv; quit;
 %mend test_arrange;
 
 %_pipr_autorun_tests(test_arrange);

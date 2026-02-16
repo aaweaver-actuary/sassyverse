@@ -45,6 +45,9 @@
 
       %_selector_matches(ds=work._smx, regex=%str(/^policy_/i), out_cols=_smx_cols2);
       %assertEqual(%upcase(&_smx_cols2.), POLICY_ID POLICY_CODE);
+
+      %_selector_matches(ds=work._smx, regex=%str(/^POLICY_/), out_cols=_smx_cols3);
+      %assertEqual(%upcase(&_smx_cols3.), POLICY_ID POLICY_CODE);
     %test_summary;
   %test_summary;
 

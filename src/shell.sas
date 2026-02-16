@@ -4,10 +4,14 @@
     %sysfunc(indexw(WIN WINDOWS WIN64, &os))
 %mend _is_windows;
 
+%macro _shell_build_cmd(cmd=, out_cmd=);
+    %if %_is_windows %then %let &out_cmd=cmd /c %superq(cmd);
+    %else %let &out_cmd=%superq(cmd);
+%mend _shell_build_cmd;
+
 %macro shell( cmd /*Command to pass to the shell.*/ );
     %local _cmd;
-    %if %_is_windows %then %let _cmd=cmd /c &cmd;
-    %else %let _cmd=&cmd;
+    %_shell_build_cmd(cmd=%superq(cmd), out_cmd=_cmd);
 
     options nosource nonotes errors=0;
     filename command pipe %sysfunc(quote(%superq(_cmd)));
@@ -72,3 +76,28 @@
     %end;
 %mend shls;
 
+%macro test_shell;
+    %if not %sysmacexist(assertTrue) %then %sbmod(assert);
+
+    %test_suite(Testing shell.sas);
+        %test_case(shell command builder respects host platform);
+            %_shell_build_cmd(cmd=%str(echo hello), out_cmd=_sh_cmd);
+            %if %_is_windows %then %do;
+                %assertTrue(%eval(%index(%upcase(%superq(_sh_cmd)), CMD /C ECHO HELLO)=1), windows shell uses cmd /c prefix);
+            %end;
+            %else %do;
+                %assertEqual(%superq(_sh_cmd), %str(echo hello));
+            %end;
+        %test_summary;
+    %test_summary;
+%mend test_shell;
+
+%macro run_shell_tests;
+    %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_shell;
+        %end;
+    %end;
+%mend run_shell_tests;
+
+%run_shell_tests;

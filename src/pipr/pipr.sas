@@ -751,6 +751,13 @@
 
       %_pipe_collect_args(step=%str(collect_to(work._out)), out_args=_pl_args);
       %assertEqual(&_pl_args., work._out);
+
+      %_pipe_is_collect_verb(verb=collect_into, out_is=_pl_is2);
+      %assertTrue(%eval(&_pl_is2 > 0), collect_into identified);
+
+      %_pipe_get_last_step(steps=%str(a() | collect_into(work._out2)), out_last=_pl_last2, out_n=_pl_n2);
+      %assertEqual(&_pl_n2., 2);
+      %assertEqual(&_pl_last2., collect_into(work._out2));
     %test_summary;
 
     %test_case(execute and cleanup helpers);
@@ -821,6 +828,43 @@
 
       %assertEqual(&_cnt., 2);
       %assertEqual(&_sum_y., 10);
+    %test_summary;
+
+    %test_case(pipe supports view_output=1 on final step);
+      %pipe(
+        data=work._pipe_in,
+        out=work._pipe_out_view_final,
+        steps=select(x),
+        use_views=1,
+        view_output=1,
+        debug=1,
+        cleanup=1
+      );
+
+      %assertEqual(%sysfunc(exist(work._pipe_out_view_final, view)), 1);
+      proc sql noprint;
+        select count(*) into :_cnt_view_final trimmed from work._pipe_out_view_final;
+      quit;
+      %assertEqual(&_cnt_view_final., 3);
+    %test_summary;
+
+    %test_case(default use_views pipeline supports select then collect_to);
+      data work._pipe_view_in;
+        sb_policy_key=11; output;
+        sb_policy_key=22; output;
+      run;
+
+      %pipe(
+        work._pipe_view_in
+        | select(sb_policy_key)
+        | collect_to(work._pipe_view_out)
+      );
+
+      proc sql noprint;
+        select count(*) into :_pipe_view_cnt trimmed from work._pipe_view_out;
+      quit;
+
+      %assertEqual(&_pipe_view_cnt., 2);
     %test_summary;
 
     %test_case(%nrstr(mutate with comma-based function expression without explicit %str));
@@ -1060,7 +1104,8 @@
   %test_summary;
 
   proc datasets lib=work nolist;
-    delete _pipe_in _pipe_out _pipe_out_ifc _pipe_out_multi _pipe_out_multi_compact _pipe_pred _pipe_pred_out _pipe_mut_pred _pipe_out_wc_multi _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2;
+    delete _pipe_in _pipe_out _pipe_view_in _pipe_view_out _pipe_out_ifc _pipe_out_multi _pipe_out_multi_compact _pipe_pred _pipe_pred_out _pipe_mut_pred _pipe_out_wc_multi _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2;
+    delete _pipe_out_view_final / memtype=view;
   quit;
 %mend test_pipe;
 

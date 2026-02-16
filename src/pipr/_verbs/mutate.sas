@@ -226,6 +226,15 @@
       %assertEqual(&_sum_b_multi_compact., 16);
     %test_summary;
 
+    %test_case(mutate supports named stmt= with boolean flags and view output);
+      %mutate(stmt=a=x+1, data=work._mut, out=work._mut_named_view, validate=NO, as_view=TRUE);
+      %assertEqual(%sysfunc(exist(work._mut_named_view, view)), 1);
+      proc sql noprint;
+        select sum(a) into :_sum_a_named_view trimmed from work._mut_named_view;
+      quit;
+      %assertEqual(&_sum_a_named_view., 8);
+    %test_summary;
+
     %if %sysmacexist(is_positive) and %sysmacexist(is_between) %then %do;
       %test_case(mutate expands registered predicates without percent prefix);
         %mutate(flag = is_positive(x), in_2_3 = is_between(x, 2, 3), data=work._mut, out=work._mut_pred);
@@ -286,9 +295,44 @@
       quit;
       %assertEqual(&_max_z., 6);
     %test_summary;
+
+    %test_case(mutate supports as_view and validate boolean flags);
+      %mutate(y = x + 5, data=work._mut, out=work._mut_view2, validate=YES, as_view=TRUE);
+      %assertEqual(%sysfunc(exist(work._mut_view2, view)), 1);
+      proc sql noprint;
+        select sum(y) into :_sum_y_view2 trimmed from work._mut_view2;
+      quit;
+      %assertEqual(&_sum_y_view2., 16);
+    %test_summary;
+
+    %test_case(with_column supports named argument style);
+      %with_column(
+        col_name=flag,
+        col_expr=(x >= 4),
+        data=work._mut,
+        out=work._mut_named,
+        validate=NO,
+        as_view=0
+      );
+      proc sql noprint;
+        select sum(flag) into :_sum_flag_named trimmed from work._mut_named;
+      quit;
+      %assertEqual(&_sum_flag_named., 1);
+    %test_summary;
+
+    %test_case(mutate normalize helper preserves semicolon blocks and splits comma lists);
+      %_mutate_normalize_stmt(%str(a=x+1; b=a*2;), _mut_norm1);
+      %assertEqual(%superq(_mut_norm1), %str(a=x+1; b=a*2;));
+
+      %_mutate_normalize_stmt(%str(a=x+1,b=a*2), _mut_norm2);
+      %assertEqual(%superq(_mut_norm2), %str(a=x+1; b=a*2;));
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _mut _mut2 _mut_ifc _mut_multi _mut_multi_compact _mut_pred _mut3x _mut3 _mut4 _mut_wc_multi _mut_wc_pred _mut_view; quit;
+  proc datasets lib=work nolist;
+    delete _mut _mut2 _mut_ifc _mut_multi _mut_multi_compact _mut_pred _mut3x _mut3 _mut4 _mut_wc_multi _mut_wc_pred _mut_named;
+    delete _mut_view _mut_view2 _mut_named_view / memtype=view;
+  quit;
 %mend test_mutate;
 
 %_pipr_autorun_tests(test_mutate);

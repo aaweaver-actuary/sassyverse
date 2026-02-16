@@ -51,8 +51,11 @@
 %mend;
 
 %macro _assert_ds_exists(ds, error_msg=);
-  %if not %sysfunc(exist(&ds)) %then %do;
-    %_abort(Dataset does not exist: &ds. &error_msg);
+  %local _ds_exists _view_exists;
+  %let _ds_exists=%sysfunc(exist(%superq(ds)));
+  %let _view_exists=%sysfunc(exist(%superq(ds), view));
+  %if (&_ds_exists = 0) and (&_view_exists = 0) %then %do;
+    %_abort(Dataset or view does not exist: &ds. &error_msg);
   %end;
 %mend;
 
@@ -207,6 +210,19 @@
       %assertTrue(1, validation passes for compatible keys);
     %test_summary;
 
+    %test_case(assert_ds_exists accepts views as pipeline inputs);
+      data work._pv_src;
+        x=1; output;
+      run;
+      data work._pv_view / view=work._pv_view;
+        set work._pv_src;
+      run;
+
+      %_assert_ds_exists(work._pv_src);
+      %_assert_ds_exists(work._pv_view);
+      %assertEqual(%sysfunc(exist(work._pv_view, view)), 1);
+    %test_summary;
+
     %test_case(assert_unique_key does not clobber user work._dupchk);
       data work._dupchk;
         marker=42;
@@ -245,13 +261,29 @@
       %assertEqual(&_len_mis., 1);
     %test_summary;
 
+    %test_case(ds split and by-vars assertion helpers);
+      %_ds_split(work._pv_left, _pv_lib1, _pv_mem1);
+      %assertEqual(&_pv_lib1., WORK);
+      %assertEqual(&_pv_mem1., _PV_LEFT);
+
+      %_ds_split(_pv_left, _pv_lib2, _pv_mem2);
+      %assertEqual(&_pv_lib2., WORK);
+      %assertEqual(&_pv_mem2., _PV_LEFT);
+
+      %_assert_by_vars(work._pv_left, %str(descending id));
+      %assertTrue(1, by vars assertion accepts descending syntax);
+    %test_summary;
+
     %test_case(tmpds helper returns a WORK dataset name);
       %let _pv_tmp=%_pipr_tmpds(prefix=_pv_);
       %assertTrue(%eval(%index(%upcase(&_pv_tmp.), WORK._PV_) = 1), tmpds helper returns WORK-prefixed name);
     %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _pv_left _pv_right _pv_left2 _pv_right2 _dupchk; quit;
+  proc datasets lib=work nolist;
+    delete _pv_left _pv_right _pv_left2 _pv_right2 _dupchk _pv_src;
+    delete _pv_view / memtype=view;
+  quit;
 %mend test_pipr_validation;
 
 %_pipr_autorun_tests(test_pipr_validation);

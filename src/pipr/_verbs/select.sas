@@ -64,6 +64,37 @@
       %assertEqual(&_cnt_view., 1);
     %test_summary;
 
+    %test_case(select supports as_view at verb level and validate boolean flags);
+      %select(a c, data=work._sel, out=work._sel_v2, validate=YES, as_view=TRUE);
+      %assertEqual(%sysfunc(exist(work._sel_v2, view)), 1);
+      proc sql noprint;
+        select count(*) into :_cnt_view2 trimmed from work._sel_v2;
+      quit;
+      %assertEqual(&_cnt_view2., 1);
+    %test_summary;
+
+    %test_case(select validate=NO with comma-delimited plain columns);
+      %select(%str(a, c), data=work._sel, out=work._sel_ac_nv, validate=NO, as_view=0);
+      proc sql noprint;
+        select upcase(name) into :_sel_nv_cols separated by ' '
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_SEL_AC_NV"
+        order by varnum;
+      quit;
+      %assertEqual(&_sel_nv_cols., A C);
+    %test_summary;
+
+    %test_case(select removes duplicate columns while preserving first-seen order);
+      %select(%str(c a c b), data=work._sel, out=work._sel_dedupe, validate=YES, as_view=0);
+      proc sql noprint;
+        select upcase(name) into :_sel_dedupe_cols separated by ' '
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_SEL_DEDUPE"
+        order by varnum;
+      quit;
+      %assertEqual(&_sel_dedupe_cols., C A B);
+    %test_summary;
+
     %test_case(select supports selector helpers);
       data work._selx;
         length policy_number 8 policy_type $12 company_numb 8 home_code $6 group_code $6 home_state $2 policy_state $2 misc 8;
@@ -147,7 +178,10 @@
     %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _sel _sel_ac _sel_view _selx _selx_out _selx_commas _selx_state _selx_matches _selx_where; quit;
+  proc datasets lib=work nolist;
+    delete _sel _sel_ac _sel_ac_nv _sel_dedupe _selx _selx_out _selx_commas _selx_state _selx_matches _selx_where;
+    delete _sel_view _sel_v2 / memtype=view;
+  quit;
 %mend test_select;
 
 %_pipr_autorun_tests(test_select);

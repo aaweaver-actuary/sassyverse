@@ -148,6 +148,10 @@
       %assertEqual(&_sp_verb., select);
       %assertEqual(&_sp_args., x);
       %assertEqual(&_sp_has., 0);
+
+      %_step_parse(%str(filter(x > 1, validate=NO)), _sp_verb, _sp_args);
+      %_step_has_validate(&_sp_args, _sp_has);
+      %assertTrue(%eval(&_sp_has > 0), validate parameter detected in step args);
     %test_summary;
 
     %if %sysmacexist(filter) %then %do;

@@ -115,6 +115,17 @@
 	%set_log_level(DEBUG);
 
 	%test_suite(Testing logging.sas);
+		%test_case(set_log_level and toggle_log_level aliases normalize values);
+			%set_log_level(dbg);
+			%assertEqual(&log_level., DEBUG);
+			%toggle_log_level;
+			%assertEqual(&log_level., INFO);
+			%toggle_log_level;
+			%assertEqual(&log_level., DEBUG);
+			%set_log_level(i);
+			%assertEqual(&log_level., INFO);
+		%test_summary;
+
 		%test_case(info and dbg write lines);
 			%info(msg=hello info, filename=&logfile., dir=&workdir.);
 			%dbg(msg=hello debug, filename=&logfile., dir=&workdir.);
@@ -137,11 +148,31 @@
 			%assertTrue(%eval(&_info_cnt > 0), info wrote to log file);
 			%assertTrue(%eval(&_dbg_cnt > 0), dbg wrote to log file);
 		%test_summary;
+
+		%test_case(dbg is gated when log level is INFO);
+			%set_log_level(INFO);
+			%dbg(msg=debug should not write, filename=&logfile., dir=&workdir.);
+
+			data work._loglines2;
+				infile "&workdir./&logfile." truncover;
+				length line $32767;
+				input line $char32767.;
+			run;
+
+			proc sql noprint;
+				select count(*) into :_dbg_blocked_cnt trimmed
+				from work._loglines2
+				where index(line, 'debug should not write') > 0;
+			quit;
+
+			%assertEqual(&_dbg_blocked_cnt., 0);
+			%set_log_level(DEBUG);
+		%test_summary;
 	%test_summary;
 
 	%let log_level=&prev_level;
 
-	proc datasets lib=work nolist; delete _loglines; quit;
+	proc datasets lib=work nolist; delete _loglines _loglines2; quit;
 %mend test_logging;
 
 /* Macro to run logging tests when __unit_tests is set */

@@ -42,11 +42,19 @@
 
       %_selector_contains(ds=work._sco, needle=state, out_cols=_sco_cols);
       %assertEqual(%upcase(&_sco_cols.), HOME_STATE POLICY_STATE STATE_CODE);
+
+      %_selector_contains(ds=work._sco, needle=STATE, out_cols=_sco_cols2);
+      %assertEqual(%upcase(&_sco_cols2.), HOME_STATE POLICY_STATE STATE_CODE);
     %test_summary;
 
     %test_case(like expands sql-like patterns);
       %_selector_like(ds=work._sco, pattern=%str(%state%), out_cols=_sco_like);
       %assertEqual(%upcase(&_sco_like.), HOME_STATE POLICY_STATE STATE_CODE);
+    %test_summary;
+
+    %test_case(like matching is case-insensitive);
+      %_selector_like(ds=work._sco, pattern=%str(%STATE%), out_cols=_sco_like2);
+      %assertEqual(%upcase(&_sco_like2.), HOME_STATE POLICY_STATE STATE_CODE);
     %test_summary;
   %test_summary;
 

@@ -99,6 +99,10 @@
 			%let expected=&out_lib./dataset1.csv;
 			%assertEqual("&filename1.", "&expected.");
 
+			%let filename2=%_get_filename(work.dataset2, &out_lib.);
+			%let expected2=&out_lib./dataset2.csv;
+			%assertEqual("&filename2.", "&expected2.");
+
 		%test_summary;
 
 		%test_case(export_to_csv writes file);
@@ -138,6 +142,22 @@
 			%assertEqual(&_exists3., 1);
 		%test_summary;
 
+		%test_case(export_csv_copy supports one-level dataset names);
+			data _exp_local;
+				x=2;
+				output;
+			run;
+
+			%export_csv_copy(_exp_local, out_folder=&out_lib.);
+
+			%let filename4=&out_lib./_exp_local.csv;
+			filename _exp4 "&filename4.";
+			%let _exists4=%sysfunc(fexist(_exp4));
+			filename _exp4 clear;
+
+			%assertEqual(&_exists4., 1);
+		%test_summary;
+
 	%test_summary;
 
 	filename _exp "&out_lib./_exp.csv";
@@ -148,7 +168,11 @@
 	data _null_; rc=fdelete('_exp2'); run;
 	filename _exp2 clear;
 
-	proc datasets lib=work nolist; delete _exp _exp_tmp; quit;
+	filename _exp4 "&out_lib./_exp_local.csv";
+	data _null_; rc=fdelete('_exp4'); run;
+	filename _exp4 clear;
+
+	proc datasets lib=work nolist; delete _exp _exp_tmp _exp_local; quit;
 
 %mend test__export_to_csv;
 

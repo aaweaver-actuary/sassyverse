@@ -42,6 +42,19 @@
         %assertEqual(&expected_month., &actual_month.);
         %assertEqual(&expected_day., &actual_day.);
         %assertEqual(&expected_year., &actual_year.);
+
+        %let leap=%mdy(2, 29, 2020);
+        %assertEqual(%year(&leap.), 2020);
+        %assertEqual(%month(&leap.), 2);
+        %assertEqual(%day(&leap.), 29);
+
+        data work._dt_fmt;
+          d=&date.;
+          %fmt_date(d);
+          output;
+        run;
+        %assertTrue(%eval(%sysfunc(exist(work._dt_fmt))=1), fmt_date emitted valid FORMAT statement);
+        proc datasets lib=work nolist; delete _dt_fmt; quit;
     %test_summary;
 %mend test_fmt_date;
 
