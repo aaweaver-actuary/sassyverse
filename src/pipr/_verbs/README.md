@@ -63,12 +63,19 @@ Examples:
 - Supports `as_view=1`.
 - For the common case, use assignment form directly: `mutate(new_col = expression)`.
 - `mutate` auto-appends a trailing `;` when missing.
+- Comma-delimited assignments are supported: `mutate(a = x + 1, b = a * 2)`.
+- Compact form is also valid: `mutate(a=x+1,b=a*2)`.
+- `with_column` also supports mutate-style assignments: `with_column(a = x + 1, b = a * 2, ...)`.
+- `with_column(...)` is pipeline-friendly: `| with_column(a = x + 1, b = a * 2)`.
+- For assignments to columns named `data/out/validate/as_view`, prefer `stmt=%str(...)` to avoid keyword ambiguity.
 
 Examples:
 
 ```sas
 %mutate(loss_ratio = losses / premium, data=work.policies, out=work.with_ratio);
+%mutate(a = x + 1, b = a * 2, data=work.policies, out=work.with_two_cols);
 %with_column(premium_k, premium / 1000, data=work.policies, out=work.with_k);
+%with_column(a = x + 1, b = a * 2, data=work.policies, out=work.with_two_cols_wc);
 
 /* multi-statement blocks are still supported */
 %mutate(%str(a = x + 1; b = a * 2;), data=work.policies, out=work.multi_stmt);
@@ -87,6 +94,11 @@ Examples:
 - `cols` tokens can be space-separated or comma-separated, and duplicates are removed in first-seen order.
 - Lambda predicates can be written as `~...` or with `%lambda(...)` for readability.
 - Supports `as_view=1`.
+
+Lambda notes:
+
+- Lambda predicates are evaluated against column metadata (name/type/length/etc.), not dataset rows.
+- This allows rule-based schema selection such as "all short character columns ending in `_state`".
 
 Examples:
 

@@ -36,6 +36,11 @@ Each selector returns a space-delimited list of matching column names in `&out_c
 
 `cols_where(...)` evaluates a boolean expression against each row in `sashelp.vcolumn` for the input dataset.
 
+What this unlocks:
+
+- Before: you could only select by naming patterns (`starts_with`, `contains`, etc.).
+- Now: you can select by metadata rules (type/length/label/format/position), which is useful for schema-driven workflows and reusable pipelines.
+
 Supported placeholders:
 
 - `.name` / `.col` / `.column`
@@ -54,6 +59,13 @@ cols_where(~.is_num and prxmatch('/_id$/i', .name) > 0)
 
 /* same predicate using explicit lambda wrapper */
 cols_where(lambda(.is_char and index(upcase(.name), 'STATE') > 0))
+```
+
+Equivalent forms:
+
+```sas
+cols_where(~.is_num and .length=8)
+cols_where(lambda(.is_num and .length=8))
 ```
 
 ## Shared helpers (building blocks)

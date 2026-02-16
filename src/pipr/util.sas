@@ -16,6 +16,49 @@
   %sysfunc(cats(work., &prefix., %sysfunc(putn(%sysfunc(datetime()), hex16.))))
 %mend;
 
+/* Split a parenthesized macro parmbuff string into top-level comma segments. */
+%macro _pipr_split_parmbuff_segments(buf=, out_n=, out_prefix=seg);
+  %global &out_n;
+
+  data _null_;
+    length buf seg $32767 ch quote $1;
+    buf = symget('buf');
+
+    if length(buf) >= 2 and substr(buf, 1, 1) = '(' and substr(buf, length(buf), 1) = ')' then
+      buf = substr(buf, 2, length(buf) - 2);
+
+    depth = 0;
+    seg = '';
+    quote = '';
+    seg_count = 0;
+
+    do i = 1 to length(buf);
+      ch = substr(buf, i, 1);
+
+      if quote = '' then do;
+        if ch = "'" or ch = '"' then quote = ch;
+        else if ch = '(' then depth + 1;
+        else if ch = ')' and depth > 0 then depth + (-1);
+      end;
+      else if ch = quote then quote = '';
+
+      if quote = '' and depth = 0 and ch = ',' then do;
+        seg_count + 1;
+        call symputx(cats(symget('out_prefix'), seg_count), strip(seg), 'L');
+        seg = '';
+      end;
+      else seg = cats(seg, ch);
+    end;
+
+    if length(strip(seg)) then do;
+      seg_count + 1;
+      call symputx(cats(symget('out_prefix'), seg_count), strip(seg), 'L');
+    end;
+
+    call symputx(symget('out_n'), seg_count, 'L');
+  run;
+%mend;
+
 /* Returns 1 when unit tests are enabled for this session, else 0. */
 %macro _pipr_in_unit_tests;
   %if %symexist(__unit_tests) %then %do;
@@ -66,6 +109,18 @@
       %assertEqual(%_pipr_bool(0), 0);
       %assertEqual(%_pipr_bool(NO), 0);
       %assertEqual(%_pipr_bool(unknown, default=1), 1);
+    %test_summary;
+
+    %test_case(parmbuff splitter handles nested commas and quotes);
+      %_pipr_split_parmbuff_segments(
+        buf=%str(mutate(flag=ifc(x>1,1,0)), data=work._in, note='a,b'),
+        out_n=_ps_n,
+        out_prefix=_ps_seg
+      );
+      %assertEqual(&_ps_n., 3);
+      %assertEqual(&_ps_seg1., mutate(flag=ifc(x>1,1,0)));
+      %assertEqual(&_ps_seg2., data=work._in);
+      %assertEqual(&_ps_seg3., note='a,b');
     %test_summary;
   %test_summary;
 %mend test_pipr_util;

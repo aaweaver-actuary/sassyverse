@@ -144,21 +144,22 @@
 %mend;
 
 %macro _assert_unique_key(ds, keys);
-  %local dup_rows;
+  %local dup_rows _dupchk;
+  %let _dupchk=%_tmpds(prefix=_dupchk_);
   proc sql noprint;
-    create table work._dupchk as
+    create table &_dupchk as
     select &keys, count(*) as _n
     from &ds
     group by &keys
     having calculated _n > 1;
-    select count(*) into :dup_rows trimmed from work._dupchk;
+    select count(*) into :dup_rows trimmed from &_dupchk;
   quit;
 
   %if &dup_rows > 0 %then %do;
     %_abort(Duplicate keys detected in &ds for (&keys). Hash join would be ambiguous.);
   %end;
 
-  proc datasets lib=work nolist; delete _dupchk; quit;
+  proc datasets lib=work nolist; delete %scan(&_dupchk, 2, .); quit;
 %mend;
 
 %macro test_pipr_validation;
@@ -201,6 +202,25 @@
       %assertTrue(1, validation passes for compatible keys);
     %test_summary;
 
+    %test_case(assert_unique_key does not clobber user work._dupchk);
+      data work._dupchk;
+        marker=42;
+        output;
+      run;
+
+      %_assert_unique_key(work._pv_right, id);
+
+      proc sql noprint;
+        select count(*) into :_dupchk_exists trimmed
+        from sashelp.vtable
+        where libname="WORK" and memname="_DUPCHK";
+        select sum(marker) into :_dupchk_marker trimmed from work._dupchk;
+      quit;
+
+      %assertEqual(&_dupchk_exists., 1);
+      %assertEqual(&_dupchk_marker., 42);
+    %test_summary;
+
     %test_case(by-list and key helpers);
       %_clean_by_list(%str(descending id name), _cleaned);
       %_by_vars_from_list(&_cleaned, _vars);
@@ -221,7 +241,7 @@
     %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _pv_left _pv_right _pv_left2 _pv_right2; quit;
+  proc datasets lib=work nolist; delete _pv_left _pv_right _pv_left2 _pv_right2 _dupchk; quit;
 %mend test_pipr_validation;
 
 %_pipr_autorun_tests(test_pipr_validation);

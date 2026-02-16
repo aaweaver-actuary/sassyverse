@@ -95,6 +95,23 @@ Notes:
 - duplicates are removed in first-seen order
 - `cols_where(...)` supports `~...` and `lambda(...)`
 
+Lambda details:
+
+- A lambda is a compact predicate applied per-column in `cols_where(...)`.
+- `~...` is shorthand; `lambda(...)` is equivalent.
+- The expression is evaluated against column metadata (`sashelp.vcolumn`), not dataset row values.
+- This enables schema-driven selection that was not possible with only name-pattern selectors.
+
+Example:
+
+```sas
+%select(
+  %str(cols_where(~.is_char and .length <= 8 and prxmatch('/state/i', .name) > 0)),
+  data=work.policies,
+  out=work.char_state_cols
+);
+```
+
 ## Common tasks for new users
 
 ### 1. Filter, derive columns, and keep a few outputs
@@ -114,7 +131,11 @@ Notes:
 
 - Preferred: `mutate(new_col = expression)`
 - Trailing `;` is optional for single assignments
+- Multiple assignments can be comma-delimited: `mutate(a = x + 1, b = a * 2)`
+- Whitespace is optional in assignments: `mutate(a=x+1,b=a*2)`
 - Multi-statement blocks are still valid with `%str(...)`
+- `with_column(...)` supports both legacy `with_column(name, expr, ...)` and mutate-style assignment form
+- If assigning to columns named `data`, `out`, `validate`, or `as_view`, prefer `stmt=%str(...)` for clarity
 
 ### 2. Join lookup data
 

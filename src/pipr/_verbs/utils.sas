@@ -1,12 +1,12 @@
 %macro _verb_positional_list;
-  FILTER MUTATE ARRANGE KEEP DROP SELECT RENAME SUMMARISE SUMMARIZE
+  FILTER MUTATE WITH_COLUMN ARRANGE KEEP DROP SELECT RENAME SUMMARISE SUMMARIZE
   WHERE WHERE_NOT MASK WHERE_IF SORT
   LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL
   COLLECT_TO COLLECT_INTO
 %mend;
 
 %macro _verb_view_supported_list;
-  FILTER MUTATE KEEP DROP
+  FILTER MUTATE WITH_COLUMN KEEP DROP
   LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL
   SELECT RENAME WHERE WHERE_NOT MASK WHERE_IF
   COLLECT_TO COLLECT_INTO
@@ -128,9 +128,11 @@
       %assertTrue(%eval(%_is_positional_verb(summarise) > 0), summarise is positional);
       %assertTrue(%eval(%_is_positional_verb(left_join) > 0), left_join is positional);
       %assertTrue(%eval(%_is_positional_verb(collect_to) > 0), collect_to is positional);
+      %assertTrue(%eval(%_is_positional_verb(with_column) > 0), with_column is positional);
       %assertTrue(%eval(%_verb_supports_view(filter) > 0), filter supports views);
       %assertTrue(%eval(%_verb_supports_view(select) > 0), select supports views);
       %assertTrue(%eval(%_verb_supports_view(rename) > 0), rename supports views);
+      %assertTrue(%eval(%_verb_supports_view(with_column) > 0), with_column supports views);
       %assertTrue(%eval(%_verb_supports_view(arrange) = 0), arrange does not support views);
     %test_summary;
 
@@ -163,9 +165,17 @@
 
       %assertEqual(&_ut_cnt., 2);
     %test_summary;
+
+    %test_case(apply_step with with_column mutate-style assignments);
+      %_apply_step(%str(with_column(a = x + 1, b = a * 2)), work._ut_in, work._ut_out_wc, 1, 0);
+      proc sql noprint;
+        select sum(b) into :_ut_sum_wc trimmed from work._ut_out_wc;
+      quit;
+      %assertEqual(&_ut_sum_wc., 18);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _ut_in _ut_out; quit;
+  proc datasets lib=work nolist; delete _ut_in _ut_out _ut_out_wc; quit;
 %mend test_pipr_verb_utils;
 
 %_pipr_autorun_tests(test_pipr_verb_utils);

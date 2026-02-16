@@ -75,6 +75,8 @@ Mutate style:
 
 - Preferred: `mutate(new_column = expression)`
 - You no longer need `%str(...)` for the common single-assignment case
+- Multiple assignments are supported: `mutate(a = x + 1, b = a * 2)`
+- Compact style is supported: `mutate(a=x+1,b=a*2)`
 
 ### 2. Join lookup data
 

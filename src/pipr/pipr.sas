@@ -57,39 +57,7 @@
 %mend;
 
 %macro _pipe_split_parmbuff_segments(buf=, out_n=, out_prefix=seg);
-  %global &out_n;
-
-  data _null_;
-    length buf seg $32767 ch $1;
-    buf = symget('buf');
-
-    if length(buf) >= 2 and substr(buf, 1, 1) = '(' and substr(buf, length(buf), 1) = ')' then
-      buf = substr(buf, 2, length(buf) - 2);
-
-    depth = 0;
-    seg = '';
-    seg_count = 0;
-
-    do i = 1 to length(buf);
-      ch = substr(buf, i, 1);
-      if ch = '(' then depth + 1;
-      else if ch = ')' then depth + (-1);
-
-      if ch = ',' and depth = 0 then do;
-        seg_count + 1;
-        call symputx(cats(symget('out_prefix'), seg_count), strip(seg), 'L');
-        seg = '';
-      end;
-      else seg = cats(seg, ch);
-    end;
-
-    if length(seg) then do;
-      seg_count + 1;
-      call symputx(cats(symget('out_prefix'), seg_count), strip(seg), 'L');
-    end;
-
-    call symputx(symget('out_n'), seg_count, 'L');
-  run;
+  %_pipr_split_parmbuff_segments(buf=%superq(buf), out_n=&out_n, out_prefix=&out_prefix);
 %mend;
 
 %macro _pipe_first_step(steps=, out_step=);
@@ -678,6 +646,54 @@
       %assertEqual(&_sum_flag., 1);
     %test_summary;
 
+    %test_case(mutate supports comma-delimited assignments in pipe);
+      %pipe(
+        data=work._pipe_in,
+        out=work._pipe_out_multi,
+        steps=mutate(a = x + 1, b = a * 2),
+        use_views=0,
+        cleanup=1
+      );
+
+      proc sql noprint;
+        select sum(b) into :_sum_b_multi trimmed from work._pipe_out_multi;
+      quit;
+
+      %assertEqual(&_sum_b_multi., 18);
+    %test_summary;
+
+    %test_case(mutate supports compact comma-delimited assignments in pipe);
+      %pipe(
+        data=work._pipe_in,
+        out=work._pipe_out_multi_compact,
+        steps=mutate(a=x+1,b=a*2),
+        use_views=0,
+        cleanup=1
+      );
+
+      proc sql noprint;
+        select sum(b) into :_sum_b_multi_compact trimmed from work._pipe_out_multi_compact;
+      quit;
+
+      %assertEqual(&_sum_b_multi_compact., 18);
+    %test_summary;
+
+    %test_case(with_column supports mutate-style assignments in pipe);
+      %pipe(
+        data=work._pipe_in,
+        out=work._pipe_out_wc_multi,
+        steps=with_column(a = x + 1, b = a * 2),
+        use_views=0,
+        cleanup=1
+      );
+
+      proc sql noprint;
+        select sum(b) into :_sum_b_wc_multi trimmed from work._pipe_out_wc_multi;
+      quit;
+
+      %assertEqual(&_sum_b_wc_multi., 18);
+    %test_summary;
+
     %test_case(positional steps with collect_to);
       %pipe(
         work._pipe_in
@@ -816,7 +832,7 @@
   %test_summary;
 
   proc datasets lib=work nolist;
-    delete _pipe_in _pipe_out _pipe_out_ifc _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2;
+    delete _pipe_in _pipe_out _pipe_out_ifc _pipe_out_multi _pipe_out_multi_compact _pipe_out_wc_multi _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2;
   quit;
 %mend test_pipe;
 
