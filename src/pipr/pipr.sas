@@ -1,4 +1,8 @@
 /* Required includes are handled by sassyverse_init; keep this file standalone-safe if needed. */
+%if not %sysmacexist(_abort) %then %include 'util.sas';
+%if not %sysmacexist(_assert_ds_exists) %then %include 'validation.sas';
+%if not %sysmacexist(_verb_supports_view) %then %include '_verbs/utils.sas';
+%if not %sysmacexist(filter) or not %sysmacexist(mutate) or not %sysmacexist(select) %then %include 'verbs.sas';
 
 %macro _pipe_parse_parmbuff(
   steps_in=,
@@ -867,6 +871,41 @@
       %assertEqual(&_sum_b_multi_compact., 18);
     %test_summary;
 
+    %test_case(pipe supports bare predicate helpers in filter and mutate);
+      data work._pipe_pred;
+        a=1; b=0; c=.; output;
+        a=2; b=3; c=4; output;
+        a=.; b=.; c=.; output;
+      run;
+
+      %pipe(
+        data=work._pipe_pred,
+        out=work._pipe_pred_out,
+        steps=filter(if_any(cols=a b c, pred=is_zero())),
+        use_views=0,
+        cleanup=1
+      );
+
+      proc sql noprint;
+        select count(*) into :_pipe_pred_n trimmed from work._pipe_pred_out;
+      quit;
+      %assertEqual(&_pipe_pred_n., 1);
+
+      %pipe(
+        data=work._pipe_in,
+        out=work._pipe_mut_pred,
+        steps=mutate(flag = is_positive(x), in_2_3 = is_between(x, 2, 3)),
+        use_views=0,
+        cleanup=1
+      );
+      proc sql noprint;
+        select sum(flag) into :_pipe_sum_flag trimmed from work._pipe_mut_pred;
+        select sum(in_2_3) into :_pipe_sum_in_2_3 trimmed from work._pipe_mut_pred;
+      quit;
+      %assertEqual(&_pipe_sum_flag., 2);
+      %assertEqual(&_pipe_sum_in_2_3., 1);
+    %test_summary;
+
     %test_case(with_column supports mutate-style assignments in pipe);
       %pipe(
         data=work._pipe_in,
@@ -1021,7 +1060,7 @@
   %test_summary;
 
   proc datasets lib=work nolist;
-    delete _pipe_in _pipe_out _pipe_out_ifc _pipe_out_multi _pipe_out_multi_compact _pipe_out_wc_multi _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2;
+    delete _pipe_in _pipe_out _pipe_out_ifc _pipe_out_multi _pipe_out_multi_compact _pipe_pred _pipe_pred_out _pipe_mut_pred _pipe_out_wc_multi _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2;
   quit;
 %mend test_pipe;
 

@@ -47,6 +47,8 @@ Example:
 - `%filter(where_expr, ...)` filters rows.
 - Aliases: `%where`, `%where_not`, `%mask`, `%where_if`.
 - Supports `as_view=1`.
+- Works with predicate helpers from `predicates.sas`, including `if_any/if_all` without `%` prefix.
+- `filter(...)` parses arguments via `parmbuff`, so nested commas in predicate calls do not require `%str(...)`.
 
 Examples:
 
@@ -54,6 +56,7 @@ Examples:
 %filter(premium > 1000, data=work.policies, out=work.high_premium);
 %where_not(home_state='CA', data=work.policies, out=work.non_ca);
 %where_if(premium > 1000, YES, data=work.policies, out=work.conditional_filter);
+%filter(if_any(cols=loss1 loss2 loss3, pred=is_zero()), data=work.policies, out=work.any_zero_losses);
 ```
 
 ### mutate.sas
@@ -62,6 +65,7 @@ Examples:
 - Alias: `%with_column(col_name, col_expr, ...)`.
 - Supports `as_view=1`.
 - For the common case, use assignment form directly: `mutate(new_col = expression)`.
+- Registered predicate/function calls inside assignments are auto-expanded, so `mutate(flag=is_positive(x))` does not need `%is_positive(...)`.
 - `mutate` auto-appends a trailing `;` when missing.
 - Comma-delimited assignments are supported: `mutate(a = x + 1, b = a * 2)`.
 - Compact form is also valid: `mutate(a=x+1,b=a*2)`.

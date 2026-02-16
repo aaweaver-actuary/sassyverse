@@ -1,3 +1,8 @@
+%if not %sysmacexist(_abort) %then %include 'util.sas';
+%if not %sysmacexist(_assert_ds_exists) %then %include 'validation.sas';
+
+%include 'predicates.sas';
+
 %include '_selectors/lambda.sas';
 %include '_selectors/utils.sas';
 %include '_selectors/starts_with.sas';

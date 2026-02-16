@@ -61,6 +61,68 @@ Boolean-like values accepted:
 
 - `1/0`, `YES/NO`, `TRUE/FALSE`, `Y/N`, `ON/OFF`
 
+## Predicate Functions (`predicates.sas`)
+
+`pipr` now includes a generalized function generator plus a core predicate surface.
+
+Generator macros:
+
+- `%gen_function(expr, args, name)` or named form `%gen_function(expr=..., args=..., name=...)`
+- `%gen_predicate(expr, args, name)` convenience wrapper (`kind=PREDICATE`)
+- `%predicate(...)` alias for `%gen_predicate(...)`
+- `%list_functions()` to inspect registered functions
+
+Positional example:
+
+```sas
+%gen_function(%str(((&x) > (&thr))), %str(x, thr=0), gt_thr);
+```
+
+Example ad hoc predicate:
+
+```sas
+%gen_predicate(
+  name=near_zero,
+  args=%str(x, tol=1e-6),
+  expr=%str((abs(&x) <= (&tol))),
+  overwrite=1
+);
+
+%filter(near_zero(balance), data=work.txn, out=work.txn_near_zero);
+```
+
+Built-in row-wise predicates include:
+
+- missingness: `is_missing`, `is_not_missing`, `is_blank`, `is_na_like`
+- equality/membership: `is_in`, `is_not_in`, `is_between`, `is_outside`, `is_equal`, `is_not_equal`
+- numeric/data shape: `is_zero`, `is_positive`, `is_negative`, `is_nonpositive`, `is_nonnegative`, `is_integerish`, `is_multiple_of`, `is_finite`
+- strings: `starts_with`, `ends_with`, `contains`, `matches`, `is_alpha`, `is_alnum`, `is_digit`, `is_upper`, `is_lower`, `is_like`
+- dates: `is_before`, `is_after`, `is_on_or_before`, `is_on_or_after`, `is_between_dates`
+- data-quality encodings: `is_numeric_string`, `is_date_string`, `is_in_format`
+
+Column-wise predicate composition:
+
+- `if_any(cols=..., pred=...)`
+- `if_all(cols=..., pred=...)`
+
+Examples:
+
+```sas
+%filter(if_any(cols=amt1 amt2 amt3, pred=is_zero()), data=work.fact, out=work.has_zero);
+%filter(if_all(cols=id1 id2 id3, pred=is_not_missing()), data=work.fact, out=work.keys_complete);
+
+/* lambda-style template across columns */
+%filter(
+  if_any(cols=code1 code2, pred=~prxmatch('/^X/', strip(.x)) > 0),
+  data=work.fact,
+  out=work.any_x_code
+);
+```
+
+Note:
+
+- In `filter(...)` and `mutate(...)`, registered predicates/functions are auto-expanded, so `is_zero(x)` and `if_any(...)` do not need a leading `%`.
+
 ## Selector quick guide (`select(...)`)
 
 Supported selector tokens:
@@ -194,6 +256,7 @@ Example:
 - Selector system is in `_selectors/*.sas`.
 - Shared plumbing:
   - `util.sas`: `_abort`, `_tmpds`, boolean/test helpers
+  - `predicates.sas`: `%gen_function`, `%gen_predicate`, built-in predicates, `if_any/if_all` helpers
   - `validation.sas`: existence/type/key checks
   - `_verbs/utils.sas`: step parsing and macro dispatch
 - `pipe()` internals are intentionally split into small helper macros for maintainability and testability.
@@ -203,6 +266,7 @@ Example:
 - For full project load, use `%sassyverse_init(..., include_pipr=1)`.
 - For focused experimentation, include only:
   - `util.sas`
+  - `predicates.sas` (if using `%gen_function`, `%gen_predicate`, or predicate helpers such as `if_any/if_all`)
   - `validation.sas`
   - selector files (if using selector syntax)
   - needed verb files

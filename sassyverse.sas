@@ -105,6 +105,7 @@
       root=%superq(root),
       files=%str(
         pipr/util.sas
+        | pipr/predicates.sas
         | pipr/validation.sas
         | pipr/_selectors/lambda.sas
         | pipr/_selectors/utils.sas

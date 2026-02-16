@@ -150,32 +150,59 @@
       %assertEqual(&_sp_has., 0);
     %test_summary;
 
-    %test_case(apply_step with filter);
-      data work._ut_in;
-        x=1; output;
-        x=2; output;
-        x=3; output;
-      run;
+    %if %sysmacexist(filter) %then %do;
+      %test_case(apply_step with filter);
+        data work._ut_in;
+          x=1; output;
+          x=2; output;
+          x=3; output;
+        run;
 
-      %_apply_step(%str(filter(x > 1)), work._ut_in, work._ut_out, 1, 0);
+        %_apply_step(%str(filter(x > 1)), work._ut_in, work._ut_out, 1, 0);
 
-      proc sql noprint;
-        select count(*) into :_ut_cnt trimmed from work._ut_out;
-      quit;
+        proc sql noprint;
+          select count(*) into :_ut_cnt trimmed from work._ut_out;
+        quit;
 
-      %assertEqual(&_ut_cnt., 2);
-    %test_summary;
+        %assertEqual(&_ut_cnt., 2);
+      %test_summary;
+    %end;
 
-    %test_case(apply_step with with_column mutate-style assignments);
-      %_apply_step(%str(with_column(a = x + 1, b = a * 2)), work._ut_in, work._ut_out_wc, 1, 0);
-      proc sql noprint;
-        select sum(b) into :_ut_sum_wc trimmed from work._ut_out_wc;
-      quit;
-      %assertEqual(&_ut_sum_wc., 18);
-    %test_summary;
+    %if %sysmacexist(filter) and %sysmacexist(if_any) %then %do;
+      %test_case(apply_step with bare predicate helper calls);
+        data work._ut_pred_in;
+          a=1; b=0; c=.; output;
+          a=2; b=3; c=4; output;
+        run;
+
+        %_apply_step(%str(filter(if_any(cols=a b c, pred=is_zero()))), work._ut_pred_in, work._ut_pred_out, 1, 0);
+
+        proc sql noprint;
+          select count(*) into :_ut_pred_cnt trimmed from work._ut_pred_out;
+        quit;
+
+        %assertEqual(&_ut_pred_cnt., 1);
+      %test_summary;
+    %end;
+
+    %if %sysmacexist(with_column) %then %do;
+      %test_case(apply_step with with_column mutate-style assignments);
+        data work._ut_in;
+          x=1; output;
+          x=2; output;
+          x=3; output;
+        run;
+
+        %_apply_step(%str(with_column(a = x + 1, b = a * 2)), work._ut_in, work._ut_out_wc, 1, 0);
+        proc sql noprint;
+          select sum(b) into :_ut_sum_wc trimmed from work._ut_out_wc;
+        quit;
+        %assertEqual(&_ut_sum_wc., 18);
+      %test_summary;
+    %end;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _ut_in _ut_out _ut_out_wc; quit;
+  proc datasets lib=work nolist; delete _ut_in _ut_out _ut_out_wc _ut_pred_in _ut_pred_out; quit;
 %mend test_pipr_verb_utils;
 
 %_pipr_autorun_tests(test_pipr_verb_utils);

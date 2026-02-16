@@ -112,8 +112,23 @@
   %let &out_stmt=%superq(_norm);
 %mend;
 
+%macro _mutate_expand_functions(stmt=, out_stmt=);
+  %local _stmt_in _stmt_out;
+  %let _stmt_in=%superq(stmt);
+  %if %length(%superq(_stmt_in))=0 %then %do;
+    %let &out_stmt=;
+    %return;
+  %end;
+
+  %if %sysmacexist(_pred_expand_expr) %then %do;
+    %_pred_expand_expr(expr=%superq(_stmt_in), out_expr=_stmt_out);
+    %let &out_stmt=%superq(_stmt_out);
+  %end;
+  %else %let &out_stmt=%superq(_stmt_in);
+%mend;
+
 %macro mutate(stmt, data=, out=, validate=1, as_view=0) / parmbuff;
-  %local _as_view _stmt_norm _stmt_work _data_work _out_work _validate_work _as_view_work;
+  %local _as_view _stmt_norm _stmt_eval _stmt_work _data_work _out_work _validate_work _as_view_work;
 
   %_mutate_parse_parmbuff(
     stmt_in=%superq(stmt),
@@ -131,8 +146,9 @@
   %let _as_view=%_pipr_bool(%superq(_as_view_work), default=0);
   %_assert_ds_exists(&_data_work);
   %_mutate_normalize_stmt(%superq(_stmt_work), _stmt_norm);
+  %_mutate_expand_functions(stmt=%superq(_stmt_norm), out_stmt=_stmt_eval);
 
-  %_mutate_emit_data(stmt=&_stmt_norm, data=&_data_work, out=&_out_work, as_view=&_as_view);
+  %_mutate_emit_data(stmt=%superq(_stmt_eval), data=&_data_work, out=&_out_work, as_view=&_as_view);
   %if &syserr > 4 %then %_abort(mutate() failed (SYSERR=&syserr).);
 %mend;
 
@@ -210,6 +226,18 @@
       %assertEqual(&_sum_b_multi_compact., 16);
     %test_summary;
 
+    %if %sysmacexist(is_positive) and %sysmacexist(is_between) %then %do;
+      %test_case(mutate expands registered predicates without percent prefix);
+        %mutate(flag = is_positive(x), in_2_3 = is_between(x, 2, 3), data=work._mut, out=work._mut_pred);
+        proc sql noprint;
+          select sum(flag) into :_sum_flag_pred trimmed from work._mut_pred;
+          select sum(in_2_3) into :_sum_in_2_3 trimmed from work._mut_pred;
+        quit;
+        %assertEqual(&_sum_flag_pred., 2);
+        %assertEqual(&_sum_in_2_3., 1);
+      %test_summary;
+    %end;
+
     %test_case(mutate remains compatible with explicit statement blocks);
       %mutate(%str(y = x * 3;), data=work._mut, out=work._mut3x);
       proc sql noprint;
@@ -240,6 +268,16 @@
       %assertEqual(&_sum_b_wc_multi., 16);
     %test_summary;
 
+    %if %sysmacexist(is_positive) %then %do;
+      %test_case(with_column expands predicates without percent prefix);
+        %with_column(flag = is_positive(x), data=work._mut, out=work._mut_wc_pred);
+        proc sql noprint;
+          select sum(flag) into :_sum_wc_pred trimmed from work._mut_wc_pred;
+        quit;
+        %assertEqual(&_sum_wc_pred., 2);
+      %test_summary;
+    %end;
+
     %test_case(mutate helper view);
       %_mutate_emit_data(stmt=%str(z = x + 2;), data=work._mut, out=work._mut_view, as_view=1);
       %assertTrue(%eval(%sysfunc(exist(work._mut_view, view))=1), view created);
@@ -250,7 +288,7 @@
     %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _mut _mut2 _mut_ifc _mut_multi _mut_multi_compact _mut3x _mut3 _mut4 _mut_wc_multi _mut_view; quit;
+  proc datasets lib=work nolist; delete _mut _mut2 _mut_ifc _mut_multi _mut_multi_compact _mut_pred _mut3x _mut3 _mut4 _mut_wc_multi _mut_wc_pred _mut_view; quit;
 %mend test_mutate;
 
 %_pipr_autorun_tests(test_mutate);

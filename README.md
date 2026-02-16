@@ -110,14 +110,35 @@ run;
 );
 ```
 
-### 4. Export a dataset to CSV
+### 4. Use predicate helpers in filters
+
+```sas
+%pipe(
+  work.policies
+  | filter(if_any(cols=claim_cnt paid_cnt reserve_cnt, pred=is_positive()))
+  | collect_into(work.policies_with_activity)
+);
+```
+
+Predicate ergonomics:
+
+- Inside `filter(...)` and `mutate(...)`, registered predicates/functions can be called without a leading `%`.
+- Examples: `filter(is_positive(loss_amt))`, `mutate(flag=is_not_missing(policy_id))`.
+
+Create ad hoc predicate macros without writing full `%macro ... %mend` blocks:
+
+```sas
+%gen_predicate(name=near_zero, args=%str(x, tol=1e-6), expr=%str((abs(&x) <= (&tol))), overwrite=1);
+```
+
+### 5. Export a dataset to CSV
 
 ```sas
 %let out_dir=%sysfunc(tranwrd(%sysfunc(pathname(work)), \, /));
 %export_csv_copy(work.policies, out_folder=&out_dir);
 ```
 
-### 5. Run the deterministic test suite
+### 6. Run the deterministic test suite
 
 ```sas
 %include "S:/small_business/modeling/sassyverse/tests/run_tests.sas";
@@ -130,6 +151,7 @@ run;
 - `src/pipr/README.md`: pipeline engine usage and workflow patterns
 - `src/pipr/_verbs/README.md`: verb reference
 - `src/pipr/_selectors/README.md`: selector and lambda reference
+- `src/pipr/predicates.sas`: function generator + row-wise predicate helpers
 - `tests/README.md`: deterministic test runner usage
 
 ## Troubleshooting
