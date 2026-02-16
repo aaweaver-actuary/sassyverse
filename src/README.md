@@ -1,83 +1,255 @@
-# Core modules (src)
+# Core modules (`src/`)
 
-This folder contains the core macro library plus the testing utilities. Most files are self-contained and can be `%include`d individually, but the recommended way is to use the project entrypoint in the repo root.
+This folder contains the reusable utility layer that powers sassyverse and pipr.
 
-## Entry and loading
+You can either:
 
-- `sassymod.sas` defines `sbmod`/`sassymod` for one-time module loading. It uses a hardcoded default `base_path` that should be overridden in your environment.
-- `globals.sas` sets up a few global variables used by other modules.
-- `testthat.sas` contains higher-level test helpers and auto-runs its own tests when included.
+- load everything via `sassyverse_init(...)`, or
+- include only the modules you need for focused scripts.
 
-## Module index
+## Loading patterns
 
-### assert.sas
+### Full project load (recommended)
 
-- Minimal unit test framework with counters and log formatting.
-- Macros: `assertTrue`, `assertFalse`, `assertEqual`, `assertNotEqual`, plus `test_suite`, `test_case`, `test_summary`.
-- Also defines FCMP subroutines for data-step assertions.
+```sas
+%include "S:/small_business/modeling/sassyverse/sassyverse.sas";
+%sassyverse_init(base_path=S:/small_business/modeling/sassyverse/src, include_pipr=1, include_tests=0);
+```
 
-### dates.sas
+### Targeted load for a single utility
 
-- Date convenience macros: `year`, `month`, `day`, `mdy`, and `fmt_date`.
+```sas
+%include "S:/small_business/modeling/sassyverse/src/sassymod.sas";
+%let _sassyverse_base_path=S:/small_business/modeling/sassyverse/src;
 
-### export.sas
+%sbmod(strings);
+%sbmod(lists);
+```
 
-- Export helpers for CSV output: `export_to_csv`, `export_csv_copy`, `export_with_temp_file`.
-- Uses `shell.sas` for chmod and listing output directories.
+## Module quick reference
 
-### hash.sas
+### `assert.sas`
 
-- Helpers for declaring and configuring data-step hash objects: `hash__dcl`, `hash__key`, `hash__data`, `hash__missing`, `hash__add`.
-- `make_hash_obj` provides a higher-level wrapper for common patterns.
+Purpose:
 
-### index.sas
+- lightweight test framework for macro-level and data-step assertions
 
-- Index helpers for PROC DATASETS.
-- `make_simple_index`, `make_simple_indices`, `make_comp_index` plus convenience aliases.
+Key macros:
 
-### is_equal.sas
+- `assertTrue`, `assertFalse`, `assertEqual`, `assertNotEqual`
+- `test_suite`, `test_case`, `test_summary`
 
-- `is_equal(a,b)` and `is_not_equal(a,b)` for macro-level comparisons.
-- Numeric-aware comparison with a fallback to character comparison.
+Example:
 
-### lists.sas
+```sas
+%test_suite(Smoke checks);
+  %test_case(Basic math);
+    %assertEqual(2, 2);
+    %assertTrue(%eval(5 > 1), 5 is greater than 1);
+  %test_summary;
+%test_summary;
+```
 
-- List helpers: `len`, `nth`, `first`, `last`, `unique`, `sorted`, `push`, `pop`, `concat`, `foreach`, `transform`.
+### `strings.sas`
 
-### logging.sas
+Purpose:
 
-- Logging to files with timestamps: `logger`, `logtype`, `info`, `dbg`, `console_log`.
-- `set_log_level` and `toggle_log_level` for controlling verbosity.
+- string manipulation in macro code
 
-### n_rows.sas
+Common tasks:
 
-- `n_rows(ds)` returns the count of observations in a data set.
+- split/parsing: `str__split`
+- find/replace: `str__find`, `str__replace`
+- formatting: `str__format`
 
-### round_to.sas
+Example:
 
-- `roundto(x, n_digits)` macro and FCMP function for numeric rounding.
+```sas
+%let name=policy_state;
+%put %str__upper(&name);          /* POLICY_STATE */
+%put %str__replace(&name, _, -);  /* policy-state */
+```
 
-### shell.sas
+### `lists.sas`
 
-- Convenience wrappers around OS shell commands: `shell`, `shmkdir`, `shpwd`, `shrm`, `shrm_dir`, `shchmod`, `shls`.
-- Includes Windows-safe wrappers. `shchmod` is a no-op on Windows.
+Purpose:
 
-### strings.sas
+- list-like operations in macro language
 
-- Macro string helpers: `str__index`, `str__replace`, `str__trim`, `str__upper`, `str__lower`, `str__len`, `str__split`, `str__slice`, `str__startswith`, `str__endswith`, `str__join2`, `str__reverse`, `str__find`, `str__format`.
-- Includes FCMP function versions as well.
+Common tasks:
 
-### testthat.sas
+- counting and indexing: `len`, `nth`, `first`, `last`
+- deduplication/sorting: `unique`, `sorted`
+- iteration: `foreach`
 
-- Higher-level test helpers: `nobs`, `tt_nonempty_bool`, `tt_require_nonempty`, `tt_is_nonempty`.
-- Contains a self-test suite that auto-runs when included.
+Example:
 
-## Tests
+```sas
+%let cols=policy_id policy_state policy_id;
+%let unique_cols=%unique(&cols);
+%put &=unique_cols;  /* policy_id policy_state */
+```
 
-Many modules contain auto-run test suites at the bottom of the file. This is useful during development but can be noisy or undesirable in production loads.
+### `dates.sas`
 
-For a full deterministic run, use the runner at [tests/run_tests.sas](tests/run_tests.sas).
+Purpose:
 
-## Usage
+- macro wrappers for date extraction and formatting
 
-For full-suite load, see the entrypoint in the repo root. For targeted use, `%include` the specific module file you need.
+Example:
+
+```sas
+%let dt='16FEB2026'd;
+%put Year=%year(&dt) Month=%month(&dt) Day=%day(&dt);
+```
+
+### `n_rows.sas`
+
+Purpose:
+
+- fast count of observations in a dataset
+
+Example:
+
+```sas
+%let row_count=%n_rows(work.my_ds);
+%put &=row_count;
+```
+
+### `round_to.sas`
+
+Purpose:
+
+- consistent numeric rounding helper
+
+Example:
+
+```sas
+%let x=%roundto(3.14159, 2);
+%put &=x;  /* 3.14 */
+```
+
+### `shell.sas`
+
+Purpose:
+
+- OS command wrappers with Windows compatibility handling
+
+Common tasks:
+
+- inspect folder contents: `shls`
+- create/delete directories: `shmkdir`, `shrm_dir`
+
+Example:
+
+```sas
+%let out_dir=%sysfunc(tranwrd(%sysfunc(pathname(work)), \, /));
+%shls(dir=&out_dir, show_hidden=0);
+```
+
+### `export.sas`
+
+Purpose:
+
+- CSV export wrappers around `PROC EXPORT`
+
+Common tasks:
+
+- one-step export: `export_csv_copy`
+- explicit output library path: `export_to_csv`
+
+Example:
+
+```sas
+%let out_dir=%sysfunc(tranwrd(%sysfunc(pathname(work)), \, /));
+%export_csv_copy(work.my_ds, out_folder=&out_dir);
+```
+
+Note:
+
+- `export_csv_copy` lowercases dataset names and replaces `.` with `__` in filenames.
+- Example: `work._exp` becomes `work___exp.csv`.
+
+### `hash.sas`
+
+Purpose:
+
+- helper macros for hash object setup in data steps
+
+Common tasks:
+
+- define keys/data once, then `find()`/`add()` in data-step logic
+
+Example:
+
+```sas
+/* Most users should prefer pipr left_join(...) unless custom hash logic is needed. */
+```
+
+### `index.sas`
+
+Purpose:
+
+- helpers for simple/composite index creation
+
+Example:
+
+```sas
+%make_simple_index(ds=policies, col=policy_id, lib=work);
+```
+
+### `logging.sas`
+
+Purpose:
+
+- file + console logging helpers
+
+Common tasks:
+
+- quick console output: `console_log`
+- leveled logs: `info`, `dbg`
+
+Example:
+
+```sas
+%set_log_level(DEBUG);
+%dbg(Starting policy feature build);
+```
+
+### `testthat.sas`
+
+Purpose:
+
+- additional test helpers (`nobs`, `tt_require_nonempty`, etc.)
+
+## Common workflows for new users
+
+### 1. Include one module for ad hoc utility use
+
+```sas
+%include "S:/small_business/modeling/sassyverse/src/strings.sas";
+%put %str__lower(HELLO_WORLD);
+```
+
+### 2. Build a small reusable test around a macro
+
+```sas
+%test_suite(My macro tests);
+  %test_case(Non-empty output);
+    %assertNotEqual(%str__trim(  a  ), );
+  %test_summary;
+%test_summary;
+```
+
+### 3. Export a WORK table for debugging
+
+```sas
+%let debug_dir=%sysfunc(tranwrd(%sysfunc(pathname(work)), \, /));
+%export_to_csv(work.intermediate_table, &debug_dir);
+```
+
+## Testing notes
+
+- Many module files contain test blocks at file end.
+- Deterministic full-suite run is available via `tests/run_tests.sas`.
+- For CI-like runs, prefer the deterministic runner over ad hoc includes.

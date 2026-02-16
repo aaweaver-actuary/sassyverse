@@ -41,6 +41,13 @@
   %if "%superq(_incl_pipr_is_on)" ne "0" %then %do;
     %include "&root.pipr/util.sas";
     %include "&root.pipr/validation.sas";
+    %include "&root.pipr/_selectors/lambda.sas";
+    %include "&root.pipr/_selectors/utils.sas";
+    %include "&root.pipr/_selectors/starts_with.sas";
+    %include "&root.pipr/_selectors/ends_with.sas";
+    %include "&root.pipr/_selectors/contains.sas";
+    %include "&root.pipr/_selectors/matches.sas";
+    %include "&root.pipr/_selectors/cols_where.sas";
     %include "&root.pipr/_verbs/utils.sas";
     %include "&root.pipr/_verbs/arrange.sas";
     %include "&root.pipr/_verbs/drop.sas";

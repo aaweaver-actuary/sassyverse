@@ -12,13 +12,22 @@
 %mend;
 
 %macro select(cols, data=, out=, validate=1, as_view=0);
-  %local _validate _as_view;
+  %local _validate _as_view _resolved_cols;
   %let _validate=%_pipr_bool(%superq(validate), default=1);
   %let _as_view=%_pipr_bool(%superq(as_view), default=0);
   %_assert_ds_exists(&data);
-  %if &_validate %then %_assert_cols_exist(&data, &cols);
+  %if %sysmacexist(_sel_expand) %then %do;
+    %_sel_expand(ds=&data, expr=%superq(cols), out_cols=_resolved_cols, validate=&_validate);
+  %end;
+  %else %do;
+    %let _resolved_cols=%superq(cols);
+    %if %index(%superq(_resolved_cols), %str(%()) > 0 %then %do;
+      %_abort(select() selector expressions require pipr/_selectors to be loaded.);
+    %end;
+    %if &_validate %then %_assert_cols_exist(&data, &_resolved_cols);
+  %end;
 
-  %_select_emit_data(cols=&cols, data=&data, out=&out, as_view=&_as_view);
+  %_select_emit_data(cols=&_resolved_cols, data=&data, out=&out, as_view=&_as_view);
 
   %if &syserr > 4 %then %_abort(select() failed (SYSERR=&syserr).);
 %mend;
@@ -54,9 +63,91 @@
 
       %assertEqual(&_cnt_view., 1);
     %test_summary;
+
+    %test_case(select supports selector helpers);
+      data work._selx;
+        length policy_number 8 policy_type $12 company_numb 8 home_code $6 group_code $6 home_state $2 policy_state $2 misc 8;
+        policy_number=1001;
+        policy_type='ACTIVE';
+        company_numb=44;
+        home_code='H01';
+        group_code='G01';
+        home_state='CA';
+        policy_state='NV';
+        misc=9;
+        output;
+      run;
+
+      %select(
+        %str(starts_with('policy') company_numb ends_with('code') like('%state%')),
+        data=work._selx,
+        out=work._selx_out
+      );
+
+      proc sql noprint;
+        select upcase(name) into :_sel_cols_list separated by ' '
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_SELX_OUT"
+        order by varnum;
+      quit;
+
+      %assertEqual(
+        &_sel_cols_list.,
+        POLICY_NUMBER POLICY_TYPE POLICY_STATE COMPANY_NUMB HOME_CODE GROUP_CODE HOME_STATE
+      );
+
+      %select(
+        %str(starts_with('policy'), company_numb, ends_with('code')),
+        data=work._selx,
+        out=work._selx_commas
+      );
+      proc sql noprint;
+        select upcase(name) into :_sel_commas_list separated by ' '
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_SELX_COMMAS"
+        order by varnum;
+      quit;
+
+      %assertEqual(
+        &_sel_commas_list.,
+        POLICY_NUMBER POLICY_TYPE POLICY_STATE COMPANY_NUMB HOME_CODE GROUP_CODE
+      );
+
+      %select(%str(contains('state')), data=work._selx, out=work._selx_state);
+      proc sql noprint;
+        select upcase(name) into :_sel_contains_list separated by ' '
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_SELX_STATE"
+        order by varnum;
+      quit;
+
+      %assertEqual(&_sel_contains_list., HOME_STATE POLICY_STATE);
+
+      %select(%str(matches('state$')), data=work._selx, out=work._selx_matches);
+      proc sql noprint;
+        select upcase(name) into :_sel_matches_list separated by ' '
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_SELX_MATCHES"
+        order by varnum;
+      quit;
+      %assertEqual(&_sel_matches_list., HOME_STATE POLICY_STATE);
+
+      %select(
+        %str(cols_where(lambda(.is_char and prxmatch('/state/i', .name) > 0))),
+        data=work._selx,
+        out=work._selx_where
+      );
+      proc sql noprint;
+        select upcase(name) into :_sel_where_list separated by ' '
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_SELX_WHERE"
+        order by varnum;
+      quit;
+      %assertEqual(&_sel_where_list., HOME_STATE POLICY_STATE);
+    %test_summary;
   %test_summary;
 
-  proc datasets lib=work nolist; delete _sel _sel_ac _sel_view; quit;
+  proc datasets lib=work nolist; delete _sel _sel_ac _sel_view _selx _selx_out _selx_commas _selx_state _selx_matches _selx_where; quit;
 %mend test_select;
 
 %_pipr_autorun_tests(test_select);

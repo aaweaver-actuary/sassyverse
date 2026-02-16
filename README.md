@@ -1,11 +1,14 @@
 # Sassyverse
 
-A SAS macro toolkit that brings tidyverse-style data manipulation, lightweight testing helpers, and productivity utilities into a single, reusable codebase.
+Sassyverse is a SAS macro toolkit for:
+
+- tidyverse-style dataset pipelines (`pipr`)
+- small, practical utility macros (strings, lists, shell, export, hash helpers)
+- lightweight unit testing
+
+If you are new to the project, this README is the fastest onboarding path.
 
 ## Quick start
-
-1. Include the entrypoint.
-2. Call the initializer with the path to the src folder.
 
 ```sas
 %include "S:/small_business/modeling/sassyverse/sassyverse.sas";
@@ -18,56 +21,117 @@ A SAS macro toolkit that brings tidyverse-style data manipulation, lightweight t
 ```
 
 Notes:
-- Use forward slashes in paths for portability in SAS.
-- Several modules currently run their unit tests on include. If you want a quiet load, set `include_tests=0` and consider removing auto-run tests in module files.
 
-## What you get
+- `base_path` should point to the `src/` folder.
+- Prefer forward slashes in paths for portability.
+- Keep `include_tests=0` for production-style loads.
 
-- Core utilities in src (strings, lists, date helpers, logging, shell helpers, export, hash utilities, equality checks, rounding, and index helpers).
-- A small testing framework: `assert.sas` and `testthat.sas`.
-- `pipr`: a tidyverse-style pipeline macro with verbs like `filter`, `mutate`, `select`, `arrange`, and `left_join`.
+## First pipeline in 5 minutes
 
-## Project layout
+```sas
+data work.policies;
+  length policy_id 8 policy_type $12 company_numb 8 home_state $2 premium 8;
+  policy_id=1001; policy_type='AUTO'; company_numb=44; home_state='CA'; premium=1200; output;
+  policy_id=1002; policy_type='HOME'; company_numb=44; home_state='NV'; premium=1800; output;
+run;
 
-- src/        Core macros and function definitions
-- src/pipr/   Pipeline engine and validation helpers
-- src/pipr/_verbs/   Verb implementations for `pipe()`
-- sassyverse.sas     Single entrypoint to load everything
+%pipe(
+  work.policies
+  | filter(premium >= 1500)
+  | mutate(%str(premium_band = 'HIGH';))
+  | select(policy_id policy_type premium premium_band)
+  | collect_into(work.policy_high_premium)
+  , use_views=0
+);
+```
 
-## Testing
+## Common tasks for new users
 
-- `assert.sas` provides `assertTrue`, `assertFalse`, `assertEqual`, and `assertNotEqual`.
-- `testthat.sas` provides test-suite and test-case wrappers and convenience checks like `tt_require_nonempty`.
-- Many modules auto-run tests at the end of the file. This can be convenient during development but noisy in production.
+### 1. Select columns quickly
 
-### Test runner
+```sas
+%pipe(
+  work.policies
+  | select(
+      starts_with('policy')
+      company_numb
+      matches('state$')
+      cols_where(~.is_num)
+    )
+  | collect_into(work.policy_selected)
+);
+```
 
-Use the deterministic test runner to execute the full suite:
+Useful selector helpers:
+
+- `starts_with('prefix')`
+- `ends_with('suffix')`
+- `contains('substr')`
+- `like('%pattern%')`
+- `matches('regex')`
+- `cols_where(predicate)` with `~...` or `lambda(...)`
+
+### 2. Join lookup data
+
+```sas
+data work.company_dim;
+  length company_numb 8 company_name $20;
+  company_numb=44; company_name='Acme Insurance'; output;
+run;
+
+%pipe(
+  work.policies
+  | left_join(
+      right=work.company_dim,
+      on=company_numb,
+      right_keep=company_name,
+      method=AUTO
+    )
+  | collect_into(work.policy_enriched)
+);
+```
+
+### 3. Aggregate results
+
+```sas
+%summarise(
+  vars=premium,
+  by=home_state,
+  data=work.policies,
+  out=work.premium_by_state,
+  stats=sum=total_premium mean=avg_premium
+);
+```
+
+### 4. Export a dataset to CSV
+
+```sas
+%let out_dir=%sysfunc(tranwrd(%sysfunc(pathname(work)), \, /));
+%export_csv_copy(work.policies, out_folder=&out_dir);
+```
+
+### 5. Run the deterministic test suite
 
 ```sas
 %include "S:/small_business/modeling/sassyverse/tests/run_tests.sas";
-%sassyverse_run_tests(base_path=S:/small_business/modeling/sassyverse/src);
+%sassyverse_run_tests(base_path=S:/small_business/modeling/sassyverse/src, include_pipr=1);
 ```
 
-This sets `__unit_tests=1` and loads the suite in a consistent order.
+## Documentation map
 
-## Dependencies and assumptions
+- `src/README.md`: core utility modules and examples
+- `src/pipr/README.md`: pipeline engine usage and workflow patterns
+- `src/pipr/_verbs/README.md`: verb reference
+- `src/pipr/_selectors/README.md`: selector and lambda reference
+- `tests/README.md`: deterministic test runner usage
 
-- Some modules reference external paths like `/sas/data/project/EG/aweaver/macros` and expect a writable WORK library.
-- `assert.sas` references `sbfuncs` and `sb_funcs` function libraries; ensure these libraries are assigned in your environment.
-- `shell.sas` includes Windows-safe wrappers for common operations. `shchmod` is a no-op on Windows.
+## Troubleshooting
 
-## Known gaps and follow-ups
-
-- `src/pipr/verbs.sas` includes all verbs, but you can also include specific verb files if you want a smaller footprint.
-- Several modules hardcode default directories. Consider centralizing configuration in one place for portability.
-
-## Contributing
-
-- Keep macros small and focused.
-- Add tests using `assert.sas` and `testthat.sas` for new behavior.
-- Prefer `pipe()` verbs for data set transforms to keep pipelines consistent.
+- `ERROR: base_path= is required`: pass `base_path=` to `sassyverse_init`.
+- `Dataset does not exist`: confirm `data=` input exists before running a verb.
+- `Missing required columns`: set `validate=0` only when intentionally bypassing checks.
+- `selector macro is not loaded`: load through `sassyverse_init(..., include_pipr=1)` or include selector files before `select.sas`.
 
 ## License
 
-See LICENSE.
+See `LICENSE`.

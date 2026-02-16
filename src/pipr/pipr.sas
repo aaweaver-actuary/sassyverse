@@ -635,6 +635,7 @@
 
 %macro test_pipe;
   %_pipr_require_assert;
+  %local _sel_pipe_cols;
 
   %test_suite(Testing pipe);
     %test_case(simple pipeline with filter/mutate/select);
@@ -728,10 +729,78 @@
 
       %assertEqual(&_cnt_bool., 2);
     %test_summary;
+
+    %test_case(select supports selector expressions in pipe);
+      data work._pipe_sel;
+        length policy_id 8 policy_type $12 company_numb 8 state_code $8 home_code $8 home_state $2 other 8;
+        policy_id=1;
+        policy_type='A';
+        company_numb=99;
+        state_code='S1';
+        home_code='H1';
+        home_state='CA';
+        other=5;
+        output;
+      run;
+
+      %pipe(
+        work._pipe_sel
+        | select(starts_with('policy') company_numb ends_with('code') like('%state%'))
+        | collect_into(work._pipe_sel_out)
+        , use_views=0
+        , cleanup=1
+      );
+
+      proc sql noprint;
+        select upcase(name) into :_sel_pipe_cols separated by ' '
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_PIPE_SEL_OUT"
+        order by varnum;
+      quit;
+
+      %assertEqual(
+        &_sel_pipe_cols.,
+        POLICY_ID POLICY_TYPE COMPANY_NUMB STATE_CODE HOME_CODE HOME_STATE
+      );
+    %test_summary;
+
+    %test_case(matches and cols_where selectors in pipe);
+      data work._pipe_sel;
+        length policy_id 8 policy_type $12 company_numb 8 state_code $8 home_code $8 home_state $2 other 8;
+        policy_id=1;
+        policy_type='A';
+        company_numb=99;
+        state_code='S1';
+        home_code='H1';
+        home_state='CA';
+        other=5;
+        output;
+      run;
+
+      %pipe(
+        work._pipe_sel
+        | select(matches('state$') cols_where(~.is_num))
+        | collect_into(work._pipe_sel_out2)
+        , use_views=0
+        , cleanup=1
+      );
+
+      proc sql noprint;
+        select upcase(name) into :_sel_pipe_cols2 separated by ' '
+        from sashelp.vcolumn
+        where libname="WORK" and memname="_PIPE_SEL_OUT2"
+        order by varnum;
+      quit;
+
+      %assertEqual(
+        &_sel_pipe_cols2.,
+        HOME_STATE POLICY_ID COMPANY_NUMB OTHER
+      );
+    %test_summary;
   %test_summary;
 
   proc datasets lib=work nolist;
-    delete _pipe_in _pipe_out _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out;
+    delete _pipe_in _pipe_out _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2;
   quit;
 %mend test_pipe;
 
