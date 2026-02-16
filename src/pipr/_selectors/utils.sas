@@ -116,8 +116,6 @@
 %mend;
 
 %macro _sel_tokenize(expr=, out_n=, out_prefix=_sel_tok);
-  %global &out_n;
-
   data _null_;
     length expr tok $32767 ch quote $1;
     expr = symget('expr');
@@ -139,7 +137,8 @@
       if quote = '' and depth = 0 and (ch = ',' or ch in (' ', '09'x, '0A'x, '0D'x)) then do;
         if length(strip(tok)) then do;
           n + 1;
-          call symputx(cats(symget('out_prefix'), n), strip(tok), 'L');
+          /* Token names are dynamic; publish globally so parent callers can always read them. */
+          call symputx(cats(symget('out_prefix'), n), strip(tok), 'G');
           tok = '';
         end;
       end;
@@ -148,10 +147,10 @@
 
     if length(strip(tok)) then do;
       n + 1;
-      call symputx(cats(symget('out_prefix'), n), strip(tok), 'L');
+      call symputx(cats(symget('out_prefix'), n), strip(tok), 'G');
     end;
 
-    call symputx(symget('out_n'), n, 'L');
+    call symputx(symget('out_n'), n, 'F');
   run;
 %mend;
 
@@ -305,6 +304,18 @@
       %assertEqual(&_stu_tok1., starts_with('policy'));
       %assertEqual(&_stu_tok2., company_numb);
       %assertEqual(&_stu_tok3., ends_with('code'));
+    %test_summary;
+
+    %test_case(tokenizer supports local out_n names in callers);
+      %local _n;
+      %_sel_tokenize(
+        expr=%str(company_numb starts_with('policy')),
+        out_n=_n,
+        out_prefix=_stu_tok_local
+      );
+      %assertEqual(&_n., 2);
+      %assertEqual(&_stu_tok_local1., company_numb);
+      %assertEqual(&_stu_tok_local2., starts_with('policy'));
     %test_summary;
 
     %test_case(parse selector call and unquote);

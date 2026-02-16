@@ -2,7 +2,9 @@
 %if not %sysmacexist(_abort) %then %include 'util.sas';
 %if not %sysmacexist(_assert_ds_exists) %then %include 'validation.sas';
 %if not %sysmacexist(_verb_supports_view) %then %include '_verbs/utils.sas';
-%if not %sysmacexist(filter) or not %sysmacexist(mutate) or not %sysmacexist(select) %then %include 'verbs.sas';
+%if (not %sysmacexist(filter)) or (not %sysmacexist(mutate)) or (not %sysmacexist(select)) %then %do;
+  %include 'verbs.sas';
+%end;
 
 %macro _pipe_parse_parmbuff(
   steps_in=,
@@ -22,8 +24,7 @@
   out_debug=,
   out_cleanup=
 );
-  %local buf i seg seg_head seg_val eq_pos;
-  %global __seg_count;
+  %local buf i seg seg_head seg_val eq_pos __seg_count;
 
   %let &out_steps=%superq(steps_in);
   %let &out_data=%superq(data_in);

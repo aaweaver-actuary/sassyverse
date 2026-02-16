@@ -18,8 +18,6 @@
 
 /* Split a parenthesized macro parmbuff string into top-level comma segments. */
 %macro _pipr_split_parmbuff_segments(buf=, out_n=, out_prefix=seg);
-  %global &out_n;
-
   data _null_;
     length buf seg $32767 ch quote $1;
     buf = symget('buf');
@@ -44,6 +42,7 @@
 
       if quote = '' and depth = 0 and ch = ',' then do;
        __seg_count + 1;
+        /* Segment names are dynamic; publish globally so callers can consume them reliably. */
         call symputx(cats(symget('out_prefix'),__seg_count), strip(seg), 'G');
         seg = '';
       end;
@@ -55,7 +54,7 @@
       call symputx(cats(symget('out_prefix'),__seg_count), strip(seg), 'G');
     end;
 
-    call symputx(symget('out_n'),__seg_count, 'G');
+    call symputx(symget('out_n'),__seg_count, 'F');
   run;
 %mend;
 
@@ -134,6 +133,18 @@
       %assertEqual(&_ps_seg1., mutate(flag=ifc(x>1,1,0)));
       %assertEqual(&_ps_seg2., data=work._in);
       %assertEqual(&_ps_seg3., note='a,b');
+    %test_summary;
+
+    %test_case(parmbuff splitter supports local out_n names used by callers);
+      %local _n;
+      %_pipr_split_parmbuff_segments(
+        buf=%str(name=a, args=b),
+        out_n=_n,
+        out_prefix=_ps_local
+      );
+      %assertEqual(&_n., 2);
+      %assertEqual(&_ps_local1., name=a);
+      %assertEqual(&_ps_local2., args=b);
     %test_summary;
   %test_summary;
 %mend test_pipr_util;

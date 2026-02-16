@@ -157,28 +157,79 @@
 %mend;
 
 %macro _pred_registry_add(name=, kind=GENERIC, macro_name=);
-  %local _u _m;
-  %global _pipr_functions;
+  %local _u _m _kind _n _i _fn _k _mac _found _new_functions _new_kinds _new_macros;
+  %global _pipr_functions _pipr_function_kinds _pipr_function_macros;
+
   %let _u=%upcase(%superq(name));
   %let _m=%superq(macro_name);
+  %let _kind=%upcase(%superq(kind));
   %if %length(%superq(_m))=0 %then %let _m=%superq(name);
   %if %length(%superq(_u))=0 %then %return;
 
-  %if %length(%superq(_pipr_functions))=0 %then %let _pipr_functions=&_u;
-  %else %if %sysfunc(indexw(%superq(_pipr_functions), &_u, %str( )))=0 %then
-    %let _pipr_functions=%superq(_pipr_functions) &_u;
+  %if %sysfunc(symexist(_pipr_functions)) %then
+    %let _n=%sysfunc(countw(%superq(_pipr_functions), %str( ), q));
+  %else %let _n=0;
 
-  %global _pipr_function_kind_&_u;
-  %let _pipr_function_kind_&_u=%upcase(%superq(kind));
-  %global _pipr_function_macro_&_u;
-  %let _pipr_function_macro_&_u=%superq(_m);
+  %let _found=0;
+  %let _new_functions=;
+  %let _new_kinds=;
+  %let _new_macros=;
+
+  %do _i=1 %to &_n;
+    %let _fn=%scan(%superq(_pipr_functions), &_i, %str( ), q);
+    %let _k=%scan(%superq(_pipr_function_kinds), &_i, %str( ), q);
+    %let _mac=%scan(%superq(_pipr_function_macros), &_i, %str( ), q);
+
+    %if %upcase(%superq(_fn))=%superq(_u) %then %do;
+      %let _found=1;
+      %let _k=%superq(_kind);
+      %let _mac=%superq(_m);
+    %end;
+
+    %if %length(%superq(_new_functions)) %then %let _new_functions=%superq(_new_functions) %superq(_fn);
+    %else %let _new_functions=%superq(_fn);
+
+    %if %length(%superq(_new_kinds)) %then %let _new_kinds=%superq(_new_kinds) %superq(_k);
+    %else %let _new_kinds=%superq(_k);
+
+    %if %length(%superq(_new_macros)) %then %let _new_macros=%superq(_new_macros) %superq(_mac);
+    %else %let _new_macros=%superq(_mac);
+  %end;
+
+  %if &_found = 0 %then %do;
+    %if %length(%superq(_new_functions)) %then %let _new_functions=%superq(_new_functions) %superq(_u);
+    %else %let _new_functions=%superq(_u);
+
+    %if %length(%superq(_new_kinds)) %then %let _new_kinds=%superq(_new_kinds) %superq(_kind);
+    %else %let _new_kinds=%superq(_kind);
+
+    %if %length(%superq(_new_macros)) %then %let _new_macros=%superq(_new_macros) %superq(_m);
+    %else %let _new_macros=%superq(_m);
+  %end;
+
+  %let _pipr_functions=%superq(_new_functions);
+  %let _pipr_function_kinds=%superq(_new_kinds);
+  %let _pipr_function_macros=%superq(_new_macros);
 %mend;
 
 %macro _pred_macro_for(name=, out_macro=);
-  %local _u _m;
+  %local _u _m _n _i _fn;
   %let _u=%upcase(%superq(name));
-  %if %sysfunc(symexist(_pipr_function_macro_&_u)) %then %let _m=&&_pipr_function_macro_&_u;
-  %else %let _m=;
+  %let _m=;
+
+  %if %sysfunc(symexist(_pipr_functions)) %then
+    %let _n=%sysfunc(countw(%superq(_pipr_functions), %str( ), q));
+  %else %let _n=0;
+
+  %do _i=1 %to &_n;
+    %let _fn=%scan(%superq(_pipr_functions), &_i, %str( ), q);
+    %if %upcase(%superq(_fn))=%superq(_u) %then %do;
+      %let _m=%scan(%superq(_pipr_function_macros), &_i, %str( ), q);
+      %goto _pred_macro_for_done;
+    %end;
+  %end;
+
+  %_pred_macro_for_done:
   %if %length(%superq(_m))=0 %then %let _m=%superq(name);
   %let &out_macro=%superq(_m);
 %mend;
@@ -356,7 +407,7 @@
 
   %do _i=1 %to &_n;
     %let _fn=%scan(%superq(_pipr_functions), &_i, %str( ), q);
-    %let _k=&&_pipr_function_kind_&_fn;
+    %let _k=%scan(%superq(_pipr_function_kinds), &_i, %str( ), q);
     %if %length(%superq(_kind))=0 or %superq(_kind)=%superq(_k) %then %do;
       %if %length(%superq(_out)) %then %let _out=&_out &_fn;
       %else %let _out=&_fn;
@@ -784,7 +835,11 @@
 %mend;
 %_pred_registry_add(name=is_like, kind=PREDICATE);
 
-%gen_predicate(name=is_not_missing, args=%str(x, blank_is_missing=1), expr=%str((not (%is_missing(&x, blank_is_missing=&blank_is_missing)))), overwrite=1);
+%macro is_not_missing(x, blank_is_missing=1);
+  (not (%is_missing(&x, blank_is_missing=&blank_is_missing)))
+%mend;
+%_pred_registry_add(name=is_not_missing, kind=PREDICATE);
+
 %gen_predicate(name=is_blank, args=x, expr=%str((vtype(&x)='C' and lengthn(strip(&x))=0)), overwrite=1);
 %gen_predicate(name=is_in, args=%str(x, set), expr=%str((&x in (&set))), overwrite=1);
 %gen_predicate(name=is_not_in, args=%str(x, set), expr=%str((&x not in (&set))), overwrite=1);
@@ -807,13 +862,19 @@
 %gen_predicate(name=is_lower, args=x, expr=%str((prxmatch('/[A-Za-z]/', strip(&x)) > 0 and strip(&x)=lowcase(strip(&x)))), overwrite=1);
 %gen_predicate(name=is_numeric_string, args=x, expr=%str((vtype(&x)='C' and not missing(inputn(strip(&x), ?? best32.)))), overwrite=1);
 %gen_predicate(name=is_date_string, args=%str(x, informat=anydtdte.), expr=%str((vtype(&x)='C' and not missing(inputn(strip(&x), ?? &informat)))), overwrite=1);
-%gen_predicate(name=is_in_format, args=%str(x, regex), expr=%str(%matches(&x, &regex)), overwrite=1);
+%macro is_in_format(x, regex);
+  (%matches(&x, &regex))
+%mend;
+%_pred_registry_add(name=is_in_format, kind=PREDICATE);
 
 %gen_predicate(name=is_before, args=%str(x, date), expr=%str(((&x) < (&date))), overwrite=1);
 %gen_predicate(name=is_after, args=%str(x, date), expr=%str(((&x) > (&date))), overwrite=1);
 %gen_predicate(name=is_on_or_before, args=%str(x, date), expr=%str(((&x) <= (&date))), overwrite=1);
 %gen_predicate(name=is_on_or_after, args=%str(x, date), expr=%str(((&x) >= (&date))), overwrite=1);
-%gen_predicate(name=is_between_dates, args=%str(x, start, end, inclusive=both), expr=%str(%is_between(&x, &start, &end, inclusive=&inclusive)), overwrite=1);
+%macro is_between_dates(x, start, end, inclusive=both);
+  %is_between(&x, &start, &end, inclusive=&inclusive)
+%mend;
+%_pred_registry_add(name=is_between_dates, kind=PREDICATE);
 
 %macro test_pipr_predicates;
   %_pipr_require_assert;
@@ -920,6 +981,16 @@
 
       %list_functions(kind=GENERIC, out_list=_pp_generic_list);
       %assertTrue(%eval(%sysfunc(indexw(%upcase(&_pp_generic_list.), ID_FN)) > 0), generic registry includes ad hoc generated function);
+    %test_summary;
+
+    %test_case(registry resolves long predicate names without overflow variables);
+      %_pred_macro_for(name=is_not_missing, out_macro=_pp_m_not_missing);
+      %_pred_macro_for(name=is_between_dates, out_macro=_pp_m_between_dates);
+      %_pred_macro_for(name=is_on_or_before, out_macro=_pp_m_on_or_before);
+
+      %assertEqual(%upcase(&_pp_m_not_missing.), IS_NOT_MISSING);
+      %assertEqual(%upcase(&_pp_m_between_dates.), IS_BETWEEN_DATES);
+      %assertEqual(%upcase(&_pp_m_on_or_before.), IS_ON_OR_BEFORE);
     %test_summary;
 
     %test_case(missingness and equality predicates);
