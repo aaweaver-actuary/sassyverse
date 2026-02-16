@@ -36,6 +36,7 @@
   %let _stmt_acc=;
   %let _buf=%superq(syspbuff);
   %if %length(%superq(_buf)) > 2 %then %do;
+    %if not %sysmacexist(_pipr_split_parmbuff_segments) %then %_abort(mutate() requires pipr util helpers to be loaded.);
     %_pipr_split_parmbuff_segments(buf=%superq(_buf), out_n=_n, out_prefix=_mt_seg);
 
     %do _i=1 %to &_n;

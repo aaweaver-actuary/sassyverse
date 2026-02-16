@@ -57,6 +57,7 @@
 %mend;
 
 %macro _pipe_split_parmbuff_segments(buf=, out_n=, out_prefix=seg);
+  %if not %sysmacexist(_pipr_split_parmbuff_segments) %then %_abort(pipe() requires pipr util helpers to be loaded.);
   %_pipr_split_parmbuff_segments(buf=%superq(buf), out_n=&out_n, out_prefix=&out_prefix);
 %mend;
 

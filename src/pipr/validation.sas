@@ -143,9 +143,14 @@
   %else %let &out_len_mismatch=0;
 %mend;
 
+%macro _pipr_tmpds(prefix=_p);
+  %if %sysmacexist(_tmpds) %then %_tmpds(prefix=&prefix);
+  %else %sysfunc(cats(work., &prefix., %sysfunc(putn(%sysfunc(datetime()), hex16.))));
+%mend;
+
 %macro _assert_unique_key(ds, keys);
   %local dup_rows _dupchk;
-  %let _dupchk=%_tmpds(prefix=_dupchk_);
+  %let _dupchk=%_pipr_tmpds(prefix=_dupchk_);
   proc sql noprint;
     create table &_dupchk as
     select &keys, count(*) as _n
@@ -238,6 +243,11 @@
       %_key_attr_mismatch(work._pv_left2, work._pv_right2, id, _lt, _ll, _rt, _rl, _type_mis, _len_mis);
       %assertEqual(&_type_mis., 0);
       %assertEqual(&_len_mis., 1);
+    %test_summary;
+
+    %test_case(tmpds helper returns a WORK dataset name);
+      %let _pv_tmp=%_pipr_tmpds(prefix=_pv_);
+      %assertTrue(%eval(%index(%upcase(&_pv_tmp.), WORK._PV_) = 1), tmpds helper returns WORK-prefixed name);
     %test_summary;
   %test_summary;
 
