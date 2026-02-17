@@ -1,3 +1,49 @@
+/* MODULE DOC
+File: src/sassymod.sas
+
+1) Purpose in overall project
+- Module loader facade used by most files to import dependencies once per session with optional reloading.
+
+2) High-level approach
+- Builds import marker variable names, resolves module paths, and includes files only when needed.
+
+3) Code organization and why this scheme was chosen
+- Small private helpers handle name normalization/boolean parsing/log level toggling; public sbmod/sassymod stay thin.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Build a safe import marker name from the requested module path.
+- if use_dbg is true, set log_level=DEBUG during import; otherwise keep current level.
+- Resolve base_path from argument or global default.
+- If module not loaded (or reload enabled), include module file and set marker.
+- If already loaded and reload is disabled, emit an already-imported note.
+- If use_dbg is true, restore log_level=INFO at end of import call.
+
+5) Acknowledged implementation deficits
+- Import state is process-local; there is no persistent cache across SAS sessions.
+- Path resolution assumes module filenames map directly to macro module names.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- truncate_varname
+- _sbmod_bool
+- _sbmod_safe_key
+- _sbmod_set_log_level
+- _sbmod_use_dbg_begin
+- _sbmod_use_dbg_end
+- import_variable
+- sbmod
+- sassymod
+- test_sassymod
+- run_sassymod_tests
+
+7) Expected side effects from running/include
+- Defines 11 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): log_level.
+- Executes top-level macro call(s) on include: run_sassymod_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+- sbmod/sassymod import calls can temporarily set shared log_level to DEBUG when use_dbg=1, then restore INFO.
+*/
 /* Truncate a macro variable name >32 characters down to 32 characters */
 %macro truncate_varname(varname);
     %substr(&varname.1, 31)

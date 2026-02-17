@@ -1,3 +1,50 @@
+/* MODULE DOC
+File: src/assert.sas
+
+1) Purpose in overall project
+- General-purpose core utility module used by sassyverse contributors and downstream workflows.
+
+2) High-level approach
+- Defines reusable macro helpers and their tests, with small wrappers around common SAS patterns.
+
+3) Code organization and why this scheme was chosen
+- Public macros are grouped by theme, followed by focused unit tests and guarded autorun hooks.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define utility macros and any private helper macros they require.
+- Where needed, lazily import dependencies (for example assert/logging helpers).
+- Expose a small public API with deterministic text/data-step output.
+- Include test macros that exercise nominal and edge cases.
+- Run tests only when __unit_tests is enabled to avoid production noise.
+
+5) Acknowledged implementation deficits
+- Macro-language utilities have limited static guarantees and rely on disciplined caller inputs.
+- Some historical APIs prioritize backward compatibility over perfect consistency.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _log_styles
+- symbol_dne
+- test_symbol_dne
+- itit_globals
+- reset_test_counts
+- assertTrue
+- assertFalse
+- assertEqual
+- assertNotEqual
+- test_suite
+- test_case
+- test_summary
+- test_assertions
+- run_assertion_tests
+
+7) Expected side effects from running/include
+- Defines 14 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): logPASS, logFAIL, logERROR, testCount, testFailures, testErrors, testSuite, isCurrentlyInTestCase, currentTestCaseName, testCaseCount, testCaseFailures, testCaseErrors.
+- Executes top-level macro call(s) on include: _log_styles, run_assertion_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+*/
 %if %sysfunc(libref(sbfuncs)) ne 0 %then %do;
   libname sbfuncs "%sysfunc(pathname(work))";
 %end;
@@ -17,7 +64,7 @@
 	%if %symexist(%unquote(%str(&symbol.)))=0 %then %let out=1;
 	%else %if "%sysfunc(strip(%unquote(%str(&symbol.))))"="" %then %let out=1;
 	%else %let out=0;
-	&out. 
+	&out.
 %mend;
 
 %macro test_symbol_dne;
@@ -180,7 +227,7 @@ proc fcmp outlib=sbfuncs.fn.assert;
 	endsub;
 run;
 
-options notes source details; 
+options notes source details;
 options cmplib=sbfuncs.fn;
 
 %macro test_suite(name);

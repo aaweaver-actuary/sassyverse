@@ -1,3 +1,49 @@
+/* MODULE DOC
+File: src/logging.sas
+
+1) Purpose in overall project
+- General-purpose core utility module used by sassyverse contributors and downstream workflows.
+
+2) High-level approach
+- Defines reusable macro helpers and their tests, with small wrappers around common SAS patterns.
+
+3) Code organization and why this scheme was chosen
+- Public macros are grouped by theme, followed by focused unit tests and guarded autorun hooks.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define utility macros and any private helper macros they require.
+- Where needed, lazily import dependencies (for example assert/logging helpers).
+- Expose a small public API with deterministic text/data-step output.
+- Include test macros that exercise nominal and edge cases.
+- Run tests only when __unit_tests is enabled to avoid production noise.
+
+5) Acknowledged implementation deficits
+- Macro-language utilities have limited static guarantees and rely on disciplined caller inputs.
+- Some historical APIs prioritize backward compatibility over perfect consistency.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _logging_bootstrap
+- _log_resolve_dir
+- toggle_log_level
+- set_log_level
+- clean_logger
+- console_log
+- logger
+- logtype
+- info
+- dbg
+- test_logging
+- run_logging_tests
+
+7) Expected side effects from running/include
+- Defines 12 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): log_dir, log_file.
+- Executes top-level macro call(s) on include: _logging_bootstrap, run_logging_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+- Initializing this module sets default logging globals (for example log_level/log_dir/log_file) when unset.
+*/
 /* Bootstrap the logging module */
 %macro _logging_bootstrap;
 	%if not %sysmacexist(shell) %then %sbmod(shell);
@@ -44,11 +90,11 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 	%if "&testval." = "debug" %then %let log_level=DEBUG;
 	%else %if "&testval." = "d" %then %let log_level=DEBUG;
 	%else %if "&testval." = "dbg" %then %let log_level=DEBUG;
-		
+
 
 	%else %if "&testval." = "info" %then %let log_level=INFO;
 	%else %if "&testval." = "i" %then %let log_level=INFO;
-	
+
 	%else %let log_level=INFO;
 %mend set_log_level;
 
@@ -99,7 +145,7 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 
 /* Common functionality for all the further log items */
 %macro logtype(
-	msg /* Message to print to the log. */ 
+	msg /* Message to print to the log. */
 	, filename=sas.log /* Filename to save the log as. Default: sas.log */
 	, dir= /*Directory to save the log file. Default: WORK path*/
 	, type=INFO /* Log level to print with. Default: INFO. Used in formatting the message, but does not gate whether the message is printed or not. */
@@ -122,7 +168,7 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 
 /* Formats a log message similarly to the way something like the logger in python would. */
 %macro info(
-	msg /* Message to print to the log. */ 
+	msg /* Message to print to the log. */
 	, filename=sas.log /* Filename to save the log as. Default: sas.log */
 	, dir= /*Directory to save the log file. Default: WORK path*/
 	, to_console=1 /* Whether to also print the message to the console. Default: 1 (true). If true, prints the message to the console in addition to the log file. */
@@ -132,7 +178,7 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 
 /* Formats a log message similarly to the way something like the logger in python would. */
 %macro dbg(
-	msg /* Message to print to the log. */ 
+	msg /* Message to print to the log. */
 	, filename=sas.log /* Filename to save the log as. Default: sas.log */
 	, dir= /*Directory to save the log file. Default: WORK path*/
 	, to_console=1 /* Whether to also print the message to the console. Default: 1 (true). If true, prints the message to the console in addition to the log file. */

@@ -1,3 +1,50 @@
+/* MODULE DOC
+File: src/lists.sas
+
+1) Purpose in overall project
+- General-purpose core utility module used by sassyverse contributors and downstream workflows.
+
+2) High-level approach
+- Defines reusable macro helpers and their tests, with small wrappers around common SAS patterns.
+
+3) Code organization and why this scheme was chosen
+- Public macros are grouped by theme, followed by focused unit tests and guarded autorun hooks.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define utility macros and any private helper macros they require.
+- Where needed, lazily import dependencies (for example assert/logging helpers).
+- Expose a small public API with deterministic text/data-step output.
+- Include test macros that exercise nominal and edge cases.
+- Run tests only when __unit_tests is enabled to avoid production noise.
+
+5) Acknowledged implementation deficits
+- Macro-language utilities have limited static guarantees and rely on disciplined caller inputs.
+- Some historical APIs prioritize backward compatibility over perfect consistency.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- foreach
+- transform
+- len
+- nth
+- first
+- last
+- unique
+- sorted
+- push
+- pop
+- concat
+- list_err
+- test_lists
+- run_lists_tests
+
+7) Expected side effects from running/include
+- Defines 14 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): has_err.
+- Executes top-level macro call(s) on include: run_lists_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+*/
 %macro foreach(list, codeblock);
     %local i item count;
     %let count = %len(&list);
@@ -23,7 +70,7 @@
 
 %macro len(list, delimiters=);
     %local count;
-    %if %length(%superq(delimiters)) = 0 %then 
+    %if %length(%superq(delimiters)) = 0 %then
         %let count = %sysfunc(countw(&list));
     %else
         %let count = %sysfunc(countw(&list, &delimiters));
@@ -71,7 +118,7 @@
     %let count = %len(&list);
 
     %if &count = 0 %then %do;
-        
+
     %end;
     %else %do;
         %do i=1 %to &count;
@@ -105,7 +152,7 @@
     %local count;
     %let count = %len(&list);
     %if &count <= 1 %then %do;
-        
+
     %end;
     %else %do;
         %let list = %substr(&list, 1, %eval(%length(&list) - %length(%nth(&list, &count)) - 1));

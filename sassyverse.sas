@@ -1,3 +1,40 @@
+/* MODULE DOC
+File: sassyverse.sas
+
+1) Purpose in overall project
+- Central project entrypoint that loads core modules and optionally the pipr framework/tests in a deterministic order.
+
+2) High-level approach
+- Validates include paths, normalizes the configured base path, and delegates loading to guarded include helpers so failures stop early.
+
+3) Code organization and why this scheme was chosen
+- Private include helpers are defined first, then public initialization aliases. This keeps failure-prone I/O logic isolated from the public API.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Normalize base_path and reject empty or missing inputs.
+- Include required core files in fixed order using guarded helper macros.
+- Parse include_pipr/include_tests flags into on/off booleans.
+- When include_pipr is enabled, include pipr utility/selectors/verbs/pipeline files.
+- When include_tests is enabled, include testthat support module.
+- If any include fails, stop immediately to avoid partial import state.
+
+5) Acknowledged implementation deficits
+- Include order is manually curated; contributors must keep lists synchronized with new modules.
+- Flag parsing is string-based and intentionally conservative, which can be verbose to maintain.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _sassyverse_include
+- _sassyverse_include_list
+- sassyverse_init
+- sassyverse_load
+- sv_init
+
+7) Expected side effects from running/include
+- Defines 5 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): _sassyverse_base_path.
+*/
 /* sassyverse.sas - Single entrypoint to load the full macro suite. */
 %macro _sassyverse_include(path=, out_status=);
   %local _qpath;

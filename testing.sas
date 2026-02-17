@@ -1,3 +1,34 @@
+/* MODULE DOC
+File: testing.sas
+
+1) Purpose in overall project
+- Top-level test harness entry file for local/integration workflows.
+
+2) High-level approach
+- Sets deterministic library paths, initializes framework, and runs targeted helper/test modules.
+
+3) Code organization and why this scheme was chosen
+- Configuration values are declared up front; execution calls are grouped at the bottom for quick editability.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define base paths and helper library roots.
+- Include the root framework entrypoint.
+- Initialize framework with test flags suitable for local development.
+- Import helper modules needed by the specific test workflow.
+- Run selected test macros and inspect results in the SAS log.
+
+5) Acknowledged implementation deficits
+- Environment-specific paths require contributor adjustment outside the default setup.
+- This file favors convenience over strict parameterization.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- (No %macro definitions in this file; file is include/run orchestration only.)
+
+7) Expected side effects from running/include
+- Executes top-level macro call(s) on include: sv_init, sbmod, pipe.
+*/
 options
   mprint
   mlogic

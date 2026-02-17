@@ -1,3 +1,85 @@
+/* MODULE DOC
+File: src/pipr/predicates.sas
+
+1) Purpose in overall project
+- Predicate/function registry and expansion engine used by filter/mutate and selector workflows in pipr.
+
+2) High-level approach
+- Registers predicate macros, expands bare predicate calls, and reduces column-wise predicate specs into executable SAS expressions.
+
+3) Code organization and why this scheme was chosen
+- Low-level parsing/registry helpers come first, then public predicate APIs, then built-in predicate definitions and tests.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- if shared log_level=DEBUG, emit %dbg traces for parse/expand/registry steps; otherwise suppress debug traces.
+- Reset predicate registry on import for deterministic startup state.
+- Register built-in predicates and helper combinators (if_any/if_all).
+- When evaluating expressions, find registered predicate calls and expand them iteratively.
+- For column-wise predicates, parse spec, bind args/lambda, and reduce with OR/AND joiners.
+- Abort with clear error when predicates/macros are missing or malformed.
+
+5) Acknowledged implementation deficits
+- Macro-language expression parsing is necessarily heuristic and can be hard to reason about for deeply nested input.
+- Generated-expression debugging still depends on high log verbosity for hard failures.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _abort
+- _pipr_require_assert
+- _pipr_autorun_tests
+- _pred_require_nonempty
+- _pred_bool
+- _pred_trace_enabled
+- _pred_trace_expand_enabled
+- _pred_log
+- _pred_split_parmbuff
+- _pred_strip_quotes
+- _pred_trim_expr
+- _pred_escape_regex
+- _pred_regex_to_prx
+- _pred_sql_like_to_prx
+- _pred_registry_reset
+- _pred_registry_add
+- _pred_macro_for
+- _pred_eval_registered_call
+- _pred_find_call
+- _pred_expand_expr
+- list_functions
+- _pred_resolve_gen_args
+- _pred_compile_macro
+- gen_function
+- gen_predicate
+- predicate
+- _pred_lambda_normalize
+- _pred_bind_lambda
+- _pred_parse_pred_spec
+- _pred_eval_for_col
+- _pred_parse_if_args
+- _pred_reduce
+- if_any
+- if_all
+- is_missing
+- is_na_like
+- is_between
+- is_outside
+- starts_with
+- ends_with
+- contains
+- matches
+- is_like
+- is_not_missing
+- is_in_format
+- is_between_dates
+- test_pipr_predicates
+
+7) Expected side effects from running/include
+- Defines 47 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): _pipr_pred_trace_expand, _pipr_fn_count, _pipr_functions, _pipr_function_kinds, _pipr_function_macros.
+- Executes top-level macro call(s) on include: _pred_registry_reset, _pred_log, _pred_registry_add, gen_predicate, _pipr_autorun_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+- When invoked, macros in this module can create or overwrite WORK datasets/views as part of pipeline operations.
+*/
 /* Predicate and function helpers for row-wise expressions in filter()/data steps. */
 
 %if not %sysmacexist(_abort) %then %do;

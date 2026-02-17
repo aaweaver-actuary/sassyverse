@@ -1,3 +1,58 @@
+/* MODULE DOC
+File: src/strings.sas
+
+1) Purpose in overall project
+- General-purpose core utility module used by sassyverse contributors and downstream workflows.
+
+2) High-level approach
+- Defines reusable macro helpers and their tests, with small wrappers around common SAS patterns.
+
+3) Code organization and why this scheme was chosen
+- Public macros are grouped by theme, followed by focused unit tests and guarded autorun hooks.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define utility macros and any private helper macros they require.
+- Where needed, lazily import dependencies (for example assert/logging helpers).
+- Expose a small public API with deterministic text/data-step output.
+- Include test macros that exercise nominal and edge cases.
+- Run tests only when __unit_tests is enabled to avoid production noise.
+
+5) Acknowledged implementation deficits
+- Macro-language utilities have limited static guarantees and rely on disciplined caller inputs.
+- Some historical APIs prioritize backward compatibility over perfect consistency.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- __does_str_func_exist
+- define_str_funcs
+- str__index
+- str__replace
+- str__trim
+- str__upper
+- str__lower
+- str__len
+- str__length
+- str__contains
+- str__split
+- str__slice
+- str__startswith
+- str__endswith
+- str__join2
+- str__reverse
+- str__find
+- str__format
+- __str__split_parmbuf
+- __str__format_parmbuf
+- test_strings
+- run_string_tests
+
+7) Expected side effects from running/include
+- Defines 22 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): func_exists.
+- Executes top-level macro call(s) on include: run_string_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+*/
 %macro __does_str_func_exist(func_name);
     %global func_exists;
 
@@ -22,7 +77,7 @@
         %let func_exists=0;
     %end;
 
-    &func_exists. 
+    &func_exists.
 %mend __does_str_func_exist;
 
 %macro define_str_funcs;
@@ -398,7 +453,7 @@
         %let out=-1;
     %end;
 
-    &out. 
+    &out.
 %mend str__index;
 
 /* Replaces all occurrences of a substring within a string */
@@ -408,7 +463,7 @@
     , replacement /* String to replace the substring with */
 );
     %let out=%sysfunc(tranwrd(&str, &substr, &replacement));
-    &out. 
+    &out.
 %mend str__replace;
 
 /* Removes all leading and trailing spaces from a string */
@@ -416,14 +471,14 @@
     str /* String to trim */
 );
     %let out=%sysfunc(strip(&str));
-    &out. 
+    &out.
 %mend str__trim;
 
 %macro str__upper(
     str /* String to convert */
 );
     %let out=%sysfunc(upcase(&str));
-    &out. 
+    &out.
 %mend str__upper;
 
 /* Returns the lowercase version of a string */
@@ -431,27 +486,27 @@
     str /* String to convert */
 );
     %let out=%sysfunc(lowcase(&str));
-    &out. 
+    &out.
 %mend str__lower;
 
 /* Returns the number of characters in a string */
-%macro str__len( 
-    str /* String to take the length of */ 
+%macro str__len(
+    str /* String to take the length of */
 );
     %let out=%length(&str.);
-    &out. 
+    &out.
 %mend str__len;
 
 /* Alias for str__len */
-%macro str__length(     
-    str /* String to take the length of */ 
+%macro str__length(
+    str /* String to take the length of */
 );
     %let out=%str__len(&str.);
-    &out. 
+    &out.
 %mend str__length;
 
 /* Returns 1 if a string contains a substring, 0 otherwise */
-%macro str__contains(   
+%macro str__contains(
     str /* String to search */
     , substr /* Substring to search for */
 );
@@ -459,11 +514,11 @@
         %let out=1;
     %end;
     %else %let out=0;
-    &out. 
+    &out.
 %mend str__contains;
 
 /* Return the same string, split by a delimiter */
-%macro str__split( 
+%macro str__split(
     str /* String to split */
     , delim=' ' /* Delimiter to split the string on. Default is a space */
 );
@@ -479,27 +534,27 @@
         %end;
     %end;
 
-    &out. 
+    &out.
 %mend str__split;
 
 /* Returns a string sliced from the start to the end */
-%macro str__slice( 
+%macro str__slice(
     str /* String to slice */
     , start /* Start index */
     , end /* End index */
 );
     %if %length(&end.) = 0 %then %let end=%str__len(&str.);
     %if %length(&start.) = 0 %then %let start=1;
-    
+
     %let n_chars=%eval(&end. - &start. + 1);
     %let out=%substr(&str., &start., &n_chars.);
     &out.
 %mend str__slice;
 
 /* Returns 1 if a string starts with a substring, 0 otherwise */
-%macro str__startswith( 
+%macro str__startswith(
     s /* String to check */
-    , substr /* Substring to check for */ 
+    , substr /* Substring to check for */
 );
 
     %let slice=%str__slice(&s., 1, %str__len(&substr.));
@@ -509,13 +564,13 @@
     %else %do;
         %let out=0;
     %end;
-    &out. 
+    &out.
 %mend str__startswith;
 
 /* Returns 1 if a string ends with a substring, 0 otherwise */
-%macro str__endswith( 
+%macro str__endswith(
     str /* String to check */
-    , substr /* Substring to check for */ 
+    , substr /* Substring to check for */
 );
     %let len=%str__len(&str.);
     %let substr_len=%str__len(&substr.);
@@ -527,14 +582,14 @@
     %else %do;
         %let out=0;
     %end;
-    &out. 
+    &out.
 %mend str__endswith;
 
 /* Joins two strings into a single string, with a delimiter in between */
-%macro str__join2( 
+%macro str__join2(
     s1 /* First string */
     , s2 /* Second string */
-    ,delim /* Delimiter to join the strings with. Default is a space */ 
+    ,delim /* Delimiter to join the strings with. Default is a space */
 );
     %if %length(&delim.) = 0 %then %do;
         %let delim=%str( );
@@ -542,11 +597,11 @@
 
 
     %let out=%sysfunc(catx(&delim, &s1, &s2));
-    &out. 
+    &out.
 %mend str__join2;
 
 /* Reverses a string */
-%macro str__reverse( 
+%macro str__reverse(
     str /* String to reverse */
 );
     %let len=%str__len(&str.);
@@ -556,22 +611,22 @@
         %else %let out=%sysfunc(cat(&out, %substr(&str., &i, 1)));
     %end;
 
-    &out. 
+    &out.
 %mend str__reverse;
 
 /* Finds the first occurrence of a substring within a string */
-%macro str__find( 
+%macro str__find(
     str /* String to search */
     , substr /* Substring to search for */
 );
     %let out=%str__index(&str., &substr.);
-    &out. 
+    &out.
 %mend str__find;
 
 /* Formats a string using a format string, with placeholders given by {} */
-%macro str__format( 
+%macro str__format(
     str /* String to format, containing one or more placeholders given by {} */
-    , args /* Arguments to replace the placeholders with, separated by spaces */ 
+    , args /* Arguments to replace the placeholders with, separated by spaces */
 );
 
     %local i n out arg pos len prefix suffix;
@@ -593,7 +648,7 @@
         %end;
     %end;
 
-    &out. 
+    &out.
 %mend str__format;
 
 /* Test helpers: allow ergonomic calls without %str by using ~ as a separator. */
@@ -723,20 +778,20 @@
         %assertEqual(&strSlice5., is a cool guy); /* Test 21 */
 
         %assertTrue(
-            %str__startswith(andy is a cool guy, andy), 
+            %str__startswith(andy is a cool guy, andy),
             [andy is a cool guy] does start with [andy]
         );  /* Test 22*/
         %assertFalse(
-            %str__startswith(andy is a cool guy, cool), 
+            %str__startswith(andy is a cool guy, cool),
             [andy is a cool guy] does not start with [cool]
         ); /* Test 23*/
 
         %assertTrue(
-            %str__endswith(andy is a cool guy, guy), 
+            %str__endswith(andy is a cool guy, guy),
             [andy is a cool guy] does end with [guy]
         ); /* Test 24 */
         %assertFalse(
-            %str__endswith(andy is a cool guy, cool), 
+            %str__endswith(andy is a cool guy, cool),
             [andy is a cool guy] does not end with [cool]
         ); /* Test 25 */
 

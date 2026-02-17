@@ -1,3 +1,60 @@
+/* MODULE DOC
+File: src/pipr/pipr.sas
+
+1) Purpose in overall project
+- Core pipr pipeline engine that parses pipe expressions and executes verbs step-by-step.
+
+2) High-level approach
+- Parses parmbuff input into steps, infers source/target datasets, and delegates each verb to shared verb-dispatch helpers.
+
+3) Code organization and why this scheme was chosen
+- Private parse/planning/execution helpers precede the public pipe macro; tests live at the bottom for import-time safety.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Parse raw pipe expression into ordered steps and optional named args.
+- Infer first input dataset and identify collect_to/collect_into output if present.
+- Validate input/output metadata and construct execution plan.
+- For each step, resolve verb and invoke shared dispatch helper.
+- Manage temp datasets/views and cleanup according to flags.
+- Emit errors early when a step fails to produce expected output.
+
+5) Acknowledged implementation deficits
+- Macro parsing for complex nested expressions remains sensitive to quoting edge cases.
+- Step execution/debug output can still be verbose during heavy troubleshooting.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _pipe_parse_parmbuff
+- _pipe_split_parmbuff_segments
+- _pipe_clean_value
+- _pipe_first_step
+- _pipe_is_data_step
+- _pipe_steps_without_first
+- _pipe_infer_data
+- _pipe_get_last_step
+- _pipe_is_collect_verb
+- _pipe_collect_args
+- _pipe_extract_collect_out
+- _pipe_plan_step
+- _pipe_steps_count
+- _pipe_get_step
+- _pipe_validate_inputs
+- _pipe_execute_step
+- _pipe_cleanup_temps
+- _pipe_execute
+- pipe
+- _pipe_parse_parmbuff_test
+- test_pipe_helpers
+- test_pipe
+
+7) Expected side effects from running/include
+- Defines 22 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): _pp_steps, _pp_data, _pp_out, _pp_validate, _pp_use_views, _pp_view_output, _pp_debug, _pp_cleanup, _pd_steps, _pd_data, _pc_steps, _pc_out, ....
+- Executes top-level macro call(s) on include: _pipr_autorun_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+- When invoked, macros in this module can create or overwrite WORK datasets/views as part of pipeline operations.
+*/
 /* Required includes are handled by sassyverse_init; keep this file standalone-safe if needed. */
 %if not %sysmacexist(_abort) %then %do;
   %include 'util.sas';

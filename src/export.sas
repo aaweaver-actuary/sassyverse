@@ -1,5 +1,45 @@
+/* MODULE DOC
+File: src/export.sas
+
+1) Purpose in overall project
+- General-purpose core utility module used by sassyverse contributors and downstream workflows.
+
+2) High-level approach
+- Defines reusable macro helpers and their tests, with small wrappers around common SAS patterns.
+
+3) Code organization and why this scheme was chosen
+- Public macros are grouped by theme, followed by focused unit tests and guarded autorun hooks.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define utility macros and any private helper macros they require.
+- Where needed, lazily import dependencies (for example assert/logging helpers).
+- Expose a small public API with deterministic text/data-step output.
+- Include test macros that exercise nominal and edge cases.
+- Run tests only when __unit_tests is enabled to avoid production noise.
+
+5) Acknowledged implementation deficits
+- Macro-language utilities have limited static guarantees and rely on disciplined caller inputs.
+- Some historical APIs prioritize backward compatibility over perfect consistency.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _get_dataset_name
+- _get_filename
+- export_to_csv
+- export_with_temp_file
+- export_csv_copy
+- test__export_to_csv
+- assertEqualsDataset
+- run_export_tests
+
+7) Expected side effects from running/include
+- Defines 8 macro(s) in the session macro catalog.
+- Executes top-level macro call(s) on include: run_export_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+*/
 %macro _get_dataset_name(dataset);
-	%if %str__find(&dataset., . ) > -1 %then 
+	%if %str__find(&dataset., . ) > -1 %then
 		%let ds=%scan(&dataset., 2, . );
 	%else %let ds=&dataset.;
 	&ds.
@@ -20,7 +60,7 @@
 %macro export_to_csv(dataset, out_lib);
 	%local is_win;
     %let filename=%_get_filename(&dataset., &out_lib.);
-	proc export 
+	proc export
 		replace
 		data=&dataset.
 		dbms=csv
@@ -52,7 +92,7 @@
 %macro export_csv_copy(dataset, out_folder=NONE);
 	%let _Default=/sas/data/project/EG/ActShared/SmallBusiness/Modeling/dat/raw_csv;
 
-	%if "&out_folder."="NONE" %then 
+	%if "&out_folder."="NONE" %then
 		%let folder=&_Default.;
 	%else
 		%let folder=&out_folder.;
@@ -61,9 +101,9 @@
 	%let ds=%sysfunc(tranwrd(&ds., %str(.), __));
 
 	%let filename=&folder./&ds..csv;
-	proc export 
+	proc export
 		data=&dataset.
-		replace 
+		replace
 		outfile="&filename."
 		dbms=csv;
 	run;
@@ -82,7 +122,7 @@
 	%test_suite(Testing export_to_csv);
 
 		%test_case(_get_dataset_name);
-			
+
 			%let name1=%_get_dataset_name(L.dataset);
 			%assertEqualsDataset(&name1.);
 

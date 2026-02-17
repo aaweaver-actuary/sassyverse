@@ -1,3 +1,50 @@
+/* MODULE DOC
+File: src/pipr/validation.sas
+
+1) Purpose in overall project
+- Shared pipr support utilities and validation helpers used across selectors, verbs, and pipeline execution.
+
+2) High-level approach
+- Provides focused helper macros for temporary names, boolean parsing, column/dataset checks, and common assertions.
+
+3) Code organization and why this scheme was chosen
+- General utilities are separated from strict validation helpers to keep call-sites readable and minimize circular dependencies.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define helper macros for temp dataset naming and safe boolean parsing.
+- Define dataset/column validation primitives with explicit error messages.
+- Expose test/bootstrap helpers so module tests can run consistently.
+- When requested by verbs/pipeline, run validations before executing heavy transformations.
+- Fail fast on incompatible metadata (missing columns, key mismatches, etc.).
+
+5) Acknowledged implementation deficits
+- Validation helpers intentionally optimize for clarity over minimal runtime overhead.
+- Some helper contracts rely on callers to pass normalized inputs.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _ds_split
+- _col_exists
+- _cols_missing
+- _assert_ds_exists
+- _assert_cols_exist
+- _get_col_attr
+- _assert_by_vars
+- _clean_by_list
+- _by_vars_from_list
+- _assert_key_compatible
+- _key_attr_mismatch
+- _pipr_tmpds
+- _assert_unique_key
+- test_pipr_validation
+
+7) Expected side effects from running/include
+- Defines 14 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): _exists, _missing, _cleaned, _vars, _lt, _ll, _rt, _rl, _type_mis, _len_mis, _type, _len.
+- Executes top-level macro call(s) on include: _pipr_autorun_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+*/
 /* Split a dataset reference into library and member components */
 %macro _ds_split(ds, out_lib, out_mem);
   %local _lib _mem;

@@ -1,4 +1,44 @@
-/* 
+/* MODULE DOC
+File: src/pipr/util.sas
+
+1) Purpose in overall project
+- Shared pipr support utilities and validation helpers used across selectors, verbs, and pipeline execution.
+
+2) High-level approach
+- Provides focused helper macros for temporary names, boolean parsing, column/dataset checks, and common assertions.
+
+3) Code organization and why this scheme was chosen
+- General utilities are separated from strict validation helpers to keep call-sites readable and minimize circular dependencies.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define helper macros for temp dataset naming and safe boolean parsing.
+- Define dataset/column validation primitives with explicit error messages.
+- Expose test/bootstrap helpers so module tests can run consistently.
+- When requested by verbs/pipeline, run validations before executing heavy transformations.
+- Fail fast on incompatible metadata (missing columns, key mismatches, etc.).
+
+5) Acknowledged implementation deficits
+- Validation helpers intentionally optimize for clarity over minimal runtime overhead.
+- Some helper contracts rely on callers to pass normalized inputs.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _abort
+- _tmpds
+- _pipr_split_parmbuff_segments
+- _pipr_in_unit_tests
+- _pipr_require_assert
+- _pipr_bool
+- _pipr_autorun_tests
+- test_pipr_util
+
+7) Expected side effects from running/include
+- Defines 8 macro(s) in the session macro catalog.
+- Executes top-level macro call(s) on include: _pipr_autorun_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+*/
+/*
     Abort the SAS session with a given error message.
     Usage: %_abort(Some error occurred)
 */
@@ -8,7 +48,7 @@
 %mend;
 
 
-/* 
+/*
     Generate a temporary dataset name with a given prefix. The name is based on the current datetime to ensure uniqueness.
     Usage: %_tmpds(prefix=mytemp_)
 */

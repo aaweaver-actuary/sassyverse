@@ -1,3 +1,44 @@
+/* MODULE DOC
+File: src/pipr/_verbs/mutate.sas
+
+1) Purpose in overall project
+- Pipr verb implementations for table transformation steps (select/filter/mutate/join/etc.).
+
+2) High-level approach
+- Each verb macro normalizes inputs, validates required datasets/columns, and emits a DATA step/PROC implementation.
+
+3) Code organization and why this scheme was chosen
+- One file per verb keeps behavior isolated; shared helpers (validation/utils) prevent repeated parsing/dispatch logic.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Parse verb arguments (including parmbuff positional/named forms where supported).
+- Validate source dataset and required columns when validate=1.
+- Normalize expressions/selectors into executable SAS code.
+- Emit DATA/PROC logic to produce output dataset or view.
+- Return stable output target name so pipe executor can chain next step.
+- Expose alias macros for ergonomic naming compatibility where needed.
+
+5) Acknowledged implementation deficits
+- Different verbs use different SAS backends (DATA step, PROC SQL, hash) which increases cognitive load.
+- Advanced edge-case validation is still evolving for some argument combinations.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _mutate_emit_data
+- _mutate_parse_parmbuff
+- _mutate_normalize_stmt
+- _mutate_expand_functions
+- mutate
+- with_column
+- test_mutate
+
+7) Expected side effects from running/include
+- Defines 7 macro(s) in the session macro catalog.
+- Executes top-level macro call(s) on include: _pipr_autorun_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+- When invoked, macros in this module can create or overwrite WORK datasets/views as part of pipeline operations.
+*/
 %macro _mutate_emit_data(stmt, data=, out=, as_view=0);
   %if &as_view %then %do;
     data &out / view=&out;

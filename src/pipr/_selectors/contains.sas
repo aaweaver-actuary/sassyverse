@@ -1,3 +1,39 @@
+/* MODULE DOC
+File: src/pipr/_selectors/contains.sas
+
+1) Purpose in overall project
+- Selector subsystem that converts tidyselect-like expressions into concrete column lists.
+
+2) High-level approach
+- Normalizes selector tokens/calls, maps them to metadata queries or predicate checks, and returns de-duplicated ordered column names.
+
+3) Code organization and why this scheme was chosen
+- Shared selector utilities hold parser/query logic; leaf selector modules stay small and focused on one selector behavior.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Normalize selector expression and tokenize respecting nested parentheses/quotes.
+- For each token, detect selector call vs literal column name.
+- Dispatch selector call to corresponding implementation macro.
+- Query dictionary metadata or evaluate predicate against candidate columns.
+- Append matches uniquely while preserving encountered order.
+- Return final column list or raise explicit empty-selection error when required.
+
+5) Acknowledged implementation deficits
+- Selector grammar is intentionally constrained compared with full tidyselect semantics.
+- Metadata-driven selection depends on dictionary table availability and naming normalization.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _selector_contains
+- _selector_like
+- test_selector_contains
+
+7) Expected side effects from running/include
+- Defines 3 macro(s) in the session macro catalog.
+- Executes top-level macro call(s) on include: _pipr_autorun_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+*/
 %macro _selector_contains(ds=, needle=, out_cols=);
   %local _needle _where;
   %let _needle=%superq(needle);

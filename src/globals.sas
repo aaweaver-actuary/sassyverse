@@ -1,3 +1,39 @@
+/* MODULE DOC
+File: src/globals.sas
+
+1) Purpose in overall project
+- General-purpose core utility module used by sassyverse contributors and downstream workflows.
+
+2) High-level approach
+- Defines reusable macro helpers and their tests, with small wrappers around common SAS patterns.
+
+3) Code organization and why this scheme was chosen
+- Public macros are grouped by theme, followed by focused unit tests and guarded autorun hooks.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define utility macros and any private helper macros they require.
+- Where needed, lazily import dependencies (for example assert/logging helpers).
+- Expose a small public API with deterministic text/data-step output.
+- Include test macros that exercise nominal and edge cases.
+- Run tests only when __unit_tests is enabled to avoid production noise.
+
+5) Acknowledged implementation deficits
+- Macro-language utilities have limited static guarantees and rely on disciplined caller inputs.
+- Some historical APIs prioritize backward compatibility over perfect consistency.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- init_global_var
+- init_global_vars
+- test_globals
+- run_global_tests
+
+7) Expected side effects from running/include
+- Defines 4 macro(s) in the session macro catalog.
+- Executes top-level macro call(s) on include: run_global_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+*/
 %macro init_global_var(variable);
 	%if not %symexist(&variable.) %then %do;
 		%global &variable.;
@@ -7,7 +43,7 @@
 
 %macro init_global_vars;
 	%let vars=imported__to_numb imported__logger imported__shell;
-	
+
 	%let N=%sysfunc(countw(&vars.));
 	%do i=1 %to &N.;
 		%let x=%sysfunc(scan(&vars., &i.));
