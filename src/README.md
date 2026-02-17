@@ -26,6 +26,23 @@ You can either:
 %sbmod(lists);
 ```
 
+### Targeted load with import-level predicate diagnostics
+
+Use this when you want debug logs for one module only.
+
+```sas
+%include "S:/small_business/modeling/sassyverse/src/sassymod.sas";
+%let _sassyverse_base_path=S:/small_business/modeling/sassyverse/src;
+
+%sbmod(pipr/predicates, use_dbg=1);
+```
+
+Notes:
+
+- `use_dbg=1` sets `log_level=DEBUG` during this `%sbmod(...)` call.
+- At the end of the call, `%sbmod` restores `log_level=INFO`.
+- This keeps debugging targeted so other module imports stay quiet.
+
 ## Module quick reference
 
 ### `assert.sas`

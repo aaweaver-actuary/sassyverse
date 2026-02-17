@@ -1,3 +1,4 @@
+/* Split a dataset reference into library and member components */
 %macro _ds_split(ds, out_lib, out_mem);
   %local _lib _mem;
   %if %index(&ds, .) > 0 %then %do;
@@ -13,6 +14,7 @@
   %let &out_mem=&_mem;
 %mend;
 
+/* Check if a column exists in a dataset. If so, sets the output macro variable to 1, otherwise 0. */
 %macro _col_exists(ds, col, out_exists);
   %local lib mem _cnt;
   %global &out_exists;

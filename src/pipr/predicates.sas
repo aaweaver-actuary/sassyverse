@@ -37,8 +37,41 @@
   %end;
 %mend;
 
+%global _pipr_pred_trace_expand;
+%if %length(%superq(_pipr_pred_trace_expand))=0 %then %let _pipr_pred_trace_expand=1;
+
+%macro _pred_trace_enabled;
+  %if %symexist(log_level) and "%upcase(%superq(log_level))"="DEBUG" %then 1;
+  %else 0;
+%mend;
+
+%macro _pred_trace_expand_enabled;
+  %if %_pred_trace_enabled and %_pred_bool(%superq(_pipr_pred_trace_expand), default=1) %then 1;
+  %else 0;
+%mend;
+
+%macro _pred_log(msg=, level=DEBUG);
+  %local _enabled _level _line;
+  %let _enabled=%_pred_trace_enabled;
+  %if &_enabled = 0 %then %return;
+
+  %let _level=%upcase(%sysfunc(strip(%superq(level))));
+  %if %length(%superq(_level))=0 %then %let _level=DEBUG;
+  %let _line=[PIPR.PRED.&_level] %superq(msg);
+
+  %if %superq(_level)=DEBUG %then %do;
+    %if %sysmacexist(dbg) %then %dbg(msg=%superq(_line));
+    %else %put NOTE: %superq(_line);
+  %end;
+  %else %do;
+    %if %sysmacexist(info) %then %info(msg=%superq(_line));
+    %else %put NOTE: %superq(_line);
+  %end;
+%mend;
+
 %macro _pred_split_parmbuff(buf=, out_n=, out_prefix=_pred_seg);
   %if not %sysmacexist(_pipr_split_parmbuff_segments) %then %_abort(predicates.sas requires pipr util helpers to be loaded.);
+  %_pred_log(level=DEBUG, msg=split parmbuff out_n=&out_n out_prefix=&out_prefix);
   %_pipr_split_parmbuff_segments(buf=%superq(buf), out_n=&out_n, out_prefix=&out_prefix);
 %mend;
 
@@ -162,6 +195,7 @@
   %let _pipr_functions=;
   %let _pipr_function_kinds=;
   %let _pipr_function_macros=;
+  %_pred_log(level=INFO, msg=registry reset complete);
 %mend;
 
 %macro _pred_registry_add(name=, kind=GENERIC, macro_name=);
@@ -172,6 +206,7 @@
   %let _u=%upcase(%sysfunc(strip(%superq(name))));
   %let _m=%sysfunc(strip(%superq(macro_name)));
   %let _kind=%upcase(%sysfunc(strip(%superq(kind))));
+  %_pred_log(level=DEBUG, msg=registry add start name=%superq(_u) kind=%superq(_kind) macro_name=%superq(_m));
   %if %length(%superq(_u))=0 %then %return;
   %if %length(%superq(_m))=0 %then %let _m=%superq(name);
 
@@ -192,6 +227,7 @@
       %global &_kind_var &_macro_var;
       %let &_kind_var=%superq(_kind);
       %let &_macro_var=%superq(_m);
+      %_pred_log(level=DEBUG, msg=registry add update existing name=%superq(_u) index=&_i macro=%superq(_m));
       %goto _pred_registry_add_rebuild;
     %end;
   %end;
@@ -205,6 +241,7 @@
   %let &_name_var=%superq(_u);
   %let &_kind_var=%superq(_kind);
   %let &_macro_var=%superq(_m);
+  %_pred_log(level=DEBUG, msg=registry add new name=%superq(_u) index=&_n macro=%superq(_m));
 
   %_pred_registry_add_rebuild:
   %let _new_functions=;
@@ -231,12 +268,14 @@
   %let _pipr_functions=%superq(_new_functions);
   %let _pipr_function_kinds=%superq(_new_kinds);
   %let _pipr_function_macros=%superq(_new_macros);
+  %_pred_log(level=DEBUG, msg=registry add complete name=%superq(_u) total=&_pipr_fn_count);
 %mend;
 
 %macro _pred_macro_for(name=, out_macro=);
   %local _u _m _n _i _fn _name_var _macro_var;
   %let _u=%upcase(%superq(name));
   %let _m=;
+  %_pred_log(level=DEBUG, msg=registry lookup start name=%superq(_u));
 
   %if %sysfunc(symexist(_pipr_fn_count)) %then %let _n=%superq(_pipr_fn_count);
   %else %let _n=0;
@@ -250,9 +289,11 @@
     %if %upcase(%superq(_fn))=%superq(_u) %then %do;
       %if %sysfunc(symexist(&_macro_var)) %then %let _m=%superq(&_macro_var);
       %else %let _m=;
+      %_pred_log(level=DEBUG, msg=registry lookup hit name=%superq(_u) macro=%superq(_m) index=&_i);
       %goto _pred_macro_for_done;
     %end;
   %end;
+  %_pred_log(level=DEBUG, msg=registry lookup miss name=%superq(_u));
 
   %_pred_macro_for_done:
   %if %length(%superq(_m))=0 %then %let _m=%superq(name);
@@ -262,6 +303,7 @@
 %macro _pred_eval_registered_call(name=, args=, out_expr=);
   %local _macro _expr;
   %let _expr=;
+  %_pred_log(level=DEBUG, msg=eval registered call start name=%superq(name));
   %_pred_macro_for(name=%superq(name), out_macro=_macro);
   %if %length(%superq(_macro))=0 %then %_abort(Unknown registered function/predicate: %superq(name));
   %if not %sysmacexist(&_macro) %then
@@ -271,6 +313,7 @@
   %else %let _expr=%unquote(%nrstr(%)&_macro());
 
   %_pred_trim_expr(text=%superq(_expr), out_text=_expr);
+  %_pred_log(level=DEBUG, msg=eval registered call done name=%superq(name) macro=%superq(_macro) expr_len=%length(%superq(_expr)));
   %let &out_expr=%superq(_expr);
 %mend;
 
@@ -390,6 +433,7 @@
 %macro _pred_expand_expr(expr=, out_expr=, max_iter=200);
   %local _work _iter _found _prefix _name _args _suffix _expanded;
   %let _work=%superq(expr);
+  %_pred_log(level=DEBUG, msg=expand expr start len=%length(%superq(_work)) max_iter=&max_iter);
   %if %length(%superq(_work))=0 %then %do;
     %let &out_expr=;
     %return;
@@ -404,6 +448,8 @@
       out_args=_args,
       out_suffix=_suffix
     );
+    %if %_pred_trace_expand_enabled %then
+      %_pred_log(level=DEBUG, msg=expand iter=&_iter found=%superq(_found) name=%superq(_name));
 
     %if %superq(_found)=0 %then %goto _pred_expand_done;
 
@@ -419,6 +465,7 @@
   %_abort(Predicate expansion exceeded max_iter=&max_iter while expanding registered predicates.);
 
   %_pred_expand_done:
+  %_pred_log(level=DEBUG, msg=expand expr done len=%length(%superq(_work)));
   %let &out_expr=%superq(_work);
 %mend;
 
@@ -445,6 +492,7 @@
 
   %if %length(%superq(out_list)) %then %let &out_list=%superq(_out);
   %else %put NOTE: Registered functions: %superq(_out);
+  %_pred_log(level=DEBUG, msg=list_functions kind=%superq(_kind) count=&_n out_len=%length(%superq(_out)));
 %mend;
 
 %macro _pred_resolve_gen_args(
@@ -460,6 +508,7 @@
   out_kind=
 );
   %local _buf _n _i _seg _head _eq _val _pos;
+  %_pred_log(level=DEBUG, msg=resolve_gen_args start name_in=%superq(name_in) kind_in=%superq(kind_in));
 
   %let &out_expr=%superq(expr_in);
   %let &out_args=%superq(args_in);
@@ -499,6 +548,10 @@
       %_next_seg:
     %end;
   %end;
+  %_pred_log(
+    level=DEBUG,
+    msg=resolve_gen_args done name=%superq(&out_name) kind=%superq(&out_kind) expr_len=%length(%superq(&out_expr)) args_len=%length(%superq(&out_args)) overwrite=%superq(&out_overwrite)
+  );
 %mend;
 
 %macro _pred_compile_macro(name=, args=, body=, overwrite=0, kind=GENERIC);
@@ -507,6 +560,7 @@
   %let _args=%superq(args);
   %let _body=%superq(body);
   %let _overwrite=%_pred_bool(%superq(overwrite), default=0);
+  %_pred_log(level=DEBUG, msg=compile_macro start name=%superq(_name) kind=%superq(kind) overwrite=&_overwrite body_len=%length(%superq(_body)));
 
   %_pred_require_nonempty(value=%superq(_name), msg=gen_function() requires name=.);
   %_pred_require_nonempty(value=%superq(_body), msg=gen_function() requires expression/body text.);
@@ -533,10 +587,12 @@
 
   %if not %sysmacexist(&_name) %then %_abort(gen_function() failed to compile macro &_name..);
   %_pred_registry_add(name=&_name, kind=&kind);
+  %_pred_log(level=DEBUG, msg=compile_macro done name=%superq(_name) kind=%superq(kind));
 %mend;
 
 %macro gen_function(expr=, args=, name=, overwrite=0, kind=GENERIC) / parmbuff;
   %local _expr _args _name _overwrite _kind;
+  %_pred_log(level=DEBUG, msg=gen_function start name=%superq(name) kind=%superq(kind));
   %_pred_resolve_gen_args(
     expr_in=%superq(expr),
     args_in=%superq(args),
@@ -556,10 +612,12 @@
     overwrite=%superq(_overwrite),
     kind=%superq(_kind)
   );
+  %_pred_log(level=DEBUG, msg=gen_function done name=%superq(_name) kind=%superq(_kind));
 %mend;
 
 %macro gen_predicate(expr=, args=x, name=, overwrite=0) / parmbuff;
   %local _expr _args _name _overwrite _kind;
+  %_pred_log(level=DEBUG, msg=gen_predicate start name=%superq(name));
   %_pred_resolve_gen_args(
     expr_in=%superq(expr),
     args_in=%superq(args),
@@ -579,6 +637,7 @@
     overwrite=%superq(_overwrite),
     kind=%superq(_kind)
   );
+  %_pred_log(level=DEBUG, msg=gen_predicate done name=%superq(_name));
 %mend;
 
 %macro predicate(expr=, args=x, name=, overwrite=0) / parmbuff;
@@ -661,6 +720,7 @@
 
 %macro _pred_eval_for_col(col=, pred=, args=, out_expr=);
   %local _kind _name _name_macro _spec_args _lam _all_args _expr;
+  %_pred_log(level=DEBUG, msg=eval_for_col start col=%superq(col) pred=%superq(pred));
   %_pred_parse_pred_spec(
     spec=%superq(pred),
     out_kind=_kind,
@@ -690,6 +750,7 @@
   %end;
 
   %_pred_trim_expr(text=%superq(_expr), out_text=_expr);
+  %_pred_log(level=DEBUG, msg=eval_for_col done col=%superq(col) kind=%superq(_kind) expr_len=%length(%superq(_expr)));
   %let &out_expr=%superq(_expr);
 %mend;
 
@@ -735,6 +796,7 @@
   %let _pred=%superq(pred);
   %let _args=%superq(args);
   %let _join=%upcase(%superq(joiner));
+  %_pred_log(level=DEBUG, msg=pred_reduce start joiner=%superq(_join) cols=%superq(_cols) pred=%superq(_pred));
 
   %_pred_require_nonempty(value=%superq(_cols), msg=if_any/if_all requires cols=.);
   %_pred_require_nonempty(value=%superq(_pred), msg=if_any/if_all requires pred=.);
@@ -752,10 +814,12 @@
   %end;
 
   %let &out_expr=(%superq(_acc));
+  %_pred_log(level=DEBUG, msg=pred_reduce done joiner=%superq(_join) n=&_n expr_len=%length(%superq(_acc)));
 %mend;
 
 /* Reset built-in registry state on load for deterministic imports. */
 %_pred_registry_reset;
+%_pred_log(level=INFO, msg=predicate module import complete);
 
 %macro if_any(cols=, pred=, args=) / parmbuff;
   %local _cols_work _pred_work _args_work _expr;
@@ -933,6 +997,26 @@
 
       %_pred_sql_like_to_prx(pattern=%nrstr(A_%C), ignore_case=0, out_prx=_pp_like_rx);
       %assertEqual(%superq(_pp_like_rx), %str(/^A..*C$/));
+    %test_summary;
+
+    %test_case(predicate trace gating follows shared log level);
+      %if not %symexist(log_level) %then %global log_level;
+      %let _pp_prev_level=%superq(log_level);
+
+      %if %sysmacexist(set_log_level) %then %set_log_level(INFO);
+      %else %let log_level=INFO;
+      %let _pp_trace_off=%_pred_trace_enabled;
+      %assertEqual(&_pp_trace_off., 0);
+
+      %if %sysmacexist(set_log_level) %then %set_log_level(DEBUG);
+      %else %let log_level=DEBUG;
+      %let _pp_trace_on=%_pred_trace_enabled;
+      %assertEqual(&_pp_trace_on., 1);
+
+      %if %length(%superq(_pp_prev_level)) %then %do;
+        %if %sysmacexist(set_log_level) %then %set_log_level(%superq(_pp_prev_level));
+        %else %let log_level=%superq(_pp_prev_level);
+      %end;
     %test_summary;
 
     %test_case(gen_function creates ad hoc function macros);
