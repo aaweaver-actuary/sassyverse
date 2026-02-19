@@ -64,7 +64,9 @@ File: src/pipr/validation.sas
 /* Check if a column exists in a dataset. If so, sets the output macro variable to 1, otherwise 0. */
 %macro _col_exists(ds, col, out_exists);
   %local lib mem _cnt;
-  %global &out_exists;
+  %if %length(%superq(out_exists)) %then %do;
+    %if not %symexist(&out_exists) %then %global &out_exists;
+  %end;
   %_ds_split(&ds, lib, mem);
 
   proc sql noprint;
@@ -80,8 +82,10 @@ File: src/pipr/validation.sas
 %mend;
 
 %macro _cols_missing(ds, cols, out_missing);
-  %local i n col missing;
-  %global &out_missing;
+  %local i n col _missing_accum;
+  %if %length(%superq(out_missing)) %then %do;
+    %if not %symexist(&out_missing) %then %global &out_missing;
+  %end;
 
   %let n=%sysfunc(countw(&cols, %str( )));
   %if &n=0 %then %do;
@@ -89,14 +93,14 @@ File: src/pipr/validation.sas
     %return;
   %end;
 
-  %let missing=;
+  %let _missing_accum=;
   %do i=1 %to &n;
     %let col=%upcase(%scan(&cols, &i, %str( )));
     %_col_exists(&ds, &col, _exists);
-    %if &_exists = 0 %then %let missing=&missing &col;
+    %if &_exists = 0 %then %let _missing_accum=&_missing_accum &col;
   %end;
 
-  %let &out_missing=%sysfunc(compbl(%superq(missing)));
+  %let &out_missing=%sysfunc(compbl(%superq(_missing_accum)));
 %mend;
 
 %macro _assert_ds_exists(ds, error_msg=);
@@ -119,7 +123,12 @@ File: src/pipr/validation.sas
   %local lib mem;
   %_ds_split(&ds, lib, mem);
 
-  %global &out_type &out_len;
+  %if %length(%superq(out_type)) %then %do;
+    %if not %symexist(&out_type) %then %global &out_type;
+  %end;
+  %if %length(%superq(out_len)) %then %do;
+    %if not %symexist(&out_len) %then %global &out_len;
+  %end;
 
   proc sql noprint;
     select type, length into :&out_type trimmed, :&out_len trimmed
@@ -140,14 +149,18 @@ File: src/pipr/validation.sas
 %mend;
 
 %macro _clean_by_list(by_list, out_clean);
-  %global &out_clean;
+  %if %length(%superq(out_clean)) %then %do;
+    %if not %symexist(&out_clean) %then %global &out_clean;
+  %end;
   %let &out_clean=%sysfunc(prxchange(s/\bdescending\b//i, -1, &by_list));
   %let &out_clean=%sysfunc(compbl(%superq(&out_clean)));
 %mend;
 
 %macro _by_vars_from_list(cleaned, out_vars);
   %local n i tok vars;
-  %global &out_vars;
+  %if %length(%superq(out_vars)) %then %do;
+    %if not %symexist(&out_vars) %then %global &out_vars;
+  %end;
   %let n=%sysfunc(countw(%superq(cleaned), %str( )));
 
   %let vars=;
@@ -183,7 +196,24 @@ File: src/pipr/validation.sas
 %mend;
 
 %macro _key_attr_mismatch(left, right, key, out_lt, out_ll, out_rt, out_rl, out_type_mismatch, out_len_mismatch);
-  %global &out_lt &out_ll &out_rt &out_rl &out_type_mismatch &out_len_mismatch;
+  %if %length(%superq(out_lt)) %then %do;
+    %if not %symexist(&out_lt) %then %global &out_lt;
+  %end;
+  %if %length(%superq(out_ll)) %then %do;
+    %if not %symexist(&out_ll) %then %global &out_ll;
+  %end;
+  %if %length(%superq(out_rt)) %then %do;
+    %if not %symexist(&out_rt) %then %global &out_rt;
+  %end;
+  %if %length(%superq(out_rl)) %then %do;
+    %if not %symexist(&out_rl) %then %global &out_rl;
+  %end;
+  %if %length(%superq(out_type_mismatch)) %then %do;
+    %if not %symexist(&out_type_mismatch) %then %global &out_type_mismatch;
+  %end;
+  %if %length(%superq(out_len_mismatch)) %then %do;
+    %if not %symexist(&out_len_mismatch) %then %global &out_len_mismatch;
+  %end;
 
   %_get_col_attr(&left,  &key, &out_lt, &out_ll);
   %_get_col_attr(&right, &key, &out_rt, &out_rl);

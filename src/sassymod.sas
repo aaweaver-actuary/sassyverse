@@ -160,6 +160,8 @@ File: src/sassymod.sas
     %sbmod(module=&module., base_path=&base_path., reload=&reload., use_dbg=&use_dbg.);
 %mend sassymod;
 
+
+
 %macro test_sassymod;
     %if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
@@ -197,9 +199,9 @@ File: src/sassymod.sas
 
 %macro run_sassymod_tests;
     %if %symexist(__unit_tests) %then %do;
-    %if %superq(__unit_tests)=1 %then %do;
-        %test_sassymod;
-    %end;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_sassymod;
+        %end;
     %end;
 %mend run_sassymod_tests;
 

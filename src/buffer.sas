@@ -24,6 +24,11 @@ File: src/buffer.sas
 - Contributor docs are still text comments; there is no generated API reference yet.
 
 6) Macros defined in this file
+- parmbuf_normalize_sep
+- parmbuf_emit_token
+- parmbuf_match_escaped_separator
+- parmbuf_match_separator
+- parmbuf_append_char
 - parmbuf_parser
 - test_parmbuf_parser
 - run_parmbuf_parser_tests
@@ -33,25 +38,56 @@ File: src/buffer.sas
 - Executes top-level macro call(s) on include: parmbuf_parser, run_parmbuf_parser_tests.
 - Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
 */
-/*
-    Parses the parameter buffer from a macro call into individual parameters.
-    For example, if parmbuf is "a,b,c", sep is ",", and out_prefix is "param", this
-    macro will create macro variables &param1=a, &param2=b, and &param3=c,
-    plus &param_n=3.
+%macro parmbuf_normalize_sep(sep=, out_sep=parmbuf_sep, out_len=parmbuf_sep_len);
+    %local _sep;
+    %let _sep=%superq(sep);
+    %if %length(%superq(_sep))=0 %then %let _sep=%str(,);
+    %let &out_sep=%superq(_sep);
+    %let &out_len=%length(%superq(_sep));
+%mend;
 
-    Since "," is the separator by default, if a comma is needed as a literal in the
-    parameters, the caller should wrap the comma in {}, eg
+%macro parmbuf_emit_token(out_prefix=param, index=1, token=);
+    %global &out_prefix.&index;
+    %let &out_prefix.&index=%superq(token);
+%mend;
 
-    %parmbuf_parser(a{,}c)
-     will create &param1=a,c -- not 2 parameters but 1 parameter with a literal comma separating a and c.
-*/
+%macro parmbuf_match_escaped_separator(buf=, pos=, sep=, sep_len=, len=, out_append=, out_next_pos=, out_matched=);
+    %local _buf _pos _maybe_sep _close;
+    %let &out_matched=0;
+    %let &out_append=;
+    %let &out_next_pos=&pos;
+
+    %let _buf=%superq(buf);
+    %let _pos=%superq(pos);
+    %if %eval(&_pos + &sep_len + 1) > &len %then %return;
+
+    %let _maybe_sep=%qsubstr(&_buf, %eval(&_pos+1), &sep_len);
+    %let _close=%qsubstr(&_buf, %eval(&_pos+1+&sep_len), 1);
+
+    %if %superq(_maybe_sep)=%superq(sep) and %superq(_close)=%str(}) %then %do;
+        %let &out_append=%superq(sep);
+        %let &out_next_pos=%eval(&_pos + &sep_len + 2);
+        %let &out_matched=1;
+    %end;
+%mend;
+
+%macro parmbuf_match_separator(buf=, pos=, sep=, sep_len=, out_is_sep=0);
+    %local _chunk;
+    %let &out_is_sep=0;
+    %if &sep_len=0 %then %return;
+    %let _chunk=%qsubstr(%superq(buf), &pos, &sep_len);
+    %if %superq(_chunk)=%superq(sep) %then %let &out_is_sep=1;
+%mend;
+
+%macro parmbuf_append_char(token=, char=, out_token=next_token);
+    %let &out_token=%superq(token)%superq(char);
+%mend;
+
 %macro parmbuf_parser(parmbuf, sep=%str(,), out_prefix=param);
-    %local buf sep_q seplen len i ch maybe_sep close curr count esc;
+    %local buf sep_q seplen len i ch curr count esc_append next_pos esc_matched is_sep;
 
     %let buf=%superq(parmbuf);
-    %let sep_q=%superq(sep);
-    %if %length(&sep_q)=0 %then %let sep_q=%str(,);
-    %let seplen=%length(&sep_q);
+    %parmbuf_normalize_sep(sep=%superq(sep), out_sep=sep_q, out_len=seplen);
 
     %global &out_prefix._n;
     %if %length(%superq(buf))=0 %then %do;
@@ -68,54 +104,115 @@ File: src/buffer.sas
         %let ch=%qsubstr(&buf, &i, 1);
 
         %if %superq(ch)=%str({) %then %do;
-            %let esc=0;
-            %if &seplen > 0 %then %do;
-                %if %eval(&i + &seplen + 1) <= &len %then %do;
-                    %let maybe_sep=%qsubstr(&buf, %eval(&i+1), &seplen);
-                    %let close=%qsubstr(&buf, %eval(&i+1+&seplen), 1);
-                    %if %superq(maybe_sep)=%superq(sep_q) and %superq(close)=%str(}) %then %do;
-                        %let curr=%superq(curr)%superq(sep_q);
-                        %let i=%eval(&i + &seplen + 2);
-                        %let esc=1;
-                    %end;
-                %end;
-            %end;
+            %parmbuf_match_escaped_separator(
+                buf=%superq(buf),
+                pos=&i,
+                sep=%superq(sep_q),
+                sep_len=&seplen,
+                len=&len,
+                out_append=esc_append,
+                out_next_pos=next_pos,
+                out_matched=esc_matched
+            );
 
-            %if &esc=0 %then %do;
-                %let curr=%superq(curr)%superq(ch);
+            %if &esc_matched %then %do;
+                %parmbuf_append_char(token=%superq(curr), char=%superq(esc_append), out_token=curr);
+                %let i=&next_pos;
+            %end;
+            %else %do;
+                %parmbuf_append_char(token=%superq(curr), char=%superq(ch), out_token=curr);
                 %let i=%eval(&i+1);
             %end;
         %end;
-        %else %if &seplen > 0 %then %do;
-            %let maybe_sep=%qsubstr(&buf, &i, &seplen);
-            %if %superq(maybe_sep)=%superq(sep_q) %then %do;
-                %global &out_prefix.&count;
-                %let &out_prefix.&count=%superq(curr);
+        %else %do;
+            %parmbuf_match_separator(
+                buf=%superq(buf),
+                pos=&i,
+                sep=%superq(sep_q),
+                sep_len=&seplen,
+                out_is_sep=is_sep
+            );
+
+            %if &is_sep %then %do;
+                %parmbuf_emit_token(out_prefix=&out_prefix, index=&count, token=%superq(curr));
                 %let count=%eval(&count+1);
                 %let curr=;
                 %let i=%eval(&i + &seplen);
             %end;
             %else %do;
-                %let curr=%superq(curr)%superq(ch);
+                %parmbuf_append_char(token=%superq(curr), char=%superq(ch), out_token=curr);
                 %let i=%eval(&i+1);
             %end;
         %end;
-        %else %do;
-            %let curr=%superq(curr)%superq(ch);
-            %let i=%eval(&i+1);
-        %end;
     %end;
 
-    %global &out_prefix.&count;
-    %let &out_prefix.&count=%superq(curr);
+    %parmbuf_emit_token(out_prefix=&out_prefix, index=&count, token=%superq(curr));
     %let &out_prefix._n=&count;
 %mend;
 
 %macro test_parmbuf_parser;
     %if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
-    %test_suite(Testing parmbuf_parser);
-        %test_case(basic parsing);
+    %test_suite(Testing parmbuf_parser helpers and orchestration);
+        %test_case(normalize separator defaults and custom);
+            %parmbuf_normalize_sep(sep=, out_sep=_sep1, out_len=_len1);
+            %parmbuf_normalize_sep(sep=%str(|), out_sep=_sep2, out_len=_len2);
+            %assertEqual(%superq(_sep1), %str(,));
+            %assertEqual(&_len1, 1);
+            %assertEqual(%superq(_sep2), %str(|));
+            %assertEqual(&_len2, 1);
+        %test_summary;
+
+        %test_case(emit token writes globals);
+            %parmbuf_emit_token(out_prefix=tst, index=5, token=hello);
+            %assertEqual(%superq(tst5), hello);
+        %test_summary;
+
+        %test_case(match escaped separator succeeds and advances);
+            %parmbuf_match_escaped_separator(
+                buf=%str({,}x),
+                pos=1,
+                sep=%str(,),
+                sep_len=1,
+                len=4,
+                out_append=_esc_app,
+                out_next_pos=_esc_next,
+                out_matched=_esc_match
+            );
+            %assertEqual(%superq(_esc_app), %str(,));
+            %assertEqual(&_esc_next, 4);
+            %assertEqual(&_esc_match, 1);
+        %test_summary;
+
+        %test_case(match escaped separator fails when pattern absent);
+            %parmbuf_match_escaped_separator(
+                buf=%str({x}),
+                pos=1,
+                sep=%str(,),
+                sep_len=1,
+                len=3,
+                out_append=_esc_app2,
+                out_next_pos=_esc_next2,
+                out_matched=_esc_match2
+            );
+            %assertEqual(%length(%superq(_esc_app2)), 0);
+            %assertEqual(&_esc_next2, 1);
+            %assertEqual(&_esc_match2, 0);
+        %test_summary;
+
+        %test_case(match separator detects at position);
+            %parmbuf_match_separator(buf=%str(a,b), pos=2, sep=%str(,), sep_len=1, out_is_sep=_sepflag);
+            %assertEqual(&_sepflag, 1);
+            %parmbuf_match_separator(buf=%str(ab), pos=1, sep=%str(,), sep_len=1, out_is_sep=_sepflag2);
+            %assertEqual(&_sepflag2, 0);
+        %test_summary;
+
+        %test_case(append char concatenates safely);
+            %parmbuf_append_char(token=a, char=%str(,), out_token=_tok);
+            %assertEqual(%superq(_tok), %str(a,));
+        %test_summary;
+
+        %test_case(orchestrator basic parsing);
             %parmbuf_parser(%str(a,b,c), out_prefix=buf);
             %assertEqual(&buf_n, 3);
             %assertEqual(&buf1, a);
@@ -123,13 +220,13 @@ File: src/buffer.sas
             %assertEqual(&buf3, c);
         %test_summary;
 
-        %test_case(escaped separator);
+        %test_case(orchestrator escaped separator);
             %parmbuf_parser(%str(a{,}c), out_prefix=esc);
             %assertEqual(&esc_n, 1);
             %assertEqual(%superq(esc1), %str(a,c));
         %test_summary;
 
-        %test_case(empty tokens preserved);
+        %test_case(orchestrator empty tokens preserved);
             %parmbuf_parser(%str(a,,b,), out_prefix=emp);
             %assertEqual(&emp_n, 4);
             %assertEqual(&emp1, a);
@@ -138,7 +235,7 @@ File: src/buffer.sas
             %assertEqual(%length(&emp4), 0);
         %test_summary;
 
-        %test_case(custom separator with escape);
+        %test_case(orchestrator custom separator with escape);
             %parmbuf_parser(%str(a|b{|}c), sep=%str(|), out_prefix=bar);
             %assertEqual(&bar_n, 2);
             %assertEqual(&bar1, a);
@@ -146,7 +243,8 @@ File: src/buffer.sas
         %test_summary;
     %test_summary;
 
-    %symdel buf1 buf2 buf3 buf_n esc1 esc_n emp1 emp2 emp3 emp4 emp_n bar1 bar2 bar_n / nowarn;
+    %symdel _sep1 _sep2 _len1 _len2 tst5 _esc_app _esc_next _esc_match _esc_app2 _esc_next2 _esc_match2 _sepflag _sepflag2 _tok
+        buf1 buf2 buf3 buf_n esc1 esc_n emp1 emp2 emp3 emp4 emp_n bar1 bar2 bar_n / nowarn;
 %mend test_parmbuf_parser;
 
 /* Macro to run buffer tests when __unit_tests is set */

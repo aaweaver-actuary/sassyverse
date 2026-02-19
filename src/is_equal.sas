@@ -40,7 +40,7 @@ File: src/is_equal.sas
     /* Check if parameters are provided */
     %if %superq(a)= OR %superq(b)= %then %do;
         %put ERROR: Both parameters are required.;
-        %return(0);
+        %return;
     %end;
 
     /* Try numeric comparison only if both args are numeric-like */

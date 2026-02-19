@@ -35,11 +35,15 @@ File: sassyverse.sas
 - Defines 5 macro(s) in the session macro catalog.
 - May create/update GLOBAL macro variable(s): _sassyverse_base_path.
 */
-/* sassyverse.sas - Single entrypoint to load the full macro suite. */
-%macro _sassyverse_include(path=, out_status=);
-  %local _qpath;
-  %let &out_status=0;
 
+%macro _sv_dbg(msg);
+  %if %sysmacexist(dbg) %then %do;
+    %dbg(%superq(msg));
+  %end;
+%mend _sv_dbg;
+
+%macro _validate_include_path(path);
+  %_sv_dbg(_validate_include_path called with path=%superq(path));
   %if %length(%superq(path))=0 %then %do;
     %put ERROR: sassyverse include path is empty.;
     %return;
@@ -50,6 +54,15 @@ File: sassyverse.sas
     %return;
   %end;
 
+%mend _validate_include_path;
+
+%macro _sassyverse_include(path=, out_status=);
+  %_sv_dbg(_sassyverse_include called with path=%superq(path));
+  %local _qpath;
+  %let &out_status=0;
+
+  %_validate_include_path(%superq(path));
+
   %let _qpath=%sysfunc(quote(%superq(path)));
   %include &_qpath;
 
@@ -59,9 +72,10 @@ File: sassyverse.sas
   %end;
 
   %let &out_status=1;
-%mend;
+%mend _sassyverse_include;
 
 %macro _sassyverse_include_list(root=, files=, out_failed=);
+  %_sv_dbg(%str(_sassyverse_include_list called with root=%superq(root), files=%superq(files)));
   %local _n _i _file _path _ok;
   %let &out_failed=0;
 
@@ -77,9 +91,10 @@ File: sassyverse.sas
       %end;
     %end;
   %end;
-%mend;
+%mend _sassyverse_include_list;
 
 %macro sassyverse_init(base_path=, include_pipr=1, include_tests=0);
+  %_sv_dbg(%str(sv_init called with base_path=&base_path., include_pipr=&include_pipr., include_tests=&include_tests.));
   %local root lastchar;
   %local _incl_pipr _incl_tests;
   %local _incl_pipr_is_on _incl_tests_is_on;
@@ -103,6 +118,7 @@ File: sassyverse.sas
       sassymod.sas
       | globals.sas
       | assert.sas
+      | logging.sas
       | strings.sas
       | buffer.sas
       | lists.sas
@@ -111,7 +127,6 @@ File: sassyverse.sas
       | n_rows.sas
       | round_to.sas
       | shell.sas
-      | logging.sas
       | export.sas
       | hash.sas
       | index.sas
@@ -176,6 +191,7 @@ File: sassyverse.sas
 %mend sassyverse_init;
 
 %macro sassyverse_load(base_path=, include_pipr=1, include_tests=0);
+  %_sv_dbg(%str(sassyverse_load called with base_path=%superq(base_path), include_pipr=%superq(include_pipr), include_tests=%superq(include_tests)));
   %sassyverse_init(
     base_path=&base_path,
     include_pipr=&include_pipr,
@@ -184,6 +200,7 @@ File: sassyverse.sas
 %mend sassyverse_load;
 
 %macro sv_init(base_path=, include_pipr=1, include_tests=0);
+  %_sv_dbg(%str(sv_init called with base_path=%superq(base_path), include_pipr=%superq(include_pipr), include_tests=%superq(include_tests)));
   %sassyverse_init(
     base_path=&base_path,
     include_pipr=&include_pipr,

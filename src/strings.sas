@@ -719,7 +719,7 @@ File: src/strings.sas
 
     %test_suite(Unit tests for string.sas);
         %let strIndex1=%str__index(andy is a cool guy, cool);
-        %let strFind1=%str__find(andy is a cool guy, cool);
+        %let strFnd1=%str__find(andy is a cool guy, cool);
         %assertEqual(&strIndex1., 11); /* Test 1*/
         %assertEqual(&strFind1., 11); /* Test 2*/
 

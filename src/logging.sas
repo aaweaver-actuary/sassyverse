@@ -34,6 +34,7 @@ File: src/logging.sas
 - logtype
 - info
 - dbg
+- _log_extract_msg
 - test_logging
 - run_logging_tests
 
@@ -44,16 +45,17 @@ File: src/logging.sas
 - Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
 - Initializing this module sets default logging globals (for example log_level/log_dir/log_file) when unset.
 */
+
+%global log_level log_dir log_file;
+%let log_dir=/parm_share/small_business/modeling/sassyverse/logs;
+%let log_file=sas.log;
+
 /* Bootstrap the logging module */
 %macro _logging_bootstrap;
-	%if not %sysmacexist(shell) %then %sbmod(shell);
-	%if not %symexist(log_level) %then %global log_level;
-	%if %length(%superq(log_level))=0 %then %let log_level=INFO;
-	%global log_dir;
-	%global log_file;
-	%if %length(%superq(log_dir))=0 %then %let log_dir=%sysfunc(tranwrd(%sysfunc(pathname(work)), \, /));
-	%if %length(%superq(log_file))=0 %then %let log_file=sas.log;
 	%let type_len=5;
+	%if not %symexist(log_level) %then %let log_level=INFO;
+	%if not %symexist(log_dir) %then %let log_dir=/parm_share/small_business/modeling/sassyverse/logs;
+	%if not %symexist(log_file) %then %let log_file=sas.log;
 %mend _logging_bootstrap;
 
 %_logging_bootstrap;
@@ -69,10 +71,37 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 	%if %length(%superq(_dir_in))=0 %then %let _dir_out=%superq(log_dir);
 	%else %let _dir_out=%superq(_dir_in);
 
-	%if %length(%superq(_dir_out))=0 %then %let _dir_out=%sysfunc(tranwrd(%sysfunc(pathname(work)), \, /));
-	%if not %sysfunc(dexist(%superq(_dir_out))) %then %let _dir_out=%sysfunc(tranwrd(%sysfunc(pathname(work)), \, /));
+	%if %length(%superq(_dir_out))=0 %then %let _dir_out=%sysfunc(pathname(work));
+	%if not %sysfunc(fileexist(%superq(_dir_out))) %then %let _dir_out=%sysfunc(pathname(work));
 	%let &out_dir=%superq(_dir_out);
 %mend _log_resolve_dir;
+
+/* Determine whether a path is already absolute (Unix, Windows, or UNC) */
+%macro _log_is_absolute(path=, out_flag=_log_is_abs);
+	%local _p;
+	%let &out_flag=0;
+	%let _p=%superq(path);
+	%if %length(%superq(_p)) %then %do;
+		%if %substr(&_p., 1, 1)=%str(/) %then %let &out_flag=1;
+		%else %if %substr(&_p., 1, 1)=%str(\) %then %let &out_flag=1;
+		%else %if %sysfunc(indexc(&_p., %str(:))) > 0 %then %let &out_flag=1;
+	%end;
+%mend _log_is_absolute;
+
+/* Extract message from either msg= parameter or the raw parmbuff */
+%macro _log_extract_msg(msg=, out_var=_log_msg) / parmbuff;
+	%local _raw _len _from_param;
+	%let _from_param=%superq(msg);
+	%if %length(%superq(_from_param)) %then %do;
+		%let &out_var=%superq(_from_param);
+		%return;
+	%end;
+
+	%let _raw=%superq(syspbuff);
+	%let _len=%length(&_raw);
+	%if &_len >= 2 %then %let &out_var=%qsubstr(&_raw, 2, %eval(&_len - 2));
+	%else %let &out_var=;
+%mend _log_extract_msg;
 
 /* Toggle the log level between INFO and DEBUG */
 %macro toggle_log_level;
@@ -99,12 +128,16 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 %mend set_log_level;
 
 %macro clean_logger(
-	filename=sas.log /* Filename to save the log as. Default: sas.log */
-	, dir= /*Directory to save the log file. Default: WORK path*/
+	filename=&log_file. /* Filename to save the log as. Default: &log_file. */
+	, dir=&log_dir. /*Directory to save the log file. Default: &log_dir.*/
 );
-	%local filepath _dir;
-	%_log_resolve_dir(dir=%superq(dir), out_dir=_dir);
-	%let filepath=&_dir./&filename.;
+	%local filepath _dir _is_abs;
+	%_log_is_absolute(path=%superq(filename), out_flag=_is_abs);
+	%if &_is_abs %then %let filepath=%superq(filename);
+	%else %do;
+		%_log_resolve_dir(dir=%superq(dir), out_dir=_dir);
+		%let filepath=&_dir./&filename.;
+	%end;
 
  /* We get the filepath.  */
 	data _null_;
@@ -119,21 +152,32 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 /* Logs a message to the console */
 %macro console_log(msg=);
 	%put %superq(msg);
-	sysecho %superq(msg);
+	%if %symexist(sysenv) %then %do;
+		%if %upcase(%superq(sysenv))=FORE %then %do;
+			data _null_;
+				length _msg $32767;
+				_msg = symget('msg');
+				sysecho _msg;
+			run;
+		%end;
+	%end;
 %mend console_log;
 
-/* Formats a log message similarly to the way something like the logger in python would. */
+/* Write a log line to file only */
 %macro logger(
 	msg= /* Message to print to the log. */
-	, filename=sas.log /* Filename to save the log as. Default: sas.log */
-	, dir= /*Directory to save the log file. Default: WORK path*/
+	, filename=&log_file. /* Filename to save the log as. Default: &log_file. */
+	, dir=&log_dir. /*Directory to save the log file. Default: &log_dir.*/
 );
-	%local filepath _dir _msg;
-	%let _msg=%superq(msg); /* Message to print to the log. */
-	%_log_resolve_dir(dir=%superq(dir), out_dir=_dir); /* Resolve the directory for the log file. */
-	%let filepath=&_dir./&filename.; /* Construct the full file path for the log file. */
+	%local filepath _dir _msg _is_abs;
+	%let _msg=%superq(msg);
+	%_log_is_absolute(path=%superq(filename), out_flag=_is_abs);
+	%if &_is_abs %then %let filepath=%superq(filename);
+	%else %do;
+		%_log_resolve_dir(dir=%superq(dir), out_dir=_dir);
+		%let filepath=&_dir./&filename.;
+	%end;
 
-	/* Write the log message to the file */
 	data _null_;
 		length _fp _line $32767;
 		_fp = symget('filepath');
@@ -143,13 +187,13 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 	run;
 %mend logger;
 
-/* Common functionality for all the further log items */
+/* Common functionality for all log messages */
 %macro logtype(
 	msg /* Message to print to the log. */
-	, filename=sas.log /* Filename to save the log as. Default: sas.log */
-	, dir= /*Directory to save the log file. Default: WORK path*/
-	, type=INFO /* Log level to print with. Default: INFO. Used in formatting the message, but does not gate whether the message is printed or not. */
-	, to_console=1 /* Whether to also print the message to the console. Default: 1 (true). If true, prints the message to the console in addition to the log file. */
+	, filename=&log_file. /* Filename to save the log as. Default: &log_file. */
+	, dir=&log_dir. /*Directory to save the log file. Default: &log_dir.*/
+	, type=INFO /* Log level to print with. Default: INFO. */
+	, to_console=1 /* Whether to also print the message to the console. Default: 1 (true). */
 );
 	%local ts uptype updated_msg _pad;
 	%let ts=%sysfunc(putn(%sysfunc(datetime()), e8601dt19.));
@@ -166,35 +210,39 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 
 %mend logtype;
 
-/* Formats a log message similarly to the way something like the logger in python would. */
-%macro info(
-	msg /* Message to print to the log. */
-	, filename=sas.log /* Filename to save the log as. Default: sas.log */
-	, dir= /*Directory to save the log file. Default: WORK path*/
-	, to_console=1 /* Whether to also print the message to the console. Default: 1 (true). If true, prints the message to the console in addition to the log file. */
-);
-	%logtype(msg=%superq(msg), filename=&filename., dir=&dir., type=INFO, to_console=&to_console.);
+/* Ergonomic info: optional msg=, otherwise use parmbuff */
+%macro info(msg=) / parmbuff;
+	%local _msg;
+	%_log_extract_msg(msg=%superq(msg), out_var=_msg);
+	%logtype(msg=%superq(_msg), type=INFO, to_console=1);
 %mend info;
 
-/* Formats a log message similarly to the way something like the logger in python would. */
-%macro dbg(
-	msg /* Message to print to the log. */
-	, filename=sas.log /* Filename to save the log as. Default: sas.log */
-	, dir= /*Directory to save the log file. Default: WORK path*/
-	, to_console=1 /* Whether to also print the message to the console. Default: 1 (true). If true, prints the message to the console in addition to the log file. */
-);
+/* Ergonomic dbg: optional msg=, gated on log_level */
+%macro dbg(msg=) / parmbuff;
+	%local _msg;
 	%if %upcase(%superq(log_level))=DEBUG %then %do;
-		%logtype(msg=%superq(msg), filename=&filename., dir=&dir., type=DEBUG, to_console=&to_console.);
+		%_log_extract_msg(msg=%superq(msg), out_var=_msg);
+		%logtype(msg=%superq(_msg), type=DEBUG, to_console=1);
 	%end;
 %mend dbg;
+
+/* Check if the current log level is DEBUG */
+%macro is_log_level_dbg;
+	%local out;
+	%if "%upcase(&log_level.)"="DEBUG" %then %let out=1;
+	%else %let out=0;
+	%dbg(msg=%str(is_log_level_dbg: log level is &log_level., out=&out.));
+	&out
+%mend is_log_level_dbg;
 
 %macro test_logging;
 	%if not %sysmacexist(assertTrue) %then %sbmod(assert);
 
-	%local workdir logfile prev_level;
+	%local workdir logfile prev_level prev_dir;
 	%let workdir=%sysfunc(pathname(work));
-	%let logfile=log_test.log;
+	%let logfile=&log_file.;
 	%let prev_level=&log_level;
+	%let prev_dir=&log_dir;
 
 	%set_log_level(DEBUG);
 
@@ -220,11 +268,12 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 		%test_summary;
 
 		%test_case(info and dbg write lines);
-			%info(msg=hello info, filename=&logfile., dir=&workdir.);
-			%dbg(msg=hello debug, filename=&logfile., dir=&workdir.);
+			%let log_dir=&workdir.;
+			%info(hello info);
+			%dbg(hello debug);
 
 			data work._loglines;
-				infile "&workdir./&logfile." truncover;
+				infile "&workdir./&log_file." truncover;
 				length line $32767;
 				input line $char32767.;
 			run;
@@ -253,11 +302,12 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 		%test_summary;
 
 		%test_case(dbg is gated when log level is INFO);
+			%let log_dir=&workdir.;
 			%set_log_level(INFO);
-			%dbg(msg=debug should not write, filename=&logfile., dir=&workdir.);
+			%dbg(debug should not write);
 
 			data work._loglines2;
-				infile "&workdir./&logfile." truncover;
+				infile "&workdir./&log_file." truncover;
 				length line $32767;
 				input line $char32767.;
 			run;
@@ -274,6 +324,7 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 	%test_summary;
 
 	%let log_level=&prev_level;
+	%let log_dir=&prev_dir;
 
 	proc datasets lib=work nolist; delete _loglines _loglines2; quit;
 %mend test_logging;

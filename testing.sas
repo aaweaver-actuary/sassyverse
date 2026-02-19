@@ -29,27 +29,8 @@ File: testing.sas
 7) Expected side effects from running/include
 - Executes top-level macro call(s) on include: sv_init, sbmod, pipe.
 */
-options
-  mprint
-  mlogic
-  symbolgen
-  mprintnest
-  mlogicnest
-  source2
-  mcompilenote=all
-  msglevel=i
-  notes
-  source
-  serror
-  merror
-  quotelenmax
-;
 
-
-%let val_year=2025;
-%let val_month=12;
-%let val_day=31;
-
+%dbg(At the top of testing.sas);
 /* Define folders and import sbmod + testing tools */
 %let egdir=/sas/data/project/EG;
 %let egsb=&egdir./ActShared/SmallBusiness;
@@ -61,18 +42,29 @@ options
 
 %let basesverse=/parm_share/small_business/modeling/sassyverse;
 
+%dbg(%str(Defined base paths, now including sassyverse.sas));
 %include "&basesverse./sassyverse.sas";
+
+%dbg(Initializing sassyverse with:);
+%dbg(%str(base_path=&basesverse./src));
+%dbg(include_pipr=1);
+%dbg(include_tests=1);
 %sv_init(
   base_path=&basesverse./src,
   include_pipr=1,
   include_tests=1
 );
+%dbg(sassyverse initialized successfully, now loading helpers);
 
 /* Load helper macros */
 %sbmod(helpers, base_path=&codelib., reload=1);
+
+%dbg(Helpers loaded, now smoke testing pipe macro);
 
 %pipe(
   decfile.policy_lookup
   | select(sb_policy_key)
   | collect_to(policy_keys)
 );
+
+%dbg(Testing complete. Check SAS log for details and results.);

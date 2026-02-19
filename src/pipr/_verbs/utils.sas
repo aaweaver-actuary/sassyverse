@@ -94,14 +94,26 @@ File: src/pipr/_verbs/utils.sas
 %macro _step_has_validate(args, out_has);
   %local has;
   %global &out_has;
-  %let has=%sysfunc(index(%upcase(%superq(args)), VALIDATE=));
+  %let has=%sysfunc(prxmatch(%str(/(^|\s|,)\s*validate\s*=/i), %superq(args)));
   %let &out_has=&has;
 %mend;
 
 %macro _step_call_positional(verb, args, in, out, as_view, pipe_validate, has_validate);
-  %if %length(%superq(args)) %then %do;
-    %unquote(%nrstr(%)&verb)(
-      %nrstr(%bquote(&args)),
+  %local _verb_uc;
+  %let _verb_uc=%upcase(%superq(verb));
+
+  %if %sysfunc(indexw(LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL, &_verb_uc)) > 0 %then %do;
+    %&verb(
+      %unquote(%superq(args)),
+      data=&in,
+      out=&out,
+      as_view=&as_view
+      %sysfunc(ifc(&has_validate, %str(), %str(, validate=&pipe_validate)))
+    );
+  %end;
+  %else %if %length(%superq(args)) %then %do;
+    %&verb(
+      %bquote(%superq(args)),
       data=&in,
       out=&out,
       as_view=&as_view
@@ -109,7 +121,7 @@ File: src/pipr/_verbs/utils.sas
     );
   %end;
   %else %do;
-    %unquote(%nrstr(%)&verb)(
+    %&verb(
       ,
       data=&in,
       out=&out,
@@ -121,16 +133,16 @@ File: src/pipr/_verbs/utils.sas
 
 %macro _step_call_named(verb, args, in, out, as_view, pipe_validate, has_validate);
   %if %length(%superq(args)) %then %do;
-    %unquote(%nrstr(%)&verb)(
+    %&verb(
       data=&in,
       out=&out,
-      &args,
+      %unquote(%superq(args)),
       as_view=&as_view
       %sysfunc(ifc(&has_validate, %str(), %str(, validate=&pipe_validate)))
     );
   %end;
   %else %do;
-    %unquote(%nrstr(%)&verb)(
+    %&verb(
       data=&in,
       out=&out,
       as_view=&as_view

@@ -87,7 +87,12 @@ File: src/pipr/_verbs/join.sas
    are a common source of brittle downstream failures. */
 %macro _join_right_keep_key_overlap(on=, right_keep=, out_has_overlap=, out_key=);
   %local i n k has_overlap overlap_key;
-  %global &out_has_overlap &out_key;
+  %if %length(%superq(out_has_overlap)) %then %do;
+    %if not %symexist(&out_has_overlap) %then %global &out_has_overlap;
+  %end;
+  %if %length(%superq(out_key)) %then %do;
+    %if not %symexist(&out_key) %then %global &out_key;
+  %end;
 
   %let has_overlap=0;
   %let overlap_key=;

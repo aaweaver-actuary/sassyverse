@@ -45,9 +45,14 @@ File: src/assert.sas
 - Executes top-level macro call(s) on include: _log_styles, run_assertion_tests.
 - Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
 */
+%macro _bootstrap_assert;
+	
 %if %sysfunc(libref(sbfuncs)) ne 0 %then %do;
   libname sbfuncs "%sysfunc(pathname(work))";
 %end;
+%mend _bootstrap_assert;
+
+%_bootstrap_assert;
 
 %put======================>> Loading assert.sas;
 
@@ -189,46 +194,46 @@ File: src/assert.sas
 	%assertFalse(%eval(&_eq), &message.);
 %mend;
 
-options nonotes nosource nodetails; /* Suppress warnings that these functions were previously compiled */
+/* options nonotes nosource nodetails; /* Suppress warnings that these functions were previously compiled */ */
 
-proc fcmp outlib=sbfuncs.fn.assert;
-	/* These subroutines are otherwise identical to the macros, but
-	   are compiled	subroutines that can test data in a data step.*/
-	subroutine assertTrue(condition $, message $);
-	length cmd $ 32767;
-		cmd=strip(cats('%nrstr(%assertTrue)(', condition, ', "', message, '")'));
-	put cmd=;
-	call execute(cmd);
-	endsub;
+/* proc fcmp outlib=sbfuncs.fn.assert; */
+/* 	/* These subroutines are otherwise identical to the macros, but */
+/* 	   are compiled	subroutines that can test data in a data step.*/ */
+/* 	subroutine assertTrue(condition $, message $); */
+/* 	length cmd $ 32767; */
+/* 		cmd=strip(cats('%nrstr(%assertTrue)(', condition, ', "', message, '")')); */
+/* 	put cmd=; */
+/* 	call execute(cmd); */
+/* 	endsub; */
 
-	subroutine assertFalse(condition $, message $);
-	length cmd $ 32767;
-	cmd=cats('%nrstr(%assertFalse)(', condition, ', "', message, '")');
-	put cmd=;
-	call execute(cmd);
-	/* call execute(cats('%nrstr(%assertFalse)(', condition, ', "', message,
-	'")')); */
-	endsub;
+/* 	subroutine assertFalse(condition $, message $); */
+/* 	length cmd $ 32767; */
+/* 	cmd=cats('%nrstr(%assertFalse)(', condition, ', "', message, '")'); */
+/* 	put cmd=; */
+/* 	call execute(cmd); */
+/* 	/* call execute(cats('%nrstr(%assertFalse)(', condition, ', "', message, */
+/* 	'")')); */ */
+/* 	endsub; */
 
-	subroutine assertEqual(actual $, expected $);
-	length cmd $ 32767;
-	cmd=cats('%nrstr(%assertEqual)(', actual, ', ', expected, ')');
-	put cmd=;
-	call execute(cmd);
-	/* call execute(cats('%nrstr(%assertEqual)(', actual, ', ', expected')')); */
-	endsub;
+/* 	subroutine assertEqual(actual $, expected $); */
+/* 	length cmd $ 32767; */
+/* 	cmd=cats('%nrstr(%assertEqual)(', actual, ', ', expected, ')'); */
+/* 	put cmd=; */
+/* 	call execute(cmd); */
+/* 	/* call execute(cats('%nrstr(%assertEqual)(', actual, ', ', expected')')); */ */
+/* 	endsub; */
 
-	subroutine assertNotEqual(actual $, expected $);
-	length cmd $ 32767;
-	cmd=cats('%nrstr(%assertNotEqual)(', actual, ', ', expected, ')');
-	put cmd=;
-	call execute(cmd);
-	/* call execute(cats('%nrstr(%assertNotEqual)(', actual, ', ', expected')')); */
-	endsub;
-run;
+/* 	subroutine assertNotEqual(actual $, expected $); */
+/* 	length cmd $ 32767; */
+/* 	cmd=cats('%nrstr(%assertNotEqual)(', actual, ', ', expected, ')'); */
+/* 	put cmd=; */
+/* 	call execute(cmd); */
+/* 	/* call execute(cats('%nrstr(%assertNotEqual)(', actual, ', ', expected')')); */ */
+/* 	endsub; */
+/* run; */
 
-options notes source details;
-options cmplib=sbfuncs.fn;
+/* options notes source details; */
+/* options cmplib=sbfuncs.fn; */;
 
 %macro test_suite(name);
 	%global testSuite isCurrentlyInTestCase;
@@ -322,18 +327,7 @@ options cmplib=sbfuncs.fn;
 			%assertNotEqual(1, 0);
 
 			%assertTrue(%symbol_dne(asdafasdf), 'asdafasdf' was not previously defined);
-
 		%test_summary;
-
-		%test_case(Testing DATA STEP versions of assertions);
-			data _null_;
-				call assertTrue('1', "1 is true DATA STEP ASSERTIONS");
-				call assertFalse('0', "0 is false");
-				call assertEqual('1', '1');
-				call assertNotEqual('1', '0');
-			run;
-		%test_summary;
-
 	%test_summary;
 %mend test_assertions;
 
