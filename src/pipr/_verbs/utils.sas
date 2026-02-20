@@ -99,21 +99,25 @@ File: src/pipr/_verbs/utils.sas
 %mend;
 
 %macro _step_call_positional(verb, args, in, out, as_view, pipe_validate, has_validate);
-  %local _verb_uc;
+  %local _verb_uc _args_norm;
   %let _verb_uc=%upcase(%superq(verb));
+  %let _args_norm=%superq(args);
+  %if %sysmacexist(_pipr_unbracket_csv_lists) %then %do;
+    %_pipr_unbracket_csv_lists(text=%superq(args), out_text=_args_norm);
+  %end;
 
   %if %sysfunc(indexw(LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL, &_verb_uc)) > 0 %then %do;
     %&verb(
-      %unquote(%superq(args)),
+      %unquote(%superq(_args_norm)),
       data=&in,
       out=&out,
       as_view=&as_view
       %sysfunc(ifc(&has_validate, %str(), %str(, validate=&pipe_validate)))
     );
   %end;
-  %else %if %length(%superq(args)) %then %do;
+  %else %if %length(%superq(_args_norm)) %then %do;
     %&verb(
-      %bquote(%superq(args)),
+      %nrquote(%superq(_args_norm)),
       data=&in,
       out=&out,
       as_view=&as_view
@@ -122,7 +126,6 @@ File: src/pipr/_verbs/utils.sas
   %end;
   %else %do;
     %&verb(
-      ,
       data=&in,
       out=&out,
       as_view=&as_view
@@ -132,11 +135,17 @@ File: src/pipr/_verbs/utils.sas
 %mend;
 
 %macro _step_call_named(verb, args, in, out, as_view, pipe_validate, has_validate);
-  %if %length(%superq(args)) %then %do;
+  %local _args_norm;
+  %let _args_norm=%superq(args);
+  %if %sysmacexist(_pipr_unbracket_csv_lists) %then %do;
+    %_pipr_unbracket_csv_lists(text=%superq(args), out_text=_args_norm);
+  %end;
+
+  %if %length(%superq(_args_norm)) %then %do;
     %&verb(
       data=&in,
       out=&out,
-      %unquote(%superq(args)),
+      %unquote(%superq(_args_norm)),
       as_view=&as_view
       %sysfunc(ifc(&has_validate, %str(), %str(, validate=&pipe_validate)))
     );
@@ -263,9 +272,35 @@ File: src/pipr/_verbs/utils.sas
         %assertEqual(&_ut_sum_wc., 18);
       %test_summary;
     %end;
-  %test_summary;
 
-  proc datasets lib=work nolist; delete _ut_in _ut_out _ut_out_wc _ut_pred_in _ut_pred_out; quit;
-%mend test_pipr_verb_utils;
+    %if %sysmacexist(select) %then %do;
+      %test_case(apply_step supports comma-separated positional args for select);
+        data work._ut_sel_in;
+          length a b c 8;
+          a=1; b=2; c=3; output;
+        run;
 
-%_pipr_autorun_tests(test_pipr_verb_utils);
+        %_apply_step(%str(select(a, b)), work._ut_sel_in, work._ut_sel_out, 1, 0);
+
+        proc sql noprint;
+          select upcase(name) into :_ut_sel_cols separated by ' '
+          from sashelp.vcolumn
+          where libname='WORK' and memname='_UT_SEL_OUT'
+          order by varnum;
+        quit;
+
+        %assertEqual(&_ut_sel_cols., A B);
+      %test_summary;
+    %end;
+
+    %if %sysmacexist(drop_duplicates) %then %do;
+      %test_case(apply_step supports bare drop_duplicates step);
+        data work._ut_dup_in;
+          id=1; output;
+          id=1; output;
+          id=2; output;
+        run;
+
+        %_apply_step(%str(drop_duplicates), work._ut_dup_in, work._ut_dup_out, 1, 0);
+
+        proc sql nop

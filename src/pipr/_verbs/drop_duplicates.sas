@@ -53,7 +53,7 @@ File: src/pipr/_verbs/drop_duplicates.sas
   quit;
 %mend;
 
-%macro drop_duplicates(by=, data=, out=, validate=1, as_view=1);
+%macro drop_duplicates(by=, data=, out=, validate=1, as_view=0);
   %local _validate _as_view;
   %let _validate=%_pipr_bool(%superq(validate), default=1);
   %let _as_view=%_pipr_bool(%superq(as_view), default=0);

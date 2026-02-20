@@ -82,12 +82,15 @@ File: src/pipr/validation.sas
 %mend;
 
 %macro _cols_missing(ds, cols, out_missing);
-  %local i n col _missing_accum;
+  %local i n col _missing_accum _cols_norm;
   %if %length(%superq(out_missing)) %then %do;
     %if not %symexist(&out_missing) %then %global &out_missing;
   %end;
 
-  %let n=%sysfunc(countw(&cols, %str( )));
+  %let _cols_norm=%sysfunc(prxchange(%str(s/[\s,]+/ /), -1, %superq(cols)));
+  %let _cols_norm=%sysfunc(compbl(%sysfunc(strip(%superq(_cols_norm)))));
+
+  %let n=%sysfunc(countw(%superq(_cols_norm), %str( )));
   %if &n=0 %then %do;
     %let &out_missing=;
     %return;
@@ -95,7 +98,7 @@ File: src/pipr/validation.sas
 
   %let _missing_accum=;
   %do i=1 %to &n;
-    %let col=%upcase(%scan(&cols, &i, %str( )));
+    %let col=%upcase(%scan(%superq(_cols_norm), &i, %str( )));
     %_col_exists(&ds, &col, _exists);
     %if &_exists = 0 %then %let _missing_accum=&_missing_accum &col;
   %end;
@@ -253,6 +256,7 @@ File: src/pipr/validation.sas
   %_pipr_require_assert;
   %global _exists _missing;
   %global _cleaned _vars _lt _ll _rt _rl _type_mis _len_mis;
+  %local _pv_tabcols;
 
   %test_suite(Testing pipr validation);
     %test_case(assert_cols_exist and get_col_attr);
@@ -276,6 +280,13 @@ File: src/pipr/validation.sas
 
       %_cols_missing(work._pv_left, id name no_such_col, _missing);
       %assertEqual(&_missing., NO_SUCH_COL);
+
+      %_cols_missing(work._pv_left, %str(id,name), _missing);
+      %assertEqual(&_missing.,);
+
+      %let _pv_tabcols=id%sysfunc(byte(9))name;
+      %_cols_missing(work._pv_left, %superq(_pv_tabcols), _missing);
+      %assertEqual(&_missing.,);
     %test_summary;
 
     %test_case(assert_key_compatible and unique_key);

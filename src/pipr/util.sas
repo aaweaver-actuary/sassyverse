@@ -27,6 +27,7 @@ File: src/pipr/util.sas
 - _abort
 - _tmpds
 - _pipr_split_parmbuff_segments
+- _pipr_unbracket_csv_lists
 - _pipr_in_unit_tests
 - _pipr_require_assert
 - _pipr_bool
@@ -96,6 +97,71 @@ File: src/pipr/util.sas
 
     call symputx(symget('out_n'),__seg_count, 'F');
   run;
+%mend;
+
+/* Convert bracket-wrapped comma lists to space-delimited lists.
+   Example: right_keep=[a, b] -> right_keep=a b
+   Brackets are removed only for top-level [...] segments outside quotes. */
+%macro _pipr_unbracket_csv_lists(text=, out_text=);
+  %local _pul_text _pul_out;
+  %let _pul_text=%superq(text);
+
+  data _null_;
+    length src out ch quote $32767;
+    src = symget('_pul_text');
+    out = '';
+    quote = '';
+    paren_depth = 0;
+    bracket_depth = 0;
+
+    do i = 1 to length(src);
+      ch = substr(src, i, 1);
+
+      if quote = '' then do;
+        if ch = "'" or ch = '"' then do;
+          quote = ch;
+          out = cats(out, ch);
+          continue;
+        end;
+
+        if ch = '(' then do;
+          paren_depth + 1;
+          out = cats(out, ch);
+          continue;
+        end;
+        else if ch = ')' and paren_depth > 0 then do;
+          paren_depth + (-1);
+          out = cats(out, ch);
+          continue;
+        end;
+
+        if ch = '[' then do;
+          bracket_depth + 1;
+          continue;
+        end;
+        else if ch = ']' and bracket_depth > 0 then do;
+          bracket_depth + (-1);
+          continue;
+        end;
+
+        if ch = ',' and bracket_depth > 0 then do;
+          out = cats(out, ' ');
+          continue;
+        end;
+
+        out = cats(out, ch);
+      end;
+      else do;
+        out = cats(out, ch);
+        if ch = quote then quote = '';
+      end;
+    end;
+
+    out = compbl(strip(out));
+    call symputx('_pul_out', out, 'L');
+  run;
+
+  %let &out_text=%superq(_pul_out);
 %mend;
 
 /* Returns 1 when unit tests are enabled for this session, else 0. */
@@ -185,6 +251,17 @@ File: src/pipr/util.sas
       %assertEqual(&_n., 2);
       %assertEqual(&_ps_local1., name=a);
       %assertEqual(&_ps_local2., args=b);
+    %test_summary;
+
+    %test_case(bracket csv helper rewrites bracket lists);
+      %_pipr_unbracket_csv_lists(
+        text=%str(right_keep=[rpt_period_date, experian_bin], on=sb_policy_key),
+        out_text=_pul_norm
+      );
+      %assertEqual(
+        %superq(_pul_norm),
+        %str(right_keep=rpt_period_date experian_bin, on=sb_policy_key)
+      );
     %test_summary;
   %test_summary;
 %mend test_pipr_util;

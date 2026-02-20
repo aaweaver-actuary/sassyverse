@@ -954,6 +954,34 @@ File: src/pipr/pipr.sas
       %assertEqual(&_pipe_dup_cnt., 2);
     %test_summary;
 
+    %test_case(pipe supports select positional commas then bare drop_duplicates);
+      data work._pipe_keys_in;
+        sb_policy_key=11; experian_bin=700; payload=1; output;
+        sb_policy_key=11; experian_bin=700; payload=2; output;
+        sb_policy_key=22; experian_bin=680; payload=3; output;
+      run;
+
+      %pipe(
+        work._pipe_keys_in
+        | select(sb_policy_key, experian_bin)
+        | drop_duplicates
+        | collect_to(work._pipe_keys_out)
+        , use_views=0
+        , cleanup=1
+      );
+
+      proc sql noprint;
+        select count(*) into :_pipe_keys_cnt trimmed from work._pipe_keys_out;
+        select upcase(name) into :_pipe_keys_cols separated by ' '
+        from sashelp.vcolumn
+        where libname='WORK' and memname='_PIPE_KEYS_OUT'
+        order by varnum;
+      quit;
+
+      %assertEqual(&_pipe_keys_cnt., 2);
+      %assertEqual(&_pipe_keys_cols., SB_POLICY_KEY EXPERIAN_BIN);
+    %test_summary;
+
     %test_case(%nrstr(mutate with comma-based function expression without explicit %str));
       %pipe(
         data=work._pipe_in,
@@ -1191,7 +1219,7 @@ File: src/pipr/pipr.sas
   %test_summary;
 
   proc datasets lib=work nolist;
-    delete _pipe_in _pipe_out _pipe_view_in _pipe_view_out _pipe_out_ifc _pipe_out_multi _pipe_out_multi_compact _pipe_pred _pipe_pred_out _pipe_mut_pred _pipe_out_wc_multi _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2 _pipe_dup_in;
+    delete _pipe_in _pipe_out _pipe_view_in _pipe_view_out _pipe_out_ifc _pipe_out_multi _pipe_out_multi_compact _pipe_pred _pipe_pred_out _pipe_mut_pred _pipe_out_wc_multi _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2 _pipe_dup_in _pipe_keys_in _pipe_keys_out;
     delete _pipe_out_view_final _pipe_dup_out_view / memtype=view;
   quit;
 %mend test_pipe;
