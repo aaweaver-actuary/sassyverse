@@ -124,6 +124,20 @@ Examples:
 %drop(debug_flag temp_col, data=work.policies, out=work.drop_cols);
 ```
 
+### drop_duplicates.sas
+
+- `%drop_duplicates(by=, ...)` removes duplicate rows.
+- With `by=` omitted, duplicates are removed across the full row (`select distinct *`).
+- With `by=` provided, output contains distinct key combinations for those columns.
+- Supports `as_view=1`, so it can participate in lazy/view pipelines.
+
+Examples:
+
+```sas
+%drop_duplicates(data=work.policies, out=work.policies_unique);
+%drop_duplicates(by=company_numb home_state, data=work.policies, out=work.company_state_unique);
+```
+
 ### rename.sas
 
 - `%rename(rename_pairs, ...)` renames columns using `old=new` pairs.

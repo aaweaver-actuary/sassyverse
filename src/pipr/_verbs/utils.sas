@@ -44,14 +44,14 @@ File: src/pipr/_verbs/utils.sas
 - When invoked, macros in this module can create or overwrite WORK datasets/views as part of pipeline operations.
 */
 %macro _verb_positional_list;
-  FILTER MUTATE WITH_COLUMN ARRANGE KEEP DROP SELECT RENAME SUMMARISE SUMMARIZE
+  FILTER MUTATE WITH_COLUMN ARRANGE KEEP DROP DROP_DUPLICATES SELECT RENAME SUMMARISE SUMMARIZE
   WHERE WHERE_NOT MASK WHERE_IF SORT
   LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL
   COLLECT_TO COLLECT_INTO
 %mend;
 
 %macro _verb_view_supported_list;
-  FILTER MUTATE WITH_COLUMN KEEP DROP
+  FILTER MUTATE WITH_COLUMN KEEP DROP DROP_DUPLICATES
   LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL
   SELECT RENAME WHERE WHERE_NOT MASK WHERE_IF
   COLLECT_TO COLLECT_INTO
@@ -186,10 +186,12 @@ File: src/pipr/_verbs/utils.sas
       %assertTrue(%eval(%_is_positional_verb(left_join) > 0), left_join is positional);
       %assertTrue(%eval(%_is_positional_verb(collect_to) > 0), collect_to is positional);
       %assertTrue(%eval(%_is_positional_verb(with_column) > 0), with_column is positional);
+      %assertTrue(%eval(%_is_positional_verb(drop_duplicates) > 0), drop_duplicates is positional);
       %assertTrue(%eval(%_verb_supports_view(filter) > 0), filter supports views);
       %assertTrue(%eval(%_verb_supports_view(select) > 0), select supports views);
       %assertTrue(%eval(%_verb_supports_view(rename) > 0), rename supports views);
       %assertTrue(%eval(%_verb_supports_view(with_column) > 0), with_column supports views);
+      %assertTrue(%eval(%_verb_supports_view(drop_duplicates) > 0), drop_duplicates supports views);
       %assertTrue(%eval(%_verb_supports_view(arrange) = 0), arrange does not support views);
     %test_summary;
 

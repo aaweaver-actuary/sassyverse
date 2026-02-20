@@ -45,6 +45,7 @@ File: src/pipr/verbs.sas
 
 %include '_verbs/arrange.sas';
 %include '_verbs/drop.sas';
+%include '_verbs/drop_duplicates.sas';
 %include '_verbs/filter.sas';
 %include '_verbs/join.sas';
 %include '_verbs/keep.sas';

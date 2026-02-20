@@ -169,6 +169,7 @@ File: sassyverse.sas
         | pipr/_verbs/utils.sas
         | pipr/_verbs/arrange.sas
         | pipr/_verbs/drop.sas
+        | pipr/_verbs/drop_duplicates.sas
         | pipr/_verbs/filter.sas
         | pipr/_verbs/join.sas
         | pipr/_verbs/keep.sas

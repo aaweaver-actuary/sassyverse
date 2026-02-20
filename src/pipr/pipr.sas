@@ -931,6 +931,29 @@ File: src/pipr/pipr.sas
       %assertEqual(&_pipe_view_cnt., 2);
     %test_summary;
 
+    %test_case(pipe supports drop_duplicates with lazy view output);
+      data work._pipe_dup_in;
+        id=1; output;
+        id=1; output;
+        id=2; output;
+      run;
+
+      %pipe(
+        data=work._pipe_dup_in,
+        out=work._pipe_dup_out_view,
+        steps=drop_duplicates(),
+        use_views=1,
+        view_output=1,
+        cleanup=1
+      );
+
+      %assertEqual(%sysfunc(exist(work._pipe_dup_out_view, view)), 1);
+      proc sql noprint;
+        select count(*) into :_pipe_dup_cnt trimmed from work._pipe_dup_out_view;
+      quit;
+      %assertEqual(&_pipe_dup_cnt., 2);
+    %test_summary;
+
     %test_case(%nrstr(mutate with comma-based function expression without explicit %str));
       %pipe(
         data=work._pipe_in,
@@ -1168,8 +1191,8 @@ File: src/pipr/pipr.sas
   %test_summary;
 
   proc datasets lib=work nolist;
-    delete _pipe_in _pipe_out _pipe_view_in _pipe_view_out _pipe_out_ifc _pipe_out_multi _pipe_out_multi_compact _pipe_pred _pipe_pred_out _pipe_mut_pred _pipe_out_wc_multi _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2;
-    delete _pipe_out_view_final / memtype=view;
+    delete _pipe_in _pipe_out _pipe_view_in _pipe_view_out _pipe_out_ifc _pipe_out_multi _pipe_out_multi_compact _pipe_pred _pipe_pred_out _pipe_mut_pred _pipe_out_wc_multi _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2 _pipe_dup_in;
+    delete _pipe_out_view_final _pipe_dup_out_view / memtype=view;
   quit;
 %mend test_pipe;
 
