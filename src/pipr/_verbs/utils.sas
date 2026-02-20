@@ -303,4 +303,47 @@ File: src/pipr/_verbs/utils.sas
 
         %_apply_step(%str(drop_duplicates), work._ut_dup_in, work._ut_dup_out, 1, 0);
 
-        proc sql nop
+        proc sql noprint;
+          select count(*) into :_ut_dup_cnt trimmed from work._ut_dup_out;
+        quit;
+
+        %assertEqual(&_ut_dup_cnt., 2);
+      %test_summary;
+    %end;
+
+    %if %sysmacexist(left_join) %then %do;
+      %test_case(apply_step supports bracketed comma lists in keyword args);
+        data work._ut_lj_left;
+          id=1; output;
+          id=2; output;
+        run;
+
+        data work._ut_lj_right;
+          id=1; rpt_period_date='2026-01'; experian_bin=700; output;
+          id=2; rpt_period_date='2026-02'; experian_bin=680; output;
+        run;
+
+        %_apply_step(
+          %str(left_join(work._ut_lj_right, on=id, right_keep=[rpt_period_date, experian_bin])),
+          work._ut_lj_left,
+          work._ut_lj_out,
+          1,
+          0
+        );
+
+        proc sql noprint;
+          select upcase(name) into :_ut_lj_cols separated by ' '
+          from sashelp.vcolumn
+          where libname='WORK' and memname='_UT_LJ_OUT'
+          order by varnum;
+        quit;
+
+        %assertEqual(&_ut_lj_cols., ID RPT_PERIOD_DATE EXPERIAN_BIN);
+      %test_summary;
+    %end;
+  %test_summary;
+
+  proc datasets lib=work nolist; delete _ut_in _ut_out _ut_out_wc _ut_pred_in _ut_pred_out _ut_sel_in _ut_sel_out _ut_dup_in _ut_dup_out _ut_lj_left _ut_lj_right _ut_lj_out; quit;
+%mend test_pipr_verb_utils;
+
+%_pipr_autorun_tests(test_pipr_verb_utils);

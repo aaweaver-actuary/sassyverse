@@ -169,8 +169,8 @@ File: src/assert.sas
 		%else %let _eq=0;
 	%end;
 	%end;
-	%let message=Asserted that [&actual.]=[&expected.];
-	%assertTrue(%eval(&_eq), &message.);
+	%let message=Asserted that [%superq(actual)]=[%superq(expected)];
+	%assertTrue(%eval(&_eq), %superq(message));
 %mend;
 
 %macro assertNotEqual(actual, expected);
@@ -190,8 +190,8 @@ File: src/assert.sas
 		%else %let _eq=0;
 	%end;
 	%end;
-	%let message=Asserted that [&actual.]!=[&expected.];
-	%assertFalse(%eval(&_eq), &message.);
+	%let message=Asserted that [%superq(actual)]!=[%superq(expected)];
+	%assertFalse(%eval(&_eq), %superq(message));
 %mend;
 
 /* options nonotes nosource nodetails; /* Suppress warnings that these functions were previously compiled */ */
@@ -246,6 +246,7 @@ File: src/assert.sas
 
 %macro test_case / parmbuff;
 	%global currentTestCaseName isCurrentlyInTestCase testCaseCount testCaseFailures testCaseErrors;
+	%global testCaseSysccStart testCaseSyserrStart;
 	%local _buf _title _len;
 	%let _buf=%superq(syspbuff);
 	%let _len=%length(%superq(_buf));
@@ -262,10 +263,23 @@ File: src/assert.sas
 	%let testCaseCount=0;
 	%let testCaseFailures=0;
 	%let testCaseErrors=0;
+	%let testCaseSysccStart=%sysfunc(inputn(%superq(syscc), best32.));
+	%let testCaseSyserrStart=%sysfunc(inputn(%superq(syserr), best32.));
 %mend test_case;
 
 %macro test_summary;
 	%if &isCurrentlyInTestCase.=1 %then %do;
+		%local _tc_syscc_start _tc_syserr_start _tc_syscc_end _tc_syserr_end;
+		%let _tc_syscc_start=%sysfunc(inputn(%superq(testCaseSysccStart), best32.));
+		%let _tc_syserr_start=%sysfunc(inputn(%superq(testCaseSyserrStart), best32.));
+		%let _tc_syscc_end=%sysfunc(inputn(%superq(syscc), best32.));
+		%let _tc_syserr_end=%sysfunc(inputn(%superq(syserr), best32.));
+
+		%if %sysevalf(&_tc_syscc_end > &_tc_syscc_start) or %sysevalf(&_tc_syserr_end > &_tc_syserr_start) %then %do;
+			%let testErrors=%eval(&testErrors + 1);
+			%let testCaseErrors=%eval(&testCaseErrors + 1);
+			%put &logERROR. - Runtime/system error detected during test case [&currentTestCaseName.]. SYSCC &_tc_syscc_start -> &_tc_syscc_end, SYSERR &_tc_syserr_start -> &_tc_syserr_end.;
+		%end;
 
 		%put======================>> Test Case Summary;
 		%put ;
@@ -325,11 +339,18 @@ File: src/assert.sas
 			%assertFalse(0, 0 is false);
 			%assertEqual(1, 1);
 			%assertNotEqual(1, 0);
+			%assertEqual(%str(note='a,b'), %str(note='a,b'));
+			%assertNotEqual(%str(note='a,b'), %str(note='a,c'));
 
 			%assertTrue(%symbol_dne(asdafasdf), 'asdafasdf' was not previously defined);
 		%test_summary;
 	%test_summary;
 %mend test_assertions;
+
+/* Alias for test_assertions so I don't have to remember the full name */
+%macro test_assert;
+	%test_assertions;
+%mend test_assert;
 
 /* Macro to run assertion tests when __unit_tests is set */
 %macro run_assertion_tests;

@@ -83,6 +83,20 @@ File: src/pipr/_verbs/join.sas
   Helpers: list handling
 -------------------------*/
 
+%macro _join_norm_list(list=, out_list=);
+  %local _jn_raw _jn_norm;
+  %let _jn_raw=%superq(list);
+  %let _jn_norm=%superq(_jn_raw);
+
+  %if %sysmacexist(_pipr_unbracket_csv_lists) %then %do;
+    %_pipr_unbracket_csv_lists(text=%superq(_jn_raw), out_text=_jn_norm);
+  %end;
+
+  %let _jn_norm=%sysfunc(prxchange(%str(s/[\s,]+/ /), -1, %superq(_jn_norm)));
+  %let _jn_norm=%sysfunc(compbl(%sysfunc(strip(%superq(_jn_norm)))));
+  %let &out_list=%superq(_jn_norm);
+%mend;
+
 /* Abort if right_keep contains any join keys. Duplicate column names in output
    are a common source of brittle downstream failures. */
 %macro _join_right_keep_key_overlap(on=, right_keep=, out_has_overlap=, out_key=);
@@ -651,9 +665,12 @@ File: src/pipr/_verbs/join.sas
   auto_prefer_hash=0,
   error_msg=left_join() failed due to invalid input parameters
 );
-  %local m picked _require_unique _as_view;
+  %local m picked _require_unique _as_view _on_norm _right_keep_norm;
   %let _require_unique=%_pipr_bool(%superq(require_unique), default=1);
   %let _as_view=%_pipr_bool(%superq(as_view), default=0);
+
+  %_join_norm_list(list=%superq(on), out_list=_on_norm);
+  %_join_norm_list(list=%superq(right_keep), out_list=_right_keep_norm);
 
   %let m=%upcase(&method);
 
@@ -662,8 +679,8 @@ File: src/pipr/_verbs/join.sas
     %_join_auto_pick_method(
       data=&data,
       right=&right,
-      on=&on,
-      right_keep=&right_keep,
+      on=&_on_norm,
+      right_keep=&_right_keep_norm,
       require_unique=&_require_unique,
       as_view=&_as_view,
       out_method=picked,
@@ -676,11 +693,11 @@ File: src/pipr/_verbs/join.sas
   %end;
 
   %if "%superq(m)" = "HASH" %then %do;
-    %left_join_hash(&right, on=&on, data=&data, out=&out, right_keep=&right_keep,
+    %left_join_hash(&right, on=&_on_norm, data=&data, out=&out, right_keep=&_right_keep_norm,
       validate=&validate, require_unique=&_require_unique, strict_char_len=&strict_char_len, as_view=&_as_view, error_msg=&error_msg);
   %end;
   %else %if "%superq(m)" = "SQL" %then %do;
-    %left_join_sql(&right, on=&on, data=&data, out=&out, right_keep=&right_keep,
+    %left_join_sql(&right, on=&_on_norm, data=&data, out=&out, right_keep=&_right_keep_norm,
       validate=&validate, require_unique=&_require_unique, strict_char_len=&strict_char_len, as_view=&_as_view, error_msg=&error_msg);
   %end;
   %else %do;
@@ -707,9 +724,12 @@ File: src/pipr/_verbs/join.sas
   auto_prefer_hash=0,
   error_msg=inner_join() failed due to invalid input parameters
 );
-  %local m picked _require_unique _as_view;
+  %local m picked _require_unique _as_view _on_norm _right_keep_norm;
   %let _require_unique=%_pipr_bool(%superq(require_unique), default=1);
   %let _as_view=%_pipr_bool(%superq(as_view), default=0);
+
+  %_join_norm_list(list=%superq(on), out_list=_on_norm);
+  %_join_norm_list(list=%superq(right_keep), out_list=_right_keep_norm);
 
   %let m=%upcase(&method);
 
@@ -718,8 +738,8 @@ File: src/pipr/_verbs/join.sas
     %_join_auto_pick_method(
       data=&data,
       right=&right,
-      on=&on,
-      right_keep=&right_keep,
+      on=&_on_norm,
+      right_keep=&_right_keep_norm,
       require_unique=&_require_unique,
       as_view=&_as_view,
       out_method=picked,
@@ -732,11 +752,11 @@ File: src/pipr/_verbs/join.sas
   %end;
 
   %if "%superq(m)" = "HASH" %then %do;
-    %inner_join_hash(&right, on=&on, data=&data, out=&out, right_keep=&right_keep,
+    %inner_join_hash(&right, on=&_on_norm, data=&data, out=&out, right_keep=&_right_keep_norm,
       validate=&validate, require_unique=&_require_unique, strict_char_len=&strict_char_len, as_view=&_as_view, error_msg=&error_msg);
   %end;
   %else %if "%superq(m)" = "SQL" %then %do;
-    %inner_join_sql(&right, on=&on, data=&data, out=&out, right_keep=&right_keep,
+    %inner_join_sql(&right, on=&_on_norm, data=&data, out=&out, right_keep=&_right_keep_norm,
       validate=&validate, require_unique=&_require_unique, strict_char_len=&strict_char_len, as_view=&_as_view, error_msg=&error_msg);
   %end;
   %else %do;
@@ -897,6 +917,34 @@ File: src/pipr/_verbs/join.sas
     %assertEqual(&_n_lw_hash., 4);
   %test_summary;
 
+  %test_case(left_join wrapper supports bracketed comma right_keep list);
+    data work._j_right2;
+      length id 8 rpt_period_date $10 experian_bin 8;
+      id=1; rpt_period_date='2026-01'; experian_bin=700; output;
+      id=3; rpt_period_date='2026-02'; experian_bin=680; output;
+    run;
+
+    %left_join(
+      work._j_right2,
+      on=id,
+      data=work._j_left,
+      out=work._j_lw_bracket,
+      right_keep=%str([rpt_period_date, experian_bin]),
+      method=HASH,
+      validate=YES,
+      require_unique=1,
+      as_view=0
+    );
+
+    proc sql noprint;
+      select upcase(name) into :_j_lw_bracket_cols separated by ' '
+      from sashelp.vcolumn
+      where libname='WORK' and memname='_J_LW_BRACKET'
+      order by varnum;
+    quit;
+    %assertEqual(&_j_lw_bracket_cols., ID X RPT_PERIOD_DATE EXPERIAN_BIN);
+  %test_summary;
+
   %test_case(left_join wrapper accepts lowercase method values);
     %left_join(
       work._j_right,
@@ -989,13 +1037,13 @@ File: src/pipr/_verbs/join.sas
   %test_summary; /* suite */
 
   proc datasets lib=work nolist;
-    delete _j_left _j_right _j_lh _j_ih _j_ls _j_is _j_lw_hash _j_lw_hash_lc _j_iw_sql _j_view_src;
+    delete _j_left _j_right _j_right2 _j_lh _j_ih _j_ls _j_is _j_lw_hash _j_lw_bracket _j_lw_hash_lc _j_iw_sql _j_view_src;
     delete _j_ls_view _j_lh_view _j_iw_view _j_view / memtype=view;
   quit;
 %mend test_join;
 
 
-%macro test_join_auto();
+%macro test_join_auto;
   %_pipr_require_assert;
   %test_suite(join_auto);
 
@@ -1058,7 +1106,7 @@ File: src/pipr/_verbs/join.sas
   quit;
 
   %test_summary;
-%mend;
+%mend test_join_auto;
 
 %_pipr_autorun_tests(test_join);
 %_pipr_autorun_tests(test_join_auto);
