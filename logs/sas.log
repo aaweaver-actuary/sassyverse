@@ -1,95 +1,85 @@
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: start out_text=_pul_norm
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: raw input=right_keep=[rpt_period_date, experian_bin], on=sb_policy_key
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: src_len=60 out_len=0
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: emit_count=58 paren_depth=0 bracket_depth=0
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: normalized=
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: assigned _pul_norm=
-[2026-02-20T09:08:50] DEBUG | test_pipr_util: _pul_norm=
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: start out_text=_pul_norm_space
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: raw input=right_keep=company_numb policy_sym policy_numb
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: src_len=46 out_len=0
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: emit_count=46 paren_depth=0 bracket_depth=0
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: normalized=
-[2026-02-20T09:08:50] DEBUG | _pipr_unbracket_csv_lists: assigned _pul_norm_space=
-[2026-02-20T09:08:50] DEBUG | test_pipr_util: _pul_norm_space=
-[2026-02-20T09:13:48] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:48] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:48] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:48] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:48] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:48] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:49] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:49] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:49] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:49] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:49] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:49] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:49] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:50] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:50] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:50] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:50] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:50] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:50] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:50] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:50] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:51] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:51] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:51] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:51] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:51] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:51] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:51] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:51] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:51] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:51] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:52] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:52] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:52] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:52] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:52] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:52] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:52] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:52] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:52] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:52] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:53] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:53] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:53] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:53] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:53] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:53] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:53] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:53] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:54] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:55] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:55] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:55] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:55] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:55] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:55] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:55] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:55] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:55] DEBUG | msg=, out_var=_msg
-[2026-02-20T09:13:56] DEBUG | _pipr_unbracket_csv_lists: start out_text=
-[2026-02-20T09:13:56] DEBUG | _pipr_unbracket_csv_lists: raw input=right_keep=[rpt_period_date, experian_bin], on=sb_policy_key
-[2026-02-20T09:13:56] DEBUG | _pipr_unbracket_csv_lists: src_len=60 out_len=0
-[2026-02-20T09:13:56] DEBUG | _pipr_unbracket_csv_lists: emit_count=58 paren_depth=0 bracket_depth=0
-[2026-02-20T09:13:56] DEBUG | _pipr_unbracket_csv_lists: normalized=
-[2026-02-20T09:13:57] DEBUG | test_pipr_util: _pul_norm=
-[2026-02-20T09:13:57] DEBUG | _pipr_unbracket_csv_lists: start out_text=
-[2026-02-20T09:13:57] DEBUG | _pipr_unbracket_csv_lists: raw input=right_keep=company_numb policy_sym policy_numb
-[2026-02-20T09:13:57] DEBUG | _pipr_unbracket_csv_lists: src_len=46 out_len=0
-[2026-02-20T09:13:57] DEBUG | _pipr_unbracket_csv_lists: emit_count=46 paren_depth=0 bracket_depth=0
-[2026-02-20T09:13:57] DEBUG | _pipr_unbracket_csv_lists: normalized=
-[2026-02-20T09:13:57] DEBUG | test_pipr_util: _pul_norm_space=
+[2026-02-20T09:33:46] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:47] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:47] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:47] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:47] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:47] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:47] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:47] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:48] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:49] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:49] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:49] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:49] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:49] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:49] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:49] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:49] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:49] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:50] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:50] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:50] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:50] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:50] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:50] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:50] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T09:33:55] DEBUG | _pipr_unbracket_csv_lists: start out_text=
+[2026-02-20T09:33:55] DEBUG | _pipr_unbracket_csv_lists: raw input=right_keep=[rpt_period_date, experian_bin], on=sb_policy_key
+[2026-02-20T09:33:55] DEBUG | _pipr_unbracket_csv_lists: macro_input_len=60
+[2026-02-20T09:33:56] DEBUG | _pipr_unbracket_csv_lists: src_len=60 out_raw_len=55 out_len=55
+[2026-02-20T09:33:56] DEBUG | _pipr_unbracket_csv_lists: emit_count=58 paren_depth=0 bracket_depth=0
+[2026-02-20T09:33:56] DEBUG | _pipr_unbracket_csv_lists: normalized_raw=right_keep=rpt_period_dateexperian_bin,on=sb_policy_key
+[2026-02-20T09:33:56] DEBUG | _pipr_unbracket_csv_lists: normalized=right_keep=rpt_period_dateexperian_bin,on=sb_policy_key
+[2026-02-20T09:33:56] DEBUG | test_pipr_util: _pul_norm=right_keep=rpt_period_dateexperian_bin,on=sb_policy_key
+[2026-02-20T09:33:56] DEBUG | _pipr_unbracket_csv_lists: start out_text=
+[2026-02-20T09:33:56] DEBUG | _pipr_unbracket_csv_lists: raw input=right_keep=company_numb policy_sym policy_numb
+[2026-02-20T09:33:56] DEBUG | _pipr_unbracket_csv_lists: macro_input_len=46
+[2026-02-20T09:33:56] DEBUG | _pipr_unbracket_csv_lists: src_len=46 out_raw_len=44 out_len=44
+[2026-02-20T09:33:57] DEBUG | _pipr_unbracket_csv_lists: emit_count=46 paren_depth=0 bracket_depth=0
+[2026-02-20T09:33:57] DEBUG | _pipr_unbracket_csv_lists: normalized_raw=right_keep=company_numbpolicy_sympolicy_numb
+[2026-02-20T09:33:57] DEBUG | _pipr_unbracket_csv_lists: normalized=right_keep=company_numbpolicy_sympolicy_numb
+[2026-02-20T09:33:57] DEBUG | test_pipr_util: _pul_norm_space=right_keep=company_numbpolicy_sympolicy_numb

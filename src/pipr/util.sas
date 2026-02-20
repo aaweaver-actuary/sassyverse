@@ -103,24 +103,33 @@ File: src/pipr/util.sas
   run;
 %mend;
 
-%macro _pipr_ucl_transform(in_var=, out_var=);
-  %global _pipr_ucl_srclen _pipr_ucl_outlen _pipr_ucl_emitcnt _pipr_ucl_pdepth _pipr_ucl_bdepth;
+%macro _pipr_ucl_prepare_input(text=, out_var=_pipr_ucl_in);
+  %global &out_var _pipr_ucl_in_len;
+  %let &out_var=%unquote(%superq(text));
+  %let _pipr_ucl_in_len=%length(%superq(&out_var));
+%mend;
+
+%macro _pipr_ucl_transform(in_var=, out_var=, out_raw_var=);
+  %global _pipr_ucl_srclen _pipr_ucl_outlen _pipr_ucl_outrawlen _pipr_ucl_emitcnt _pipr_ucl_pdepth _pipr_ucl_bdepth;
   %let _pipr_ucl_srclen=0;
   %let _pipr_ucl_outlen=0;
+  %let _pipr_ucl_outrawlen=0;
   %let _pipr_ucl_emitcnt=0;
   %let _pipr_ucl_pdepth=0;
   %let _pipr_ucl_bdepth=0;
 
   data _null_;
-    length src result $32767 ch quote $1;
-    src = symget(symget('in_var'));
+    length src result raw_result $32767 ch quote $1;
+    src = symget("&in_var");
     call symputx('_pipr_ucl_srclen', lengthn(src), 'G');
 
     result = '';
+    raw_result = '';
     quote = '';
     paren_depth = 0;
     bracket_depth = 0;
     emit_count = 0;
+    pos = 0;
 
     do i = 1 to lengthn(src);
       ch = substr(src, i, 1);
@@ -129,32 +138,38 @@ File: src/pipr/util.sas
       if quote = '' then do;
         if ch = "'" or ch = '"' then do;
           quote = ch;
-          result = result || ch;
+          pos + 1;
+          substr(result, pos, 1) = ch;
           emitted = 1;
         end;
         else if ch = '(' then do;
           paren_depth + 1;
-          result = result || ch;
+          pos + 1;
+          substr(result, pos, 1) = ch;
           emitted = 1;
         end;
         else if ch = ')' and paren_depth > 0 then do;
           paren_depth + (-1);
-          result = result || ch;
+          pos + 1;
+          substr(result, pos, 1) = ch;
           emitted = 1;
         end;
         else if ch = '[' then bracket_depth + 1;
         else if ch = ']' and bracket_depth > 0 then bracket_depth + (-1);
         else if ch = ',' and bracket_depth > 0 then do;
-          result = result || ' ';
+          pos + 1;
+          substr(result, pos, 1) = ' ';
           emitted = 1;
         end;
         else do;
-          result = result || ch;
+          pos + 1;
+          substr(result, pos, 1) = ch;
           emitted = 1;
         end;
       end;
       else do;
-        result = result || ch;
+        pos + 1;
+        substr(result, pos, 1) = ch;
         emitted = 1;
         if ch = quote then quote = '';
       end;
@@ -162,12 +177,18 @@ File: src/pipr/util.sas
       if emitted then emit_count + 1;
     end;
 
-    result = compbl(strip(result));
+    if pos > 0 then raw_result = substr(result, 1, pos);
+    else raw_result = '';
+
+    call symputx('_pipr_ucl_outrawlen', lengthn(raw_result), 'G');
+    call symputx("&out_raw_var", raw_result, 'G');
+
+    result = compbl(strip(raw_result));
     call symputx('_pipr_ucl_outlen', lengthn(result), 'G');
     call symputx('_pipr_ucl_emitcnt', emit_count, 'G');
     call symputx('_pipr_ucl_pdepth', paren_depth, 'G');
     call symputx('_pipr_ucl_bdepth', bracket_depth, 'G');
-    call symputx(symget('out_var'), result, 'G');
+    call symputx("&out_var", result, 'G');
   run;
 %mend;
 
@@ -182,21 +203,29 @@ File: src/pipr/util.sas
    Example: right_keep=[a, b] -> right_keep=a b
    Brackets are removed only for top-level [...] segments outside quotes. */
 %macro _pipr_unbracket_csv_lists(text=, out_text=);
-  %global _pipr_ucl_in _pipr_ucl_out;
-  %let _pipr_ucl_in=%superq(text);
+  %global _pipr_ucl_in _pipr_ucl_out _pipr_ucl_out_raw;
+  %_pipr_ucl_prepare_input(text=%superq(text), out_var=_pipr_ucl_in);
   %let _pipr_ucl_out=;
+  %let _pipr_ucl_out_raw=;
 
   %if %sysmacexist(dbg) %then %do;
     %dbg(msg=%str(_pipr_unbracket_csv_lists: start out_text=%superq(out_text)));
     %dbg(msg=%str(_pipr_unbracket_csv_lists: raw input=%superq(_pipr_ucl_in)));
+    %dbg(msg=%str(_pipr_unbracket_csv_lists: macro_input_len=&_pipr_ucl_in_len));
   %end;
 
-  %_pipr_ucl_transform(in_var=_pipr_ucl_in, out_var=_pipr_ucl_out);
+  %_pipr_ucl_transform(in_var=_pipr_ucl_in, out_var=_pipr_ucl_out, out_raw_var=_pipr_ucl_out_raw);
+
+  %if %length(%superq(_pipr_ucl_out))=0 and %length(%superq(_pipr_ucl_out_raw))>0 %then %do;
+    %let _pipr_ucl_out=%sysfunc(compbl(%sysfunc(strip(%superq(_pipr_ucl_out_raw)))));
+  %end;
+
   %_pipr_ucl_assign(out_text=%superq(out_text), value=%superq(_pipr_ucl_out));
 
   %if %sysmacexist(dbg) %then %do;
-    %dbg(msg=%str(_pipr_unbracket_csv_lists: src_len=&_pipr_ucl_srclen out_len=&_pipr_ucl_outlen));
+    %dbg(msg=%str(_pipr_unbracket_csv_lists: src_len=&_pipr_ucl_srclen out_raw_len=&_pipr_ucl_outrawlen out_len=&_pipr_ucl_outlen));
     %dbg(msg=%str(_pipr_unbracket_csv_lists: emit_count=&_pipr_ucl_emitcnt paren_depth=&_pipr_ucl_pdepth bracket_depth=&_pipr_ucl_bdepth));
+    %dbg(msg=%str(_pipr_unbracket_csv_lists: normalized_raw=%superq(_pipr_ucl_out_raw)));
     %dbg(msg=%str(_pipr_unbracket_csv_lists: normalized=%superq(_pipr_ucl_out)));
     %if %length(%superq(out_text)) %then %dbg(msg=%str(_pipr_unbracket_csv_lists: assigned %superq(out_text)=%superq(&out_text)));
   %end;
@@ -310,11 +339,21 @@ File: src/pipr/util.sas
       %global _ucl_test_in _ucl_test_out;
       %let _ucl_test_in=%str(right_keep=[rpt_period_date, experian_bin], on=sb_policy_key);
       %let _ucl_test_out=;
-      %_pipr_ucl_transform(in_var=_ucl_test_in, out_var=_ucl_test_out);
+      %global _ucl_test_out_raw;
+      %let _ucl_test_out_raw=;
+      %_pipr_ucl_transform(in_var=_ucl_test_in, out_var=_ucl_test_out, out_raw_var=_ucl_test_out_raw);
+      %assertTrue(%eval(%length(%superq(_ucl_test_out_raw)) > 0), ucl transform emits non-empty raw output);
       %assertEqual(
         actual=%superq(_ucl_test_out),
         expected=%str(right_keep=rpt_period_date experian_bin, on=sb_policy_key)
       );
+    %test_summary;
+
+    %test_case(ucl prepare helper unquotes input);
+      %global _ucl_prepare;
+      %let _ucl_prepare=;
+      %_pipr_ucl_prepare_input(text=%str(right_keep=[a, b]), out_var=_ucl_prepare);
+      %assertEqual(actual=%superq(_ucl_prepare), expected=%str(right_keep=[a, b]));
     %test_summary;
 
     %test_case(ucl assign helper writes caller macro var);
