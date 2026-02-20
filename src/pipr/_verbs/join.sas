@@ -89,7 +89,8 @@ File: src/pipr/_verbs/join.sas
   %let _jn_norm=%superq(_jn_raw);
 
   %if %sysmacexist(_pipr_unbracket_csv_lists) %then %do;
-    %_pipr_unbracket_csv_lists(text=%superq(_jn_raw), out_text=_jn_norm);
+    %_pipr_unbracket_csv_lists(text=%superq(_jn_raw));
+    %let _jn_norm=%superq(_pipr_ucl_out);
   %end;
 
   %let _jn_norm=%sysfunc(prxchange(%str(s/[\s,]+/ /), -1, %superq(_jn_norm)));

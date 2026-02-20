@@ -103,73 +103,103 @@ File: src/pipr/util.sas
   run;
 %mend;
 
-/* Convert bracket-wrapped comma lists to space-delimited lists.
-   Example: right_keep=[a, b] -> right_keep=a b
-   Brackets are removed only for top-level [...] segments outside quotes. */
-%macro _pipr_unbracket_csv_lists(text=, out_text=);
-  %local _pul_text;
-  %let _pul_text=%superq(text);
-
-  %if %length(%superq(out_text)) %then %do;
-    %if not %symexist(&out_text) %then %global &out_text;
-  %end;
+%macro _pipr_ucl_transform(in_var=, out_var=);
+  %global _pipr_ucl_srclen _pipr_ucl_outlen _pipr_ucl_emitcnt _pipr_ucl_pdepth _pipr_ucl_bdepth;
+  %let _pipr_ucl_srclen=0;
+  %let _pipr_ucl_outlen=0;
+  %let _pipr_ucl_emitcnt=0;
+  %let _pipr_ucl_pdepth=0;
+  %let _pipr_ucl_bdepth=0;
 
   data _null_;
-    length src out $32767 ch quote $1;
-    src = symget('_pul_text');
-    out = '';
+    length src result $32767 ch quote $1;
+    src = symget(symget('in_var'));
+    call symputx('_pipr_ucl_srclen', lengthn(src), 'G');
+
+    result = '';
     quote = '';
     paren_depth = 0;
     bracket_depth = 0;
+    emit_count = 0;
 
-    do i = 1 to length(src);
+    do i = 1 to lengthn(src);
       ch = substr(src, i, 1);
+      emitted = 0;
 
       if quote = '' then do;
         if ch = "'" or ch = '"' then do;
           quote = ch;
-          out = out || ch;
-          continue;
+          result = result || ch;
+          emitted = 1;
         end;
-
-        if ch = '(' then do;
+        else if ch = '(' then do;
           paren_depth + 1;
-          out = out || ch;
-          continue;
+          result = result || ch;
+          emitted = 1;
         end;
         else if ch = ')' and paren_depth > 0 then do;
           paren_depth + (-1);
-          out = out || ch;
-          continue;
+          result = result || ch;
+          emitted = 1;
         end;
-
-        if ch = '[' then do;
-          bracket_depth + 1;
-          continue;
+        else if ch = '[' then bracket_depth + 1;
+        else if ch = ']' and bracket_depth > 0 then bracket_depth + (-1);
+        else if ch = ',' and bracket_depth > 0 then do;
+          result = result || ' ';
+          emitted = 1;
         end;
-        else if ch = ']' and bracket_depth > 0 then do;
-          bracket_depth + (-1);
-          continue;
+        else do;
+          result = result || ch;
+          emitted = 1;
         end;
-
-        if ch = ',' and bracket_depth > 0 then do;
-          out = out || ' ';
-          continue;
-        end;
-
-        out = out || ch;
       end;
       else do;
-        out = out || ch;
+        result = result || ch;
+        emitted = 1;
         if ch = quote then quote = '';
       end;
+
+      if emitted then emit_count + 1;
     end;
 
-    out = compbl(strip(out));
-    call symputx('_pul_out', out, 'G');
+    result = compbl(strip(result));
+    call symputx('_pipr_ucl_outlen', lengthn(result), 'G');
+    call symputx('_pipr_ucl_emitcnt', emit_count, 'G');
+    call symputx('_pipr_ucl_pdepth', paren_depth, 'G');
+    call symputx('_pipr_ucl_bdepth', bracket_depth, 'G');
+    call symputx(symget('out_var'), result, 'G');
   run;
+%mend;
 
-  %if %length(%superq(out_text)) %then %let &out_text=%superq(_pul_out);
+%macro _pipr_ucl_assign(out_text=, value=);
+  %if %length(%superq(out_text)) %then %do;
+    %if not %symexist(&out_text) %then %global &out_text;
+    %let &out_text=%superq(value);
+  %end;
+%mend;
+
+/* Convert bracket-wrapped comma lists to space-delimited lists.
+   Example: right_keep=[a, b] -> right_keep=a b
+   Brackets are removed only for top-level [...] segments outside quotes. */
+%macro _pipr_unbracket_csv_lists(text=, out_text=);
+  %global _pipr_ucl_in _pipr_ucl_out;
+  %let _pipr_ucl_in=%superq(text);
+  %let _pipr_ucl_out=;
+
+  %if %sysmacexist(dbg) %then %do;
+    %dbg(msg=%str(_pipr_unbracket_csv_lists: start out_text=%superq(out_text)));
+    %dbg(msg=%str(_pipr_unbracket_csv_lists: raw input=%superq(_pipr_ucl_in)));
+  %end;
+
+  %_pipr_ucl_transform(in_var=_pipr_ucl_in, out_var=_pipr_ucl_out);
+  %_pipr_ucl_assign(out_text=%superq(out_text), value=%superq(_pipr_ucl_out));
+
+  %if %sysmacexist(dbg) %then %do;
+    %dbg(msg=%str(_pipr_unbracket_csv_lists: src_len=&_pipr_ucl_srclen out_len=&_pipr_ucl_outlen));
+    %dbg(msg=%str(_pipr_unbracket_csv_lists: emit_count=&_pipr_ucl_emitcnt paren_depth=&_pipr_ucl_pdepth bracket_depth=&_pipr_ucl_bdepth));
+    %dbg(msg=%str(_pipr_unbracket_csv_lists: normalized=%superq(_pipr_ucl_out)));
+    %if %length(%superq(out_text)) %then %dbg(msg=%str(_pipr_unbracket_csv_lists: assigned %superq(out_text)=%superq(&out_text)));
+  %end;
 %mend;
 
 /* Returns 1 when unit tests are enabled for this session, else 0. */
@@ -208,7 +238,7 @@ File: src/pipr/util.sas
 
 %macro test_pipr_util;
   %_pipr_require_assert;
-  %local _ut_saved _ps_n _pul_norm _pul_norm_space;
+  %local _ut_saved _ps_n;
 
   %test_suite(Testing pipr util);
     %test_case(tmpds uses prefix and work);
@@ -254,24 +284,44 @@ File: src/pipr/util.sas
 
     %test_case(bracket csv helper rewrites bracket lists);
       %_pipr_unbracket_csv_lists(
-        text=%str(right_keep=[rpt_period_date, experian_bin], on=sb_policy_key),
-        out_text=_pul_norm
+        text=%str(right_keep=[rpt_period_date, experian_bin], on=sb_policy_key)
       );
+      %let _pul_norm=%superq(_pipr_ucl_out);
+      %if %sysmacexist(dbg) %then %dbg(msg=%str(test_pipr_util: _pul_norm=%superq(_pul_norm)));
       %assertEqual(
-        %superq(_pul_norm),
-        %str(right_keep=rpt_period_date experian_bin, on=sb_policy_key)
+        actual=%superq(_pul_norm),
+        expected=%str(right_keep=rpt_period_date experian_bin, on=sb_policy_key)
       );
     %test_summary;
 
     %test_case(bracket csv helper preserves non-bracket spaces);
       %_pipr_unbracket_csv_lists(
-        text=%str(right_keep=company_numb policy_sym policy_numb),
-        out_text=_pul_norm_space
+        text=%str(right_keep=company_numb policy_sym policy_numb)
       );
+      %let _pul_norm_space=%superq(_pipr_ucl_out);
+      %if %sysmacexist(dbg) %then %dbg(msg=%str(test_pipr_util: _pul_norm_space=%superq(_pul_norm_space)));
       %assertEqual(
-        %superq(_pul_norm_space),
-        %str(right_keep=company_numb policy_sym policy_numb)
+        actual=%superq(_pul_norm_space),
+        expected=%str(right_keep=company_numb policy_sym policy_numb)
       );
+    %test_summary;
+
+    %test_case(ucl transform helper works directly);
+      %global _ucl_test_in _ucl_test_out;
+      %let _ucl_test_in=%str(right_keep=[rpt_period_date, experian_bin], on=sb_policy_key);
+      %let _ucl_test_out=;
+      %_pipr_ucl_transform(in_var=_ucl_test_in, out_var=_ucl_test_out);
+      %assertEqual(
+        actual=%superq(_ucl_test_out),
+        expected=%str(right_keep=rpt_period_date experian_bin, on=sb_policy_key)
+      );
+    %test_summary;
+
+    %test_case(ucl assign helper writes caller macro var);
+      %global _ucl_assign_out;
+      %let _ucl_assign_out=;
+      %_pipr_ucl_assign(out_text=_ucl_assign_out, value=%str(alpha beta));
+      %assertEqual(actual=%superq(_ucl_assign_out), expected=%str(alpha beta));
     %test_summary;
   %test_summary;
 %mend test_pipr_util;

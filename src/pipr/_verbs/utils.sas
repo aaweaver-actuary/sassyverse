@@ -103,7 +103,8 @@ File: src/pipr/_verbs/utils.sas
   %let _verb_uc=%upcase(%superq(verb));
   %let _args_norm=%superq(args);
   %if %sysmacexist(_pipr_unbracket_csv_lists) %then %do;
-    %_pipr_unbracket_csv_lists(text=%superq(args), out_text=_args_norm);
+    %_pipr_unbracket_csv_lists(text=%superq(args));
+    %let _args_norm=%superq(_pipr_ucl_out);
   %end;
 
   %if %sysfunc(indexw(LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL, &_verb_uc)) > 0 %then %do;
@@ -138,7 +139,8 @@ File: src/pipr/_verbs/utils.sas
   %local _args_norm;
   %let _args_norm=%superq(args);
   %if %sysmacexist(_pipr_unbracket_csv_lists) %then %do;
-    %_pipr_unbracket_csv_lists(text=%superq(args), out_text=_args_norm);
+    %_pipr_unbracket_csv_lists(text=%superq(args));
+    %let _args_norm=%superq(_pipr_ucl_out);
   %end;
 
   %if %length(%superq(_args_norm)) %then %do;
