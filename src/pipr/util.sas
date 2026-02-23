@@ -428,6 +428,7 @@ File: src/pipr/util.sas
 %macro _pipr_bool(value, default=0);
   %local _raw _up;
   %let _raw=%superq(value);
+  %_pipr_util_dbg(msg=_pipr_bool IN value=%superq(value) default=%superq(default));
   %if %length(%superq(_raw))=0 %then &default;
   %else %do;
     %let _up=%upcase(%superq(_raw));
@@ -465,17 +466,20 @@ File: src/pipr/util.sas
   %global _pipr_lambda_stage1 _pipr_lambda_stage2;
   %local _raw;
   %let _raw=%superq(expr);
+  %_pipr_util_dbg(msg=_pipr_lambda_normalize IN expr=%superq(expr) out_expr=%superq(out_expr));
 
   %_pipr_lambda_strip_wrapper(expr=%superq(_raw), out_expr=_pipr_lambda_stage1);
   %_pipr_lambda_strip_tilde(expr=%superq(_pipr_lambda_stage1), out_expr=_pipr_lambda_stage2);
 
   %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_pipr_lambda_stage2));
+  %if %length(%superq(out_expr)) %then %_pipr_util_dbg(msg=_pipr_lambda_normalize OUT value=%superq(&out_expr));
 %mend;
 
 %macro _pipr_lambda_strip_wrapper(expr=, out_expr=);
   %local _in _out;
   %global _pipr_lambda_wrap_in;
   %let _in=%superq(expr);
+  %_pipr_util_dbg(msg=_pipr_lambda_strip_wrapper IN expr=%superq(expr) out_expr=%superq(out_expr));
   %let _pipr_lambda_wrap_in=%superq(_in);
 
   data _null_;
@@ -492,12 +496,14 @@ File: src/pipr/util.sas
   run;
 
   %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_out));
+  %if %length(%superq(out_expr)) %then %_pipr_util_dbg(msg=_pipr_lambda_strip_wrapper OUT value=%superq(&out_expr));
 %mend;
 
 %macro _pipr_lambda_strip_tilde(expr=, out_expr=);
   %local _in _out;
   %global _pipr_lambda_tilde_in;
   %let _in=%superq(expr);
+  %_pipr_util_dbg(msg=_pipr_lambda_strip_tilde IN expr=%superq(expr) out_expr=%superq(out_expr));
   %let _pipr_lambda_tilde_in=%superq(_in);
 
   data _null_;
@@ -508,6 +514,7 @@ File: src/pipr/util.sas
   run;
 
   %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_out));
+  %if %length(%superq(out_expr)) %then %_pipr_util_dbg(msg=_pipr_lambda_strip_tilde OUT value=%superq(&out_expr));
 %mend;
 
 /* Auto-run a test macro only when __unit_tests=1. */
