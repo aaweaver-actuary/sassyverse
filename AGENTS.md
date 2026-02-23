@@ -146,6 +146,13 @@ This repo is a SAS macro toolkit that emulates tidyverse-style workflows plus ge
 
 ## What to do when...
 
+### Branch Safety (Critical)
+
+- Feature development and bugfix implementation are NEVER allowed on `main`.
+- If your current branch is `main`, you MUST stop implementation work and create/switch to a `feature/*` branch before making any code changes.
+- Direct commits to `main` are prohibited for all feature and refactor work; all such changes must flow through a PR.
+- Treat any attempt to implement on `main` as a hard safety violation to be corrected immediately.
+
 ### 1. You encounter changes in the working tree that you did not make:
   1. Review the changes to understand what they are and why they might be there.
   2. If the changes are unrelated to your current task, your task is to immediately dispatch a subagent to perform a peer review of the code. This review should focus on identifying the source of the changes, assessing their relevance, and determining if they were intentional or accidental. 
@@ -194,3 +201,5 @@ This repo is a SAS macro toolkit that emulates tidyverse-style workflows plus ge
 5. All new features have corresponding test cases that demonstrate the expected behavior and edge cases.
 
 ## NEVER MAKE ANY CHANGES TO THE MAIN BRANCH. ALL WORK MUST BE DONE ON A FEATURE BRANCH AND MERGED VIA PR.
+
+## HARD STOP RULE: IF YOU ARE ON `main`, DO NOT IMPLEMENT FEATURES. SWITCH TO A `feature/*` BRANCH FIRST.
