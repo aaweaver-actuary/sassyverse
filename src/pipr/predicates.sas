@@ -175,56 +175,34 @@ File: src/pipr/predicates.sas
 %_bootstrap_preds;
 
 %macro _pred_split_parmbuff(buf=, out_n=, out_prefix=_pred_seg);
-  %global _pred_sp_buf _pred_sp_prefix _pred_sp_count;
+  %local _pred_sp_n _pred_sp_i _pred_sp_buf;
   %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff IN out_n=%superq(out_n) out_prefix=%superq(out_prefix) buf=%superq(buf));
-  %let _pred_sp_buf=%unquote(%superq(buf));
-  %let _pred_sp_prefix=%superq(out_prefix);
-  %let _pred_sp_count=0;
+  %if not %sysmacexist(_pipr_tokenize) %then %_abort(predicates.sas requires _pipr_tokenize from util.sas.);
 
-  data _null_;
-    length buf seg prefix $32767 ch quote $1;
-    buf = symget('_pred_sp_buf');
-    prefix = symget('_pred_sp_prefix');
+  %let _pred_sp_buf=%superq(buf);
+  %if %length(%superq(_pred_sp_buf)) >= 2 %then %do;
+    %if %qsubstr(%superq(_pred_sp_buf), 1, 1)=%str(%() and
+        %qsubstr(%superq(_pred_sp_buf), %length(%superq(_pred_sp_buf)), 1)=%str(%)) %then %do;
+      %let _pred_sp_buf=%qsubstr(%superq(_pred_sp_buf), 2, %eval(%length(%superq(_pred_sp_buf)) - 2));
+    %end;
+  %end;
 
-    if length(buf) >= 2 and substr(buf, 1, 1) = '(' and substr(buf, length(buf), 1) = ')' then
-      buf = substr(buf, 2, length(buf) - 2);
+  %_pipr_tokenize(
+    expr=%superq(_pred_sp_buf),
+    out_n=_pred_sp_n,
+    out_prefix=_pred_sp_tok,
+    split_on_comma=1,
+    split_on_ws=0
+  );
 
-    depth = 0;
-    seg = '';
-    quote = '';
-    __seg_count = 0;
-
-    do i = 1 to length(buf);
-      ch = substr(buf, i, 1);
-
-      if quote = '' then do;
-        if ch = "'" or ch = '"' then quote = ch;
-        else if ch = '(' then depth + 1;
-        else if ch = ')' and depth > 0 then depth + (-1);
-      end;
-      else if ch = quote then quote = '';
-
-      if quote = '' and depth = 0 and ch = ',' then do;
-        if lengthn(strip(seg)) then do;
-          __seg_count + 1;
-          call symputx(cats(prefix, __seg_count), strip(seg), 'G');
-        end;
-        seg = '';
-      end;
-      else seg = seg || ch;
-    end;
-
-    if lengthn(strip(seg)) then do;
-      __seg_count + 1;
-      call symputx(cats(prefix, __seg_count), strip(seg), 'G');
-    end;
-
-    call symputx('_pred_sp_count', __seg_count, 'G');
-  run;
+  %do _pred_sp_i=1 %to %superq(_pred_sp_n);
+    %if not %symexist(&out_prefix.&_pred_sp_i) %then %global &out_prefix.&_pred_sp_i;
+    %let &out_prefix.&_pred_sp_i=%superq(_pred_sp_tok&_pred_sp_i);
+  %end;
 
   %if %length(%superq(out_n)) %then %do;
     %if not %symexist(&out_n) %then %global &out_n;
-    %let &out_n=%superq(_pred_sp_count);
+    %let &out_n=%superq(_pred_sp_n);
   %end;
   %if %length(%superq(out_n)) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT count=%superq(&out_n));
   %if %symexist(&out_prefix.1) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg1=%superq(&out_prefix.1));
