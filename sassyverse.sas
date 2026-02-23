@@ -157,7 +157,6 @@ File: sassyverse.sas
       root=%superq(root),
       files=%str(
         pipr/util.sas
-        | pipr/plan.sas
         | pipr/predicates.sas
         | pipr/validation.sas
         | pipr/_selectors/lambda.sas
@@ -179,6 +178,7 @@ File: sassyverse.sas
         | pipr/_verbs/rename.sas
         | pipr/_verbs/select.sas
         | pipr/_verbs/summarise.sas
+        | pipr/plan.sas
         | pipr/pipr.sas
       ),
       out_failed=_sv_failed

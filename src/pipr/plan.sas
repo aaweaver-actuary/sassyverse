@@ -47,13 +47,8 @@ File: src/pipr/plan.sas
 - Defines planner helper macros and global planner state variables.
 */
 %if not %sysmacexist(_abort) %then %do;
-  %include 'util.sas';
-%end;
-%if not %sysmacexist(_step_parse) %then %do;
-  %include '_verbs/utils.sas';
-%end;
-%if (not %sysmacexist(filter)) or (not %sysmacexist(mutate)) or (not %sysmacexist(select)) %then %do;
-  %include 'verbs.sas';
+  %put ERROR: plan.sas requires pipr util macros (_abort missing). Load via sassyverse_init(include_pipr=1).;
+  %abort cancel;
 %end;
 
 %macro _pipe_plan_reset(data=);
@@ -173,6 +168,7 @@ File: src/pipr/plan.sas
 
 %macro _pipe_plan_build(steps=, data=);
   %local _n _i _step;
+  %if not %sysmacexist(_step_parse) %then %_abort(_pipe_plan_build() requires _step_parse. Load pipr/_verbs/utils.sas or call sassyverse_init(include_pipr=1).);
   %_pipe_plan_reset(data=%superq(data));
   %_pipe_steps_count(steps=%superq(steps), out_n=_n);
   %do _i=1 %to &_n;
