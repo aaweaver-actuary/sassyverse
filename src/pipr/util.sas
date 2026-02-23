@@ -81,20 +81,6 @@ File: src/pipr/util.sas
   %_pipr_split_parmbuff_segments(buf=%superq(buf), out_n=%superq(out_n), out_prefix=%superq(out_prefix));
 %mend;
 
-%macro _pipr_util_dbg_enabled;
-  %if %symexist(_pipr_util_debug) %then %do;
-    %_pipr_bool(%superq(_pipr_util_debug), default=0)
-  %end;
-  %else %if %symexist(log_level) and "%upcase(%superq(log_level))"="DEBUG" %then 1;
-  %else 0;
-%mend;
-
-%macro _pipr_util_dbg(msg=);
-  %if %_pipr_util_dbg_enabled %then %do;
-    %put NOTE: [PIPR.UTIL] %superq(msg);
-  %end;
-%mend;
-
 %macro _pipr_tokenize_run(expr=, out_prefix=tok, split_on_comma=1, split_on_ws=0, out_count=_pipr_tok_n);
   %local _pt_expr _pt_split_comma _pt_split_ws;
   %global _pipr_tok_expr _pipr_tok_count;
@@ -105,7 +91,7 @@ File: src/pipr/util.sas
   %let _pt_split_comma=%_pipr_bool(%superq(split_on_comma), default=1);
   %let _pt_split_ws=%_pipr_bool(%superq(split_on_ws), default=0);
 
-  %_pipr_util_dbg(msg=_pipr_tokenize_run start out_prefix=%superq(out_prefix) split_comma=&_pt_split_comma split_ws=&_pt_split_ws expr_len=%length(%superq(_pt_expr)));
+  %dbg(msg=[PIPR.UTIL] _pipr_tokenize_run start out_prefix=%superq(out_prefix) split_comma=&_pt_split_comma split_ws=&_pt_split_ws expr_len=%length(%superq(_pt_expr)));
 
   data _null_;
     length expr tok $32767 ch quote $1;
@@ -151,7 +137,7 @@ File: src/pipr/util.sas
 
   %_pipr_ucl_assign(out_text=%superq(out_count), value=%superq(_pipr_tok_count));
 
-  %_pipr_util_dbg(msg=_pipr_tokenize_run done out_count=%superq(out_count) value=%superq(&out_count));
+  %dbg(msg=[PIPR.UTIL] _pipr_tokenize_run done out_count=%superq(out_count) value=%superq(&out_count));
 %mend;
 
 %macro _pipr_tokenize_assign(out_n=, count=);
@@ -428,7 +414,7 @@ File: src/pipr/util.sas
 %macro _pipr_bool(value, default=0);
   %local _raw _up;
   %let _raw=%superq(value);
-  %_pipr_util_dbg(msg=_pipr_bool IN value=%superq(value) default=%superq(default));
+  %dbg(msg=[PIPR.UTIL] _pipr_bool IN value=%superq(value) default=%superq(default));
   %if %length(%superq(_raw))=0 %then &default;
   %else %do;
     %let _up=%upcase(%superq(_raw));
@@ -466,20 +452,20 @@ File: src/pipr/util.sas
   %global _pipr_lambda_stage1 _pipr_lambda_stage2;
   %local _raw;
   %let _raw=%superq(expr);
-  %_pipr_util_dbg(msg=_pipr_lambda_normalize IN expr=%superq(expr) out_expr=%superq(out_expr));
+  %dbg(msg=[PIPR.UTIL] _pipr_lambda_normalize IN expr=%superq(expr) out_expr=%superq(out_expr));
 
   %_pipr_lambda_strip_wrapper(expr=%superq(_raw), out_expr=_pipr_lambda_stage1);
   %_pipr_lambda_strip_tilde(expr=%superq(_pipr_lambda_stage1), out_expr=_pipr_lambda_stage2);
 
   %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_pipr_lambda_stage2));
-  %if %length(%superq(out_expr)) %then %_pipr_util_dbg(msg=_pipr_lambda_normalize OUT value=%superq(&out_expr));
+  %if %length(%superq(out_expr)) %then %dbg(msg=[PIPR.UTIL] _pipr_lambda_normalize OUT value=%superq(&out_expr));
 %mend;
 
 %macro _pipr_lambda_strip_wrapper(expr=, out_expr=);
   %local _in _out;
   %global _pipr_lambda_wrap_in;
   %let _in=%superq(expr);
-  %_pipr_util_dbg(msg=_pipr_lambda_strip_wrapper IN expr=%superq(expr) out_expr=%superq(out_expr));
+  %dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_wrapper IN expr=%superq(expr) out_expr=%superq(out_expr));
   %let _pipr_lambda_wrap_in=%superq(_in);
 
   data _null_;
@@ -496,14 +482,14 @@ File: src/pipr/util.sas
   run;
 
   %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_out));
-  %if %length(%superq(out_expr)) %then %_pipr_util_dbg(msg=_pipr_lambda_strip_wrapper OUT value=%superq(&out_expr));
+  %if %length(%superq(out_expr)) %then %dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_wrapper OUT value=%superq(&out_expr));
 %mend;
 
 %macro _pipr_lambda_strip_tilde(expr=, out_expr=);
   %local _in _out;
   %global _pipr_lambda_tilde_in;
   %let _in=%superq(expr);
-  %_pipr_util_dbg(msg=_pipr_lambda_strip_tilde IN expr=%superq(expr) out_expr=%superq(out_expr));
+  %dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_tilde IN expr=%superq(expr) out_expr=%superq(out_expr));
   %let _pipr_lambda_tilde_in=%superq(_in);
 
   data _null_;
@@ -514,7 +500,7 @@ File: src/pipr/util.sas
   run;
 
   %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_out));
-  %if %length(%superq(out_expr)) %then %_pipr_util_dbg(msg=_pipr_lambda_strip_tilde OUT value=%superq(&out_expr));
+  %if %length(%superq(out_expr)) %then %dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_tilde OUT value=%superq(&out_expr));
 %mend;
 
 /* Auto-run a test macro only when __unit_tests=1. */
