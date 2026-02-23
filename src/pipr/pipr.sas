@@ -304,11 +304,154 @@ File: src/pipr/pipr.sas
   %_pipr_ucl_assign(out_text=%superq(out_step), value=%scan(%superq(steps), &index, |, m));
 %mend;
 
-%macro _pipe_validate_inputs(data=, out=, steps=);
+%macro _pipe_plan_reset(data=);
+  %global _pipe_plan_data _pipe_plan_keep _pipe_plan_drop _pipe_plan_rename _pipe_plan_where _pipe_plan_stmt;
+  %global _pipe_plan_supported _pipe_plan_unsupported_steps;
+  %let _pipe_plan_data=%superq(data);
+  %let _pipe_plan_keep=;
+  %let _pipe_plan_drop=;
+  %let _pipe_plan_rename=;
+  %let _pipe_plan_where=;
+  %let _pipe_plan_stmt=;
+  %let _pipe_plan_supported=1;
+  %let _pipe_plan_unsupported_steps=;
+%mend;
+
+%macro _pipe_plan_add_where(expr=);
+  %local _expr;
+  %let _expr=%sysfunc(strip(%superq(expr)));
+  %if %length(%superq(_expr))=0 %then %return;
+  %if %length(%superq(_pipe_plan_where))=0 %then %let _pipe_plan_where=(%superq(_expr));
+  %else %let _pipe_plan_where=%superq(_pipe_plan_where) and (%superq(_expr));
+%mend;
+
+%macro _pipe_plan_set_keep(cols=);
+  %local _cols;
+  %let _cols=%superq(cols);
+  %if %sysmacexist(_pipr_normalize_list) %then %do;
+    %_pipr_normalize_list(text=%superq(_cols), collapse_commas=1);
+    %let _cols=%superq(_pipr_norm_out);
+  %end;
+  %let _pipe_plan_keep=%superq(_cols);
+%mend;
+
+%macro _pipe_plan_set_drop(cols=);
+  %local _cols;
+  %let _cols=%superq(cols);
+  %if %sysmacexist(_pipr_normalize_list) %then %do;
+    %_pipr_normalize_list(text=%superq(_cols), collapse_commas=1);
+    %let _cols=%superq(_pipr_norm_out);
+  %end;
+  %let _pipe_plan_drop=%superq(_cols);
+%mend;
+
+%macro _pipe_plan_set_rename(pairs=);
+  %local _old _map;
+  %if %sysmacexist(_rename_parse_pairs) %then %do;
+    %_rename_parse_pairs(%superq(pairs), _old, _map);
+    %let _pipe_plan_rename=%superq(_map);
+  %end;
+  %else %let _pipe_plan_rename=%superq(pairs);
+%mend;
+
+%macro _pipe_plan_set_stmt(stmt=);
+  %if %length(%superq(_pipe_plan_stmt))=0 %then %let _pipe_plan_stmt=%superq(stmt);
+  %else %let _pipe_plan_stmt=%superq(_pipe_plan_stmt) %superq(stmt);
+%mend;
+
+%macro _pipe_plan_mark_unsupported(step=);
+  %let _pipe_plan_supported=0;
+  %if %length(%superq(_pipe_plan_unsupported_steps))=0 %then %let _pipe_plan_unsupported_steps=%superq(step);
+  %else %let _pipe_plan_unsupported_steps=%superq(_pipe_plan_unsupported_steps) | %superq(step);
+%mend;
+
+%macro _pipe_plan_apply_step(step=);
+  %local _verb _args _verb_uc _expr _stmt _last;
+  %_step_parse(%superq(step), _verb, _args);
+  %let _verb_uc=%upcase(%superq(_verb));
+
+  %if &_verb_uc=SELECT or &_verb_uc=KEEP %then %do;
+    %if %index(%superq(_args), %str(%()) > 0 %then %_pipe_plan_mark_unsupported(step=%superq(step));
+    %else %_pipe_plan_set_keep(cols=%superq(_args));
+  %end;
+  %else %if &_verb_uc=DROP %then %_pipe_plan_set_drop(cols=%superq(_args));
+  %else %if &_verb_uc=RENAME %then %_pipe_plan_set_rename(pairs=%superq(_args));
+  %else %if &_verb_uc=FILTER or &_verb_uc=WHERE %then %do;
+    %if %sysmacexist(_filter_expand_where) %then %_filter_expand_where(where_expr=%superq(_args), out_where=_expr);
+    %else %let _expr=%superq(_args);
+    %_pipe_plan_add_where(expr=%superq(_expr));
+  %end;
+  %else %if &_verb_uc=WHERE_NOT or &_verb_uc=MASK %then %_pipe_plan_add_where(expr=not (%superq(_args)));
+  %else %if &_verb_uc=MUTATE or &_verb_uc=WITH_COLUMN %then %do;
+    %if %sysmacexist(_mutate_normalize_stmt) %then %_mutate_normalize_stmt(%superq(_args), _stmt);
+    %else %let _stmt=%superq(_args);
+    %if %sysmacexist(_mutate_expand_functions) %then %_mutate_expand_functions(stmt=%superq(_stmt), out_stmt=_stmt);
+    %if %length(%superq(_stmt)) > 0 %then %do;
+      %let _last=%qsubstr(%superq(_stmt), %length(%superq(_stmt)), 1);
+      %if %superq(_last) ne %str(;) %then %let _stmt=%superq(_stmt)%str(;);
+      %_pipe_plan_set_stmt(stmt=%superq(_stmt));
+    %end;
+  %end;
+  %else %_pipe_plan_mark_unsupported(step=%superq(step));
+%mend;
+
+%macro _pipe_plan_build(steps=, data=);
+  %local _n _i _step;
+  %_pipe_plan_reset(data=%superq(data));
+  %_pipe_steps_count(steps=%superq(steps), out_n=_n);
+  %do _i=1 %to &_n;
+    %_pipe_get_step(steps=%superq(steps), index=&_i, out_step=_step);
+    %if %length(%superq(_step)) %then %_pipe_plan_apply_step(step=%superq(_step));
+  %end;
+%mend;
+
+%macro _pipe_plan_log(collect_out=, out=);
+  %put NOTE: [PIPE.PLAN] source=%superq(_pipe_plan_data);
+  %put NOTE: [PIPE.PLAN] keep=%superq(_pipe_plan_keep);
+  %put NOTE: [PIPE.PLAN] drop=%superq(_pipe_plan_drop);
+  %put NOTE: [PIPE.PLAN] rename=%superq(_pipe_plan_rename);
+  %put NOTE: [PIPE.PLAN] where=%superq(_pipe_plan_where);
+  %put NOTE: [PIPE.PLAN] stmt=%superq(_pipe_plan_stmt);
+  %put NOTE: [PIPE.PLAN] supported=%superq(_pipe_plan_supported);
+  %if %length(%superq(_pipe_plan_unsupported_steps)) %then %put NOTE: [PIPE.PLAN] unsupported_steps=%superq(_pipe_plan_unsupported_steps);
+  %if %length(%superq(collect_out)) %then %put NOTE: [PIPE.PLAN] collect_out=%superq(collect_out) (execute enabled);
+  %else %put NOTE: [PIPE.PLAN] no collect step found (plan only; not executing).;
+  %if %length(%superq(out)) %then %put NOTE: [PIPE.PLAN] out=%superq(out);
+%mend;
+
+%macro _pipe_plan_set_options(out_opts=);
+  %local _opts;
+  %let _opts=;
+  %if %length(%superq(_pipe_plan_keep)) %then %let _opts=&_opts keep=%superq(_pipe_plan_keep);
+  %if %length(%superq(_pipe_plan_drop)) %then %let _opts=&_opts drop=%superq(_pipe_plan_drop);
+  %if %length(%superq(_pipe_plan_rename)) %then %let _opts=&_opts rename=(%superq(_pipe_plan_rename));
+  %if %length(%superq(_pipe_plan_where)) %then %let _opts=&_opts where=(%superq(_pipe_plan_where));
+  %let _opts=%sysfunc(compbl(%superq(_opts)));
+  %_pipr_ucl_assign(out_text=%superq(out_opts), value=%superq(_opts));
+%mend;
+
+%macro _pipe_data_step_builder_emit(data=, out=, set_opts=, stmt=, as_view=0);
+  data &out
+    %if &as_view %then / view=&out;
+  ;
+    set &data %if %length(%superq(set_opts)) %then (%superq(set_opts));;
+    %if %length(%superq(stmt)) %then %do;
+      %unquote(%superq(stmt))
+    %end;
+  run;
+%mend;
+
+%macro _pipe_plan_execute(data=, out=, stmt=, as_view=0);
+  %local _set_opts;
+  %_pipe_plan_set_options(out_opts=_set_opts);
+  %_pipe_data_step_builder_emit(data=%superq(data), out=%superq(out), set_opts=%superq(_set_opts), stmt=%superq(stmt), as_view=&as_view);
+  %if &syserr > 4 %then %_abort(pipe() plan execution failed (SYSERR=&syserr).);
+%mend;
+
+%macro _pipe_validate_inputs(data=, out=, steps=, require_out=1);
   %if %length(%superq(data))=0 %then %_abort(pipe() requires a data input dataset.);
   %_assert_ds_exists(&data, error_msg=Input to pipe() is missing.);
-  %if %length(%superq(out))=0 %then %_abort(pipe() requires out= or a collect_to() step.);
-  %if %length(%superq(steps))=0 %then %_abort(pipe() requires steps delimited by '|'.);
+  %if &require_out and %length(%superq(out))=0 %then %_abort(pipe() requires out= or a collect_to() step.);
 %mend;
 
 %macro _pipe_execute_step(
@@ -421,7 +564,7 @@ File: src/pipr/pipr.sas
   cleanup=1
 ) / parmbuff;
   %local steps_work data_work out_work validate_work use_views_work view_output_work debug_work cleanup_work;
-  %local collect_out;
+  %local collect_out _execute _plan_stmt;
 
   %_pipe_parse_parmbuff(
     steps_in=%superq(steps),
@@ -441,8 +584,6 @@ File: src/pipr/pipr.sas
     out_debug=debug_work,
     out_cleanup=cleanup_work
   );
-
-  %if %length(%superq(steps_work))=0 %then %_abort(pipe() requires steps delimited by '|'.);
 
   %_pipe_infer_data(
     steps_in=%superq(steps_work),
@@ -468,8 +609,21 @@ File: src/pipr/pipr.sas
   %let view_output_work=%_pipr_bool(%superq(view_output_work), default=0);
   %let debug_work=%_pipr_bool(%superq(debug_work), default=0);
   %let cleanup_work=%_pipr_bool(%superq(cleanup_work), default=1);
+  %let _execute=%sysfunc(ifc(%length(%superq(collect_out))>0,1,0));
 
-  %_pipe_validate_inputs(data=&data_work, out=&out_work, steps=&steps_work);
+  %_pipe_validate_inputs(data=&data_work, out=&out_work, steps=&steps_work, require_out=&_execute);
+
+  %_pipe_plan_build(steps=%superq(steps_work), data=%superq(data_work));
+  %if %length(%superq(_pipe_plan_stmt)) %then %let _plan_stmt=%superq(_pipe_plan_stmt);
+  %else %let _plan_stmt=;
+  %_pipe_plan_log(collect_out=%superq(collect_out), out=%superq(out_work));
+
+  %if not &_execute %then %return;
+
+  %if %superq(_pipe_plan_supported)=1 %then %do;
+    %_pipe_plan_execute(data=%superq(data_work), out=%superq(out_work), stmt=%superq(_plan_stmt), as_view=&view_output_work);
+    %return;
+  %end;
 
   %_pipe_execute(
     steps=%superq(steps_work),
@@ -892,10 +1046,12 @@ File: src/pipr/pipr.sas
       run;
 
       %pipe(
-        data=work._pipe_in,
-        out=work._pipe_out,
-        steps=filter(x > 1) | mutate(y = x * 2) | select(x y),
-        use_views=0,
+        work._pipe_in
+        | filter(x > 1)
+        | mutate(y = x * 2)
+        | select(x y)
+        | collect_to(work._pipe_out)
+        , use_views=0,
         cleanup=1
       );
 
@@ -910,10 +1066,10 @@ File: src/pipr/pipr.sas
 
     %test_case(pipe supports view_output=1 on final step);
       %pipe(
-        data=work._pipe_in,
-        out=work._pipe_out_view_final,
-        steps=select(x),
-        use_views=1,
+        work._pipe_in
+        | select(x)
+        | collect_to(work._pipe_out_view_final)
+        , use_views=1,
         view_output=1,
         debug=1,
         cleanup=1
@@ -953,10 +1109,10 @@ File: src/pipr/pipr.sas
       run;
 
       %pipe(
-        data=work._pipe_dup_in,
-        out=work._pipe_dup_out_view,
-        steps=drop_duplicates(),
-        use_views=1,
+        work._pipe_dup_in
+        | drop_duplicates()
+        | collect_to(work._pipe_dup_out_view)
+        , use_views=1,
         view_output=1,
         cleanup=1
       );
@@ -998,10 +1154,10 @@ File: src/pipr/pipr.sas
 
     %test_case(%nrstr(mutate with comma-based function expression without explicit %str));
       %pipe(
-        data=work._pipe_in,
-        out=work._pipe_out_ifc,
-        steps=mutate(flag = ifc(x > 2, 1, 0)),
-        use_views=0,
+        work._pipe_in
+        | mutate(flag = ifc(x > 2, 1, 0))
+        | collect_to(work._pipe_out_ifc)
+        , use_views=0,
         cleanup=1
       );
 
@@ -1014,10 +1170,10 @@ File: src/pipr/pipr.sas
 
     %test_case(mutate supports comma-delimited assignments in pipe);
       %pipe(
-        data=work._pipe_in,
-        out=work._pipe_out_multi,
-        steps=mutate(a = x + 1, b = a * 2),
-        use_views=0,
+        work._pipe_in
+        | mutate(a = x + 1, b = a * 2)
+        | collect_to(work._pipe_out_multi)
+        , use_views=0,
         cleanup=1
       );
 
@@ -1030,10 +1186,10 @@ File: src/pipr/pipr.sas
 
     %test_case(mutate supports compact comma-delimited assignments in pipe);
       %pipe(
-        data=work._pipe_in,
-        out=work._pipe_out_multi_compact,
-        steps=mutate(a=x+1,b=a*2),
-        use_views=0,
+        work._pipe_in
+        | mutate(a=x+1,b=a*2)
+        | collect_to(work._pipe_out_multi_compact)
+        , use_views=0,
         cleanup=1
       );
 
@@ -1052,10 +1208,10 @@ File: src/pipr/pipr.sas
       run;
 
       %pipe(
-        data=work._pipe_pred,
-        out=work._pipe_pred_out,
-        steps=filter(if_any(cols=a b c, pred=is_zero())),
-        use_views=0,
+        work._pipe_pred
+        | filter(if_any(cols=a b c, pred=is_zero()))
+        | collect_to(work._pipe_pred_out)
+        , use_views=0,
         cleanup=1
       );
 
@@ -1065,10 +1221,10 @@ File: src/pipr/pipr.sas
       %assertEqual(&_pipe_pred_n., 1);
 
       %pipe(
-        data=work._pipe_in,
-        out=work._pipe_mut_pred,
-        steps=mutate(flag = is_positive(x), in_2_3 = is_between(x, 2, 3)),
-        use_views=0,
+        work._pipe_in
+        | mutate(flag = is_positive(x), in_2_3 = is_between(x, 2, 3))
+        | collect_to(work._pipe_mut_pred)
+        , use_views=0,
         cleanup=1
       );
       proc sql noprint;
@@ -1081,10 +1237,10 @@ File: src/pipr/pipr.sas
 
     %test_case(with_column supports mutate-style assignments in pipe);
       %pipe(
-        data=work._pipe_in,
-        out=work._pipe_out_wc_multi,
-        steps=with_column(a = x + 1, b = a * 2),
-        use_views=0,
+        work._pipe_in
+        | with_column(a = x + 1, b = a * 2)
+        | collect_to(work._pipe_out_wc_multi)
+        , use_views=0,
         cleanup=1
       );
 
@@ -1148,10 +1304,10 @@ File: src/pipr/pipr.sas
       run;
 
       %pipe(
-        data=work._pipe_bool_in,
-        out=work._pipe_bool_out,
-        steps=filter(x > 1),
-        validate=TRUE,
+        work._pipe_bool_in
+        | filter(x > 1)
+        | collect_to(work._pipe_bool_out)
+        , validate=TRUE,
         use_views=NO,
         cleanup=YES
       );
