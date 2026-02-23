@@ -157,6 +157,7 @@ File: sassyverse.sas
       root=%superq(root),
       files=%str(
         pipr/util.sas
+        | pipr/plan.sas
         | pipr/predicates.sas
         | pipr/validation.sas
         | pipr/_selectors/lambda.sas
