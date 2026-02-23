@@ -11,32 +11,21 @@ This repo is a SAS macro toolkit that emulates tidyverse-style workflows plus ge
   - Use: %sassyverse_run_tests(base_path=..., include_pipr=1)
   - Sets __unit_tests=1 and loads in a fixed order.
 
-## Test behavior
-
-- Many modules auto-run tests at file end. This can be noisy in production.
-- __unit_tests is used by some modules to guard tests, but guard logic must not evaluate an undefined macro var.
-- Common failure mode: using %eval or %if on unquoted macro variables (causes numeric conversion errors).
-
-## Known sensitive areas
-
-- Macro argument parsing:
-  - Use %superq for args that may include commas, pipes, or spaces.
-  - For macros that accept code blocks (foreach), delay resolution with %nrstr and %unquote(%superq()).
-- assertEqual/assertNotEqual:
-  - Must handle both numeric and character comparisons safely.
-
 ## pipr
 
 - Core pipeline macro: src/pipr/pipr.sas
-- Helpers: src/pipr/validation.sas and src/pipr/_verbs/utils.sas
-- Verbs live under src/pipr/_verbs/ and include summarise/summarize.
-- validation.sas needs _ds_split to derive LIB/MEM; this was added.
+- Helpers: src/pipr/validation.sas, src/pipr/_verbs/utils.sas, src/pipr/predicates.sas
+- Verbs live under src/pipr/_verbs/
+
+### UML for pipr:
+
+```mermaid
+
+```
 
 ## Shell and OS compatibility
 
 - shell.sas wraps shell commands; on Windows, it uses cmd /c.
-- Avoid quoted command strings inside filename pipe; prefer plain strings and rely on filename pipe quoting.
-- shchmod is no-op on Windows.
 
 ## Export behavior
 
@@ -44,37 +33,19 @@ This repo is a SAS macro toolkit that emulates tidyverse-style workflows plus ge
   - Example: work._exp -> work___exp.csv
 - Tests must match this naming.
 
-## Recent fixes from log-driven debugging
-
-- lists.sas:
-  - len default delimiters and safe handling for empty delimiters.
-  - sorted reworked as a macro-level numeric sort to allow %let usage.
-  - foreach uses %unquote(%superq(codeblock)).
-- strings.sas:
-  - str__split and str__format hardened with %superq and named args in tests.
-- sassyverse_init:
-  - include_pipr/include_tests must be parsed without numeric %eval errors.
-
 ## Style guidance
 
-- Keep changes ASCII-only.
-- Add tests that are deterministic and cleanup WORK datasets.
-- Avoid datalines inside macros (causes CARDS errors).
-- Prefer small, focused tests that isolate behavior.
-
-
-# Agent Collaboration Instructions
-
-This document captures the operating guidelines for how I (GitHub Copilot) work in this repo.
-It is meant to be stable and reproducible for future sessions.
-
-## Working Principles
-
-- Be explicit, concise, and task-focused.
-- Prefer deterministic behavior and reproducible outputs.
-- Avoid unnecessary changes; keep diffs minimal and readable.
-- Preserve existing behavior unless the user requests a change.
-
+- All public macros must:
+  1. Be documented with a header comment block that documents the macro's purpose, parameters, return value, side effects, and MUST include an example of usage.
+  2. Include a test case in the test suite that demonstrates the documented example and validates the expected behavior.
+  3. Follow SOLID principles where applicable, especially Single Responsibility and Open/Closed.
+    - Each macro should have a single, well-defined purpose.
+    - Public macros should be designed to be orchestrators that call smaller, focused helper macros as needed.
+    - Avoid monolithic macros that try to do too much; instead, break complex logic into smaller, reusable components.
+  4. Use consistent naming conventions that reflect their purpose and behavior.
+    - Macro names should be descriptive and follow a consistent pattern (e.g., verb_noun for actions).
+    - Helper macros can have a prefix or suffix to indicate their internal use (e.g., _helper, _utils).
+  
 ## Tooling and File Access
 
 - Read relevant files before editing.
@@ -84,29 +55,142 @@ It is meant to be stable and reproducible for future sessions.
 
 ## SAS-Specific Guidance
 
-- Use `%superq` for arguments that can include commas, pipes, or spaces.
-- Avoid `%eval`/`%if` on unquoted macro vars that can be empty or non-numeric.
-- For code-block macro arguments, delay resolution using `%nrstr` and `
-	%unquote(%superq())` patterns.
-- Avoid datalines inside macros.
+- Datalines inside macros are NOT ACCEPTABLE.
+- Note that there is significant centralization of logic. Before creating a new macro, check if existing macros can be composed to achieve the desired behavior.
+- When adding new functionality, consider whether it can be implemented as a helper macro that can be called by existing public macros, rather than creating a new public macro. This promotes code reuse and keeps the public API surface smaller and more maintainable.
+
+### Centrally-Defined Logic
+
+- Bootstrapping and include-order orchestration is centralized in `sassyverse.sas` via `sassyverse_init`, `_sassyverse_include`, and `_sassyverse_include_list`.
+  - This is the single deterministic load graph for core modules plus optional `pipr` and `testthat` loading.
+  - `tests/run_tests.sas` depends on this to ensure reproducible test import order.
+
+- Module import idempotency is centralized in `src/sassymod.sas` (`sbmod`/`sassymod`).
+  - Import markers (`_imported__*`) prevent duplicate includes.
+  - Safe key generation and optional temporary debug-level toggling are encapsulated here.
+
+- Core pipr utility primitives are centralized in `src/pipr/util.sas`.
+  - Session-wide primitives: `_abort`, `_pipr_bool`, `_pipr_require_nonempty`, `_pipr_in_unit_tests`, `_pipr_autorun_tests`, `_pipr_require_assert`.
+  - Parsing/tokenization primitives shared by pipeline, selectors, and verbs: `_pipr_split_parmbuff_segments`, `_pipr_tokenize`.
+  - String/list normalization primitives shared across modules: `_pipr_strip_matching_quotes`, `_pipr_unbracket_csv_lists`, `_pipr_normalize_list`, `_pipr_ucl_assign`.
+
+- Dataset/column validation is centralized in `src/pipr/validation.sas`.
+  - Shared assertions: `_assert_ds_exists`, `_assert_cols_exist`, `_cols_missing`, `_assert_key_compatible`, `_assert_unique_key`.
+  - Most verbs call these rather than implementing local metadata checks.
+
+- Pipeline step dispatch is centralized in `src/pipr/_verbs/utils.sas` and consumed by `src/pipr/pipr.sas`.
+  - `_apply_step` + `_step_parse` + `_step_call_positional/_step_call_named` forms the shared execution bridge.
+  - View support policy (`_verb_supports_view`) is centralized and used by pipe planning.
+
+- Selector expansion is centralized in `src/pipr/_selectors/utils.sas`.
+  - Token parsing (`_sel_tokenize`, `_sel_parse_call`) and selector dispatch (`_sel_expand_token`) are shared.
+  - Leaf selectors (`starts_with`, `ends_with`, `contains`, `matches`, `cols_where`) remain thin.
+
+- Predicate/function registration and expansion is centralized in `src/pipr/predicates.sas`.
+  - Registry lifecycle (`_pred_registry_reset`, `_pred_registry_add`) and expression expansion (`_pred_expand_expr`) are single-source.
+  - Verbs like `filter` and `mutate` call into this shared expansion rather than duplicating predicate resolution logic.
+
+- Verb include orchestration is centralized in `src/pipr/verbs.sas`, while execution orchestration lives in `src/pipr/pipr.sas`.
+  - `verbs.sas` is the compatibility include surface for selectors + verbs.
+  - `pipr.sas` owns pipeline planning, temp naming, collect-step extraction, and cleanup behavior.
+
+### Candidate logic for further centralization
+
+1. Consolidate repeated `parmbuff` named/positional argument parsing patterns from:
+  - `src/pipr/_verbs/filter.sas` (`_filter_parse_parmbuff`, `_where_if_parse_parmbuff`)
+  - `src/pipr/_verbs/mutate.sas` (`_mutate_parse_parmbuff`)
+  - `src/pipr/pipr.sas` (`_pipe_parse_parmbuff`)
+  into one reusable parser helper in `src/pipr/util.sas`.
+
+2. Centralize DATA step emission with optional view output.
+  - Current duplication: `_filter_emit_data`, `_mutate_emit_data`, and similar verb-local DATA step wrappers.
+  - Candidate: shared helper that accepts `set` source and injected statement block/where expression.
+
+3. Centralize common verb preflight and postflight checks.
+  - Shared pattern appears across verbs: parse booleans -> `_assert_ds_exists` -> optional `_assert_cols_exist` -> run step -> `syserr` guard.
+  - Candidate helpers: `_verb_preflight(...)` and `_verb_assert_success(verb_name=...)` in `src/pipr/_verbs/utils.sas`.
+
+4. Consolidate local debug-gating patterns into one common utility layer.
+  - Similar patterns exist in `src/pipr/util.sas` (`_pipr_util_dbg*`), `src/pipr/_selectors/utils.sas` (`_sel_dbg*`), and `src/pipr/predicates.sas` (`_pred_log`, `_pred_trace_*`).
+  - Candidate: one shared logger facade with component tag support.
+
+5. Unify bootstrapping/dependency guards for pipr modules.
+  - Repeated checks like `if not %sysmacexist(...) then ...` are spread across `pipr.sas`, `predicates.sas`, selectors, and verbs.
+  - Candidate: a centralized dependency-check helper that reports missing prerequisites uniformly.
+
+6. Normalize boolean conversion across core and pipr.
+  - Current duplication: `_pipr_bool` (`src/pipr/util.sas`) and `_sbmod_bool` (`src/sassymod.sas`) implement near-identical logic.
+  - Candidate: reuse one canonical boolean parser everywhere.
+
+7. Extract a shared expression-expansion adapter for predicate-enabled verbs.
+  - Current duplication: `_filter_expand_where` and `_mutate_expand_functions` both perform optional `_pred_expand_expr` calls.
+  - Candidate: a single helper in `src/pipr/predicates.sas` or `src/pipr/util.sas`.
+
+8. Centralize selector function registry/dispatch map.
+  - `_sel_expand_token` currently uses hard-coded `if/else` dispatch for each selector macro.
+  - Candidate: registry-based selector dispatch (like predicate registry style) to reduce branching and ease new selector onboarding.
+
+9. Centralize test bootstrap boilerplate for module-level unit tests.
+  - Repeated pattern in many modules: `%if not %sysmacexist(assertTrue) %then %sbmod(assert);` and similar guarded test wrappers.
+  - Candidate: one shared test bootstrap macro used by both core and pipr module tests.
 
 ## Testing Expectations
 
-- Add deterministic tests that clean up WORK datasets.
-- Keep tests focused and isolated per macro behavior.
-- Prefer the repo test harness (`tests/run_tests.sas`) for new coverage.
-
-## Communication and Reviews
-
-- Lead with what changed and why.
-- When asked for a review, prioritize defects, risks, and test gaps.
-- Ask clarifying questions only when required to proceed.
+- All new features must include test cases that demonstrate the expected behavior and edge cases.
+- Use the test suite in assert.sas for low-level assertions and the higher-level test functions in testthat.sas as appropriate.
 
 ## Constraints
 
 - Keep content ASCII-only unless the file already uses Unicode and requires it.
 - Do not remove or revert unrelated changes.
 
-# IMPORTANT:
+## What to do when...
 
-Given the magnitude of the task you are being asked to help with, **you are no longer bound by the previous 5-file checkin requirement**. You may edit as many files as needed to accomplish the task, but please keep diffs focused and readable. Always lead with a clear explanation of what changed and why.
+### 1. You encounter changes in the working tree that you did not make:
+  1. Review the changes to understand what they are and why they might be there.
+  2. If the changes are unrelated to your current task, your task is to immediately dispatch a subagent to perform a peer review of the code. This review should focus on identifying the source of the changes, assessing their relevance, and determining if they were intentional or accidental. 
+    - If they appear to be accidental, you should revert the changes to maintain a clean working state.
+    - If they appear to be intentional and pass a preliminary review, you should proceed to the next step.
+  3. Once you are satisfied that the changes are intentional and relevant, you should incorporate them into your working state. This may involve merging the changes into your current branch or rebasing your work on top of the new changes, depending on the workflow you are following.
+
+### 2. You begin work on a new feature
+  1. Immediately identify the current branch you are working on and ensure that it is up to date with the latest changes from the main branch. If it is not, you MUST first merge or rebase the latest changes from the main branch into your current branch before proceeding with your work.
+  2. Once you have confirmed that your branch is up to date, you should create a new branch for your feature work. Use the naming convention `feature/your-feature-name` for the new branch. This helps to keep the repository organized and makes it clear what the purpose of the branch is.
+
+### 3. You are ready to commit your changes
+  1. Before committing, review your changes to ensure that they are complete, well-documented, and properly tested. Make sure that your commit message follows the guidelines outlined in the Communication and Reviews section above.
+  2. Ensure you have the following:
+    - All public macros you created or modified are documented with a header comment block that includes an example of usage.
+    - All new features have corresponding test cases that demonstrate the expected behavior and edge cases.
+  3. Once you are satisfied with your changes and commit message (see above for guidelines), you can proceed to commit your changes. Use the appropriate tags in your commit message to indicate the nature of the changes you made (e.g., [FEAT], [BUGFIX], [REFACTOR], etc.). This helps maintain a clear history of changes and makes it easier for others to understand the purpose of each commit when reviewing the project history.
+
+### 4. You begin reviewing a module you did not personally write, and there is no accompanying documentation or comments:
+  1. If there is no provided documentation or comments, you should first attempt to understand the code by reading through it carefully and trying to infer its purpose and functionality based on the code itself. Look for any patterns, naming conventions, or structural elements that might provide clues about what the code is doing.
+  2. You MUST next attempt a first pass documentation of the module. This involves writing a header comment block that describes the purpose of the module, its parameters, return value, and any side effects it may have. This documentation should be based on your understanding of the code and should aim to provide clarity for future readers.
+  3. Document all public macros within the module, ensuring that each macro has a clear and descriptive header comment block that follows the guidelines outlined in the Style Guidance section above. This documentation should include an example of usage for each public macro to demonstrate how it is intended to be used.
+
+## Communication and Reviews
+
+- Lead with what changed and why.
+- When asked for a review, prioritize defects, risks, and test gaps. 
+- Ask clarifying questions only when required to proceed.
+- This is a large project. You are expected to make significant changes. Focus on quality, not quantity. A well-scoped change that is well-tested and well-documented is more valuable than a large change that is rushed or incomplete.
+- Given the magnitude of the task, you are no longer bound by the previous 5-file checkin requirement. You may edit as many files as needed to accomplish the task, but please keep diffs focused and readable. Always lead with a clear explanation of what changed and why.
+- When reviewing code, focus on the following key areas:
+  1. Correctness: Does the code do what it is supposed to do? Are there any logical errors or bugs?
+  2. Readability: Is the code easy to understand? Are variable and function names descriptive? Is the code organized in a way that makes it easy to follow?
+  3. Maintainability: Is the code structured in a way that makes it easy to modify and extend in the future? Are there any areas of technical debt that should be addressed?
+  4. Test Coverage: Are there sufficient tests for the new features or changes? Do the tests cover edge cases and potential failure points?
+- If you encounter unintended edits to the code, it is your job to first review them, then commit them if needed. 
+
+# IMPORTANT
+
+## Your work will only be considered complete when all of the following criteria are met:
+
+1. Your original task has been implemented correctly and thoroughly on a feature branch.
+2. A PR has been opened against the main branch with a clear description of the changes and their purpose.
+3. You do not have any unintended edits in your working tree. If you do, you have either committed them or reverted them.
+4. All public macros you created, modified, or merely encountered are documented with a header comment block that includes an example of usage.
+5. All new features have corresponding test cases that demonstrate the expected behavior and edge cases.
+
+## NEVER MAKE ANY CHANGES TO THE MAIN BRANCH. ALL WORK MUST BE DONE ON A FEATURE BRANCH AND MERGED VIA PR.
