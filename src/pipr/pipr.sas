@@ -87,7 +87,7 @@ File: src/pipr/pipr.sas
   out_debug=,
   out_cleanup=
 );
-  %local buf i seg seg_head seg_val eq_pos __seg_count;
+  %local buf i _kind seg_head seg_val __seg_count;
 
   %_pipr_ucl_assign(out_text=%superq(out_steps), value=%superq(steps_in));
   %_pipr_ucl_assign(out_text=%superq(out_data), value=%superq(data_in));
@@ -100,17 +100,21 @@ File: src/pipr/pipr.sas
 
   %let buf=%superq(syspbuff);
   %if %length(%superq(buf)) > 2 %then %do;
-    %_pipe_split_parmbuff_segments(buf=%superq(buf), out_n=__seg_count, out_prefix=seg);
+    %if not %sysmacexist(_pipr_parse_parmbuff) %then
+      %_abort(pipe() requires pipr util helpers to be loaded.);
+    %_pipr_parse_parmbuff(
+      buf=%superq(buf),
+      recognized=%str(DATA OUT VALIDATE USE_VIEWS VIEW_OUTPUT DEBUG CLEANUP STEPS),
+      out_n=__seg_count,
+      out_prefix=_ppb
+    );
 
     %do i=1 %to &__seg_count;
-      %let seg=%superq(seg&i);
-      %let seg_head=%upcase(%sysfunc(strip(%scan(%superq(seg), 1, =))));
+      %let _kind=&&_ppb_kind&i;
+      %let seg_head=&&_ppb_head&i;
+      %let seg_val=&&_ppb_val&i;
 
-      %if %sysfunc(indexw(DATA OUT VALIDATE USE_VIEWS VIEW_OUTPUT DEBUG CLEANUP STEPS, &seg_head)) > 0 %then %do;
-        %let eq_pos=%index(%superq(seg), %str(=));
-        %if &eq_pos > 0 %then %let seg_val=%substr(%superq(seg), %eval(&eq_pos+1));
-        %else %let seg_val=;
-
+      %if &_kind=N %then %do;
         %if &seg_head=DATA %then %_pipr_ucl_assign_strip(out_text=%superq(out_data), value=%superq(seg_val));
         %else %if &seg_head=OUT %then %_pipr_ucl_assign_strip(out_text=%superq(out_out), value=%superq(seg_val));
         %else %if &seg_head=VALIDATE %then %_pipr_ucl_assign_strip(out_text=%superq(out_validate), value=%superq(seg_val));
@@ -120,7 +124,7 @@ File: src/pipr/pipr.sas
         %else %if &seg_head=CLEANUP %then %_pipr_ucl_assign_strip(out_text=%superq(out_cleanup), value=%superq(seg_val));
         %else %if &seg_head=STEPS %then %_pipr_ucl_assign_strip(out_text=%superq(out_steps), value=%superq(seg_val));
       %end;
-      %else %if %length(%superq(&out_steps))=0 %then %_pipr_ucl_assign_strip(out_text=%superq(out_steps), value=%superq(seg));
+      %else %if %length(%superq(&out_steps))=0 %then %_pipr_ucl_assign_strip(out_text=%superq(out_steps), value=%superq(seg_val));
     %end;
   %end;
 %mend;

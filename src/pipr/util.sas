@@ -32,6 +32,7 @@ File: src/pipr/util.sas
 - _pipr_tokenize_run
 - _pipr_tokenize_assign
 - _pipr_split_parmbuff_segments
+- _pipr_parse_parmbuff
 - _pipr_ucl_prepare_input
 - _pipr_ucl_transform
 - _pipr_ucl_assign
@@ -227,6 +228,53 @@ File: src/pipr/util.sas
   run;
 
   %_pipr_ucl_assign(out_text=%superq(out_n), value=%superq(_pipr_sp_count));
+%mend;
+
+/* Parse parmbuff segments into a normalized stream of named/positional tokens.
+   - recognized= is a space-delimited list of named keys (case-insensitive).
+   - For each parsed token i, outputs:
+       <out_prefix>_kind<i> : N (named) or P (positional)
+       <out_prefix>_head<i> : normalized key for named tokens
+       <out_prefix>_val<i>  : value payload
+*/
+%macro _pipr_parse_parmbuff(buf=, recognized=, out_n=, out_prefix=_pb);
+  %local _seg_n _i _m _seg _head _eq _val _kind;
+
+  %if not %sysmacexist(_pipr_split_parmbuff_segments) %then
+    %_abort(_pipr_parse_parmbuff requires _pipr_split_parmbuff_segments from util.sas.);
+
+  %_pipr_split_parmbuff_segments(
+    buf=%superq(buf),
+    out_n=_seg_n,
+    out_prefix=_pb_seg
+  );
+
+  %let _m=0;
+  %do _i=1 %to &_seg_n;
+    %let _seg=%sysfunc(strip(%superq(_pb_seg&_i)));
+    %if %length(%superq(_seg)) > 0 %then %do;
+      %let _m=%eval(&_m + 1);
+      %let _head=%upcase(%sysfunc(strip(%scan(%superq(_seg), 1, =))));
+      %let _eq=%index(%superq(_seg), %str(=));
+
+      %if %sysfunc(indexw(%superq(recognized), &_head)) > 0 %then %do;
+        %let _kind=N;
+        %if &_eq > 0 %then %let _val=%sysfunc(strip(%substr(%superq(_seg), %eval(&_eq+1))));
+        %else %let _val=;
+      %end;
+      %else %do;
+        %let _kind=P;
+        %let _val=%superq(_seg);
+        %let _head=;
+      %end;
+
+      %_pipr_ucl_assign(out_text=%superq(out_prefix)_kind&_m, value=%superq(_kind));
+      %_pipr_ucl_assign(out_text=%superq(out_prefix)_head&_m, value=%superq(_head));
+      %_pipr_ucl_assign(out_text=%superq(out_prefix)_val&_m, value=%superq(_val));
+    %end;
+  %end;
+
+  %_pipr_ucl_assign(out_text=%superq(out_n), value=&_m);
 %mend;
 
 %macro _pipr_ucl_prepare_input(text=, out_var=_pipr_ucl_in);
@@ -532,6 +580,31 @@ File: src/pipr/util.sas
       %assertEqual(&_n., 2);
       %assertEqual(actual=&_ps_local_alias1., expected=%str(name=a));
       %assertEqual(actual=&_ps_local_alias2., expected=%str(args=b));
+    %test_summary;
+
+    %test_case(parmbuff parser classifies named and positional segments);
+      %_pipr_parse_parmbuff(
+        buf=%str(data=work._in, validate=NO, x > 1, out=work._out),
+        recognized=%str(DATA OUT VALIDATE),
+        out_n=_pp_n,
+        out_prefix=_pp
+      );
+
+      %assertEqual(&_pp_n., 4);
+      %assertEqual(&_pp_kind1., N);
+      %assertEqual(&_pp_head1., DATA);
+      %assertEqual(actual=&_pp_val1., expected=%str(work._in));
+
+      %assertEqual(&_pp_kind2., N);
+      %assertEqual(&_pp_head2., VALIDATE);
+      %assertEqual(actual=&_pp_val2., expected=NO);
+
+      %assertEqual(&_pp_kind3., P);
+      %assertEqual(actual=&_pp_val3., expected=%str(x > 1));
+
+      %assertEqual(&_pp_kind4., N);
+      %assertEqual(&_pp_head4., OUT);
+      %assertEqual(actual=&_pp_val4., expected=%str(work._out));
     %test_summary;
 
     %test_case(shared tokenizer supports comma and whitespace splitting);
