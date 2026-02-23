@@ -217,7 +217,7 @@ File: src/pipr/predicates.sas
     %let &out_n=%superq(_pred_sp_n);
   %end;
   %if %length(%superq(out_n)) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT count=%superq(&out_n));
-  %if %superq(_pred_sp_n)=0 %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT no segments; buf_len=%length(%superq(_pred_sp_buf)));
+  %if %superq(_pred_sp_n)=0 %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT no segments buf_len=%length(%superq(_pred_sp_buf)));
   %else %if %symexist(&out_prefix.1) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg1=%superq(&out_prefix.1));
 %mend _pred_split_parmbuff;
 
