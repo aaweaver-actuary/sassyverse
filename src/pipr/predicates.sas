@@ -127,9 +127,13 @@ File: src/pipr/predicates.sas
 %mend _pred_require_nonempty;
 
 %macro _pred_bool(value, default=0);
+  %local _b;
   %_pred_dbg(_pred_bool called with value=%superq(value) default=%superq(default));
   %if not %sysmacexist(_pipr_bool) %then %_abort(predicates.sas requires _pipr_bool from util.sas.);
-  %_pipr_bool(%superq(value), default=%superq(default));
+  %let _b=%_pipr_bool(%superq(value), default=%superq(default));
+  %if %sysfunc(indexw(%superq(_b), 1, %str(; ))) > 0 %then 1;
+  %else %if %sysfunc(indexw(%superq(_b), 0, %str(; ))) > 0 %then 0;
+  %else %superq(_b);
 %mend _pred_bool;
 
 %macro _pred_trace_enabled;
@@ -179,10 +183,10 @@ File: src/pipr/predicates.sas
 
 %macro _pred_split_parmbuff(buf=, out_n=, out_prefix=_pred_seg);
   %if %sysmacexist(_pipr_split_parmbuff) %then %do;
-    %_pipr_split_parmbuff(buf=%superq(buf), out_n=&out_n, out_prefix=&out_prefix);
+    %_pipr_split_parmbuff(buf=%superq(buf), out_n=%superq(out_n), out_prefix=%superq(out_prefix));
   %end;
   %else %if %sysmacexist(_pipr_split_parmbuff_segments) %then %do;
-    %_pipr_split_parmbuff_segments(buf=%superq(buf), out_n=&out_n, out_prefix=&out_prefix);
+    %_pipr_split_parmbuff_segments(buf=%superq(buf), out_n=%superq(out_n), out_prefix=%superq(out_prefix));
   %end;
   %else %do;
     %_abort(predicates.sas requires pipr util helpers to be loaded.);
@@ -271,7 +275,7 @@ Example
   %local _in _out;
   %let _in=%superq(text);
   data _null_;
-    length raw esc ch specials $32767;
+    length raw esc specials $32767 ch $1;
     raw = symget('_in');
     esc = raw;
     specials = cats(byte(92), '^$.|?*+(){}[]');
@@ -321,7 +325,7 @@ Example
     out = '';
 
     if length(raw) then do;
-      if prxmatch('/^\/.+\/[A-Za-z]*$/', raw) then do;
+      if substr(raw, 1, 1) = '/' then do;
         slash = 0;
         do i = length(raw) to 2 by -1;
           if substr(raw, i, 1) = '/' then do;
@@ -333,6 +337,10 @@ Example
         if slash > 1 then do;
           body = substr(raw, 2, slash - 2);
           flags = substr(raw, slash + 1);
+          if not prxmatch('/^[A-Za-z]*$/', flags) then do;
+            body = substr(raw, 2);
+            flags = '';
+          end;
           if symget('_ic') = '1' and index(lowcase(flags), 'i') = 0 then flags = cats(flags, 'i');
           out = cats('/', body, '/', flags);
         end;
@@ -357,15 +365,16 @@ Example
   %let _ic=%_pred_bool(%superq(ignore_case), default=1);
 
   data _null_;
-    length raw body out flags ch $32767;
+    length raw body out flags specials $32767 ch $1;
     raw = symget('_raw');
+    specials = cats(byte(92), '^$.|?*+(){}[]');
     body = '';
     do i = 1 to length(raw);
       ch = substr(raw, i, 1);
       if ch = '%' then body = cats(body, '.*');
       else if ch = '_' then body = cats(body, '.');
       else do;
-        if indexc(symget('REGEX_SPECIAL_CHARS'), ch) > 0 then body = cats(body, '\', ch);
+        if indexc(specials, ch) > 0 then body = cats(body, byte(92), ch);
         else body = cats(body, ch);
       end;
     end;
