@@ -131,8 +131,9 @@ File: src/pipr/predicates.sas
   %_pred_dbg(_pred_bool called with value=%superq(value) default=%superq(default));
   %if not %sysmacexist(_pipr_bool) %then %_abort(predicates.sas requires _pipr_bool from util.sas.);
   %let _b=%_pipr_bool(%superq(value), default=%superq(default));
-  %if %sysfunc(indexw(%superq(_b), 1, %str(; ))) > 0 %then 1;
-  %else %if %sysfunc(indexw(%superq(_b), 0, %str(; ))) > 0 %then 0;
+  %let _b=%sysfunc(compress(%superq(_b), %str(01), k));
+  %if %superq(_b)=1 %then 1;
+  %else %if %superq(_b)=0 %then 0;
   %else %superq(_b);
 %mend _pred_bool;
 
@@ -338,7 +339,8 @@ Example
           body = substr(raw, 2, slash - 2);
           flags = substr(raw, slash + 1);
           if not prxmatch('/^[A-Za-z]*$/', flags) then do;
-            body = substr(raw, 2);
+            if substr(raw, length(raw), 1) = '/' then body = substr(raw, 2, length(raw)-2);
+            else body = substr(raw, 2);
             flags = '';
           end;
           if symget('_ic') = '1' and index(lowcase(flags), 'i') = 0 then flags = cats(flags, 'i');
@@ -1177,7 +1179,7 @@ Example
       %assertEqual(%superq(_pp_strip2), xyz);
 
       %_trim_semis_from_str(text=%str(a=1;), out_text=_pp_trim1);
-      %assertEqual(%superq(_pp_trim1), a=1);
+      %assertEqual(actual=%superq(_pp_trim1), expected=%str(a=1));
 
       %_escape_regex_chars(text=%str(a+b?c), out_text=_pp_esc1);
       %assertEqual(%superq(_pp_esc1), %str(a\+b\?c));
@@ -1203,12 +1205,12 @@ Example
         out_prefix=_pp_seg
       );
       %assertEqual(&_pp_sn., 3);
-      %assertEqual(%superq(_pp_seg1), %str(cols=a b c));
-      %assertEqual(%superq(_pp_seg2), %str(pred=is_missing()));
-      %assertEqual(%superq(_pp_seg3), %str(args=blank_is_missing=0));
+      %assertEqual(actual=%superq(_pp_seg1), expected=%str(cols=a b c));
+      %assertEqual(actual=%superq(_pp_seg2), expected=%str(pred=is_missing()));
+      %assertEqual(actual=%superq(_pp_seg3), expected=%str(args=blank_is_missing=0));
 
       %_pred_lambda_normalize(expr=%str(lambda(.is_num and .name='POLICY_ID')), out_expr=_pp_l1);
-      %assertEqual(%superq(_pp_l1), %str(.is_num and .name='POLICY_ID'));
+      %assertEqual(actual=%superq(_pp_l1), expected=%str(.is_num and .name='POLICY_ID'));
 
       %_pred_require_nonempty(value=%str(ok), msg=should not abort);
       %assertTrue(1, predicate non-empty wrapper accepts populated values);
