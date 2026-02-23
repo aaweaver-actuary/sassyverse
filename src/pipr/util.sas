@@ -84,14 +84,14 @@ File: src/pipr/util.sas
 %macro _pipr_tokenize_run(expr=, out_prefix=tok, split_on_comma=1, split_on_ws=0, out_count=_pipr_tok_n);
   %local _pt_expr _pt_split_comma _pt_split_ws;
   %global _pipr_tok_expr _pipr_tok_count;
+  %global _pipr_tok_dbg_expr _pipr_tok_dbg_len _pipr_tok_dbg_first _pipr_tok_dbg_last;
+  %global _pipr_tok_dbg_depth _pipr_tok_dbg_quote;
   %global &out_count;
   %let _pt_expr=%superq(expr);
   %let _pipr_tok_expr=%unquote(%superq(_pt_expr));
   %let _pipr_tok_count=0;
   %let _pt_split_comma=%_pipr_bool(%superq(split_on_comma), default=1);
   %let _pt_split_ws=%_pipr_bool(%superq(split_on_ws), default=0);
-
-  %dbg(msg=[PIPR.UTIL] _pipr_tokenize_run start out_prefix=%superq(out_prefix) split_comma=&_pt_split_comma split_ws=&_pt_split_ws expr_len=%length(%superq(_pt_expr)));
 
   data _null_;
     length expr tok $32767 ch quote $1;
@@ -133,11 +133,29 @@ File: src/pipr/util.sas
     end;
 
     call symputx('_pipr_tok_count', n, 'G');
+    if n = 0 and lengthn(strip(expr)) > 0 then do;
+      call symputx('_pipr_tok_dbg_expr', substr(expr, 1, 220), 'G');
+      call symputx('_pipr_tok_dbg_len', lengthn(expr), 'G');
+      call symputx('_pipr_tok_dbg_first', substr(expr, 1, 1), 'G');
+      call symputx('_pipr_tok_dbg_last', substr(expr, max(1, lengthn(expr)), 1), 'G');
+      call symputx('_pipr_tok_dbg_depth', depth, 'G');
+      call symputx('_pipr_tok_dbg_quote', quote, 'G');
+    end;
+    else do;
+      call symputx('_pipr_tok_dbg_expr', '', 'G');
+      call symputx('_pipr_tok_dbg_len', '', 'G');
+      call symputx('_pipr_tok_dbg_first', '', 'G');
+      call symputx('_pipr_tok_dbg_last', '', 'G');
+      call symputx('_pipr_tok_dbg_depth', '', 'G');
+      call symputx('_pipr_tok_dbg_quote', '', 'G');
+    end;
   run;
 
   %_pipr_ucl_assign(out_text=%superq(out_count), value=%superq(_pipr_tok_count));
-
-  %dbg(msg=[PIPR.UTIL] _pipr_tokenize_run done out_count=%superq(out_count) value=%superq(&out_count));
+  %if %superq(&out_count)=0 and %length(%superq(_pt_expr))>0 %then %do;
+    %dbg(msg=[PIPR.UTIL] _pipr_tokenize_run FAIL out_prefix=%superq(out_prefix) split_comma=&_pt_split_comma split_ws=&_pt_split_ws expr_len=%superq(_pipr_tok_dbg_len) depth_end=%superq(_pipr_tok_dbg_depth) quote_end=%superq(_pipr_tok_dbg_quote) first=%superq(_pipr_tok_dbg_first) last=%superq(_pipr_tok_dbg_last));
+    %dbg(msg=[PIPR.UTIL] _pipr_tokenize_run FAIL expr_sample=%superq(_pipr_tok_dbg_expr));
+  %end;
 %mend;
 
 %macro _pipr_tokenize_assign(out_n=, count=);

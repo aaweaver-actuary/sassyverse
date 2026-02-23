@@ -175,7 +175,7 @@ File: src/pipr/predicates.sas
 %_bootstrap_preds;
 
 %macro _pred_split_parmbuff(buf=, out_n=, out_prefix=_pred_seg);
-  %local _pred_sp_n _pred_sp_i _pred_sp_buf;
+  %local _pred_sp_n _pred_sp_i _pred_sp_buf _pred_fb_n _pred_tok;
   %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff IN out_n=%superq(out_n) out_prefix=%superq(out_prefix) buf=%superq(buf));
   %if not %sysmacexist(_pipr_tokenize) %then %_abort(predicates.sas requires _pipr_tokenize from util.sas.);
 
@@ -195,6 +195,18 @@ File: src/pipr/predicates.sas
     split_on_ws=0
   );
 
+  %if %superq(_pred_sp_n)=0 and %length(%superq(_pred_sp_buf))>0 %then %do;
+    %let _pred_fb_n=%sysfunc(countw(%superq(_pred_sp_buf), %str(,)));
+    %if &_pred_fb_n > 0 %then %do;
+      %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff fallback=countw n=&_pred_fb_n);
+      %let _pred_sp_n=&_pred_fb_n;
+      %do _pred_sp_i=1 %to &_pred_fb_n;
+        %let _pred_tok=%qscan(%superq(_pred_sp_buf), &_pred_sp_i, %str(,));
+        %let _pred_sp_tok&_pred_sp_i=%sysfunc(strip(%superq(_pred_tok)));
+      %end;
+    %end;
+  %end;
+
   %do _pred_sp_i=1 %to %superq(_pred_sp_n);
     %if not %symexist(&out_prefix.&_pred_sp_i) %then %global &out_prefix.&_pred_sp_i;
     %let &out_prefix.&_pred_sp_i=%superq(_pred_sp_tok&_pred_sp_i);
@@ -205,12 +217,8 @@ File: src/pipr/predicates.sas
     %let &out_n=%superq(_pred_sp_n);
   %end;
   %if %length(%superq(out_n)) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT count=%superq(&out_n));
-  %if %symexist(&out_prefix.1) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg1=%superq(&out_prefix.1));
-  %else %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg1=);
-  %if %symexist(&out_prefix.2) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg2=%superq(&out_prefix.2));
-  %else %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg2=);
-  %if %symexist(&out_prefix.3) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg3=%superq(&out_prefix.3));
-  %else %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg3=);
+  %if %superq(_pred_sp_n)=0 %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT no segments; buf_len=%length(%superq(_pred_sp_buf)));
+  %else %if %symexist(&out_prefix.1) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg1=%superq(&out_prefix.1));
 %mend _pred_split_parmbuff;
 
 /* 
