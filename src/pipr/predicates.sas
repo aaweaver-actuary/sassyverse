@@ -271,9 +271,14 @@ Example
   %local _in _out;
   %let _in=%superq(text);
   data _null_;
-    length raw esc $32767 ch $1;
+    length raw esc ch specials $32767;
     raw = symget('_in');
-    esc = escape_regex_chars(raw);
+    esc = raw;
+    specials = cats(byte(92), '^$.|?*+(){}[]');
+    do _i = 1 to length(specials);
+      ch = substr(specials, _i, 1);
+      esc = tranwrd(esc, ch, cats(byte(92), ch));
+    end;
     call symputx('_out', esc, 'L');
   run;
   %_pipr_ucl_assign(out_text=%superq(out_text), value=%superq(_out));

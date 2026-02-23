@@ -351,16 +351,9 @@ File: src/pipr/util.sas
 %mend;
 
 %macro _pipr_ucl_assign(out_text=, value=);
-  %global _pipr_ucl_assign_name _pipr_ucl_assign_value;
   %if %length(%superq(out_text)) %then %do;
-    %let _pipr_ucl_assign_name=%superq(out_text);
-    %let _pipr_ucl_assign_value=%superq(value);
-    data _null_;
-      length _name $256 _val $32767;
-      _name = strip(symget('_pipr_ucl_assign_name'));
-      _val = symget('_pipr_ucl_assign_value');
-      call symputx(_name, _val, 'F');
-    run;
+    %if not %symexist(&out_text) %then %global &out_text;
+    %let &out_text=%superq(value);
   %end;
 %mend;
 
