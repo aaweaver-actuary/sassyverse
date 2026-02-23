@@ -68,11 +68,11 @@ File: src/pipr/_verbs/mutate.sas
 );
   %local _buf _n _i _seg _head _eq _val _stmt_acc;
 
-  %let &out_stmt=%superq(stmt_in);
-  %let &out_data=%superq(data_in);
-  %let &out_out=%superq(out_in);
-  %let &out_validate=%superq(validate_in);
-  %let &out_as_view=%superq(as_view_in);
+  %_pipr_ucl_assign(out_text=%superq(out_stmt), value=%superq(stmt_in));
+  %_pipr_ucl_assign(out_text=%superq(out_data), value=%superq(data_in));
+  %_pipr_ucl_assign(out_text=%superq(out_out), value=%superq(out_in));
+  %_pipr_ucl_assign(out_text=%superq(out_validate), value=%superq(validate_in));
+  %_pipr_ucl_assign(out_text=%superq(out_as_view), value=%superq(as_view_in));
 
   %let _stmt_acc=;
   %let _buf=%superq(syspbuff);
@@ -89,10 +89,10 @@ File: src/pipr/_verbs/mutate.sas
           %if &_eq > 0 %then %let _val=%substr(%superq(_seg), %eval(&_eq+1));
           %else %let _val=;
 
-          %if &_head=DATA %then %let &out_data=%sysfunc(strip(%superq(_val)));
-          %else %if &_head=OUT %then %let &out_out=%sysfunc(strip(%superq(_val)));
-          %else %if &_head=VALIDATE %then %let &out_validate=%sysfunc(strip(%superq(_val)));
-          %else %if &_head=AS_VIEW %then %let &out_as_view=%sysfunc(strip(%superq(_val)));
+          %if &_head=DATA %then %_pipr_ucl_assign_strip(out_text=%superq(out_data), value=%superq(_val));
+          %else %if &_head=OUT %then %_pipr_ucl_assign_strip(out_text=%superq(out_out), value=%superq(_val));
+          %else %if &_head=VALIDATE %then %_pipr_ucl_assign_strip(out_text=%superq(out_validate), value=%superq(_val));
+          %else %if &_head=AS_VIEW %then %_pipr_ucl_assign_strip(out_text=%superq(out_as_view), value=%superq(_val));
           %else %if &_head=STMT %then %let _stmt_acc=%sysfunc(strip(%superq(_val)));
         %end;
         %else %do;
@@ -105,67 +105,58 @@ File: src/pipr/_verbs/mutate.sas
   %end;
 
   %if %length(%superq(_stmt_acc))=0 %then %let _stmt_acc=%superq(stmt_in);
-  %let &out_stmt=%superq(_stmt_acc);
+  %_pipr_ucl_assign(out_text=%superq(out_stmt), value=%superq(_stmt_acc));
 %mend;
 
 %macro _mutate_normalize_stmt(stmt, out_stmt);
-  %local _raw _norm;
+  %local _raw _norm _n _i _tok _last;
   %global &out_stmt;
   %let _raw=%sysfunc(strip(%unquote(%superq(stmt))));
   %if %length(%superq(_raw))=0 %then %_abort(mutate() requires a non-empty expression or statement block.);
 
-  data _null_;
-    length raw norm tok $32767 ch quote $1;
-    raw = strip(symget('_raw'));
+  %if %index(%superq(_raw), %str(;)) > 0 %then %let _norm=%superq(_raw);
+  %else %do;
+    %if not %sysmacexist(_pipr_tokenize) %then %_abort(mutate() requires _pipr_tokenize from util.sas.);
+    %_pipr_tokenize(
+      expr=%superq(_raw),
+      out_n=_n,
+      out_prefix=_mt_norm_tok,
+      split_on_comma=1,
+      split_on_ws=0
+    );
 
-    if index(raw, ';') > 0 then norm = raw;
-    else do;
-      norm = '';
-      tok = '';
-      quote = '';
-      depth = 0;
+    %let _norm=;
+    %do _i=1 %to &_n;
+      %let _tok=%sysfunc(strip(%superq(_mt_norm_tok&_i)));
+      %if %length(%superq(_tok)) %then %do;
+        %if %length(%superq(_norm)) %then %let _norm=%superq(_norm) %superq(_tok)%str(;);
+        %else %let _norm=%superq(_tok)%str(;);
+      %end;
+    %end;
+  %end;
 
-      do i = 1 to length(raw);
-        ch = substr(raw, i, 1);
+  %let _norm=%sysfunc(strip(%superq(_norm)));
+  %if %length(%superq(_norm)) > 0 %then %do;
+    %let _last=%qsubstr(%superq(_norm), %length(%superq(_norm)), 1);
+    %if %superq(_last) ne %str(;) %then %let _norm=%superq(_norm)%str(;);
+  %end;
 
-        if quote = '' then do;
-          if ch = "'" or ch = '"' then quote = ch;
-          else if ch = '(' then depth + 1;
-          else if ch = ')' and depth > 0 then depth + (-1);
-        end;
-        else if ch = quote then quote = '';
-
-        if quote = '' and depth = 0 and ch = ',' then do;
-          if length(strip(tok)) then norm = catx(' ', norm, cats(strip(tok), ';'));
-          tok = '';
-        end;
-        else tok = cats(tok, ch);
-      end;
-
-      if length(strip(tok)) then norm = catx(' ', norm, cats(strip(tok), ';'));
-    end;
-
-    norm = strip(norm);
-    if length(norm) > 0 and substr(norm, length(norm), 1) ne ';' then norm = cats(norm, ';');
-    call symputx('_norm', norm, 'L');
-  run;
-
-  %let &out_stmt=%superq(_norm);
+  %_pipr_ucl_assign(out_text=%superq(out_stmt), value=%superq(_norm));
 %mend;
 
 %macro _mutate_expand_functions(stmt=, out_stmt=);
   %local _stmt_in _stmt_out;
   %let _stmt_in=%superq(stmt);
   %if %length(%superq(_stmt_in))=0 %then %do;
-    %let &out_stmt=;
+    %_pipr_ucl_assign(out_text=%superq(out_stmt), value=);
     %return;
   %end;
 
   %if %sysmacexist(_pred_expand_expr) %then %do;
     %_pred_expand_expr(expr=%superq(_stmt_in), out_expr=_stmt_out);
-    %let &out_stmt=%superq(_stmt_out);
+    %_pipr_ucl_assign(out_text=%superq(out_stmt), value=%superq(_stmt_out));
   %end;
-  %else %let &out_stmt=%superq(_stmt_in);
+  %else %_pipr_ucl_assign(out_text=%superq(out_stmt), value=%superq(_stmt_in));
 %mend;
 
 %macro mutate(stmt, data=, out=, validate=1, as_view=0) / parmbuff;

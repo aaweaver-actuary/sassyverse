@@ -84,18 +84,13 @@ File: src/pipr/_verbs/join.sas
 -------------------------*/
 
 %macro _join_norm_list(list=, out_list=);
-  %local _jn_raw _jn_norm;
-  %let _jn_raw=%superq(list);
-  %let _jn_norm=%superq(_jn_raw);
-
-  %if %sysmacexist(_pipr_unbracket_csv_lists) %then %do;
-    %_pipr_unbracket_csv_lists(text=%superq(_jn_raw));
-    %let _jn_norm=%superq(_pipr_ucl_out);
+  %if %sysmacexist(_pipr_normalize_list) %then %do;
+    %_pipr_normalize_list(text=%superq(list), collapse_commas=1);
+    %_pipr_ucl_assign(out_text=%superq(out_list), value=%superq(_pipr_norm_out));
   %end;
-
-  %let _jn_norm=%sysfunc(prxchange(%str(s/[\s,]+/ /), -1, %superq(_jn_norm)));
-  %let _jn_norm=%sysfunc(compbl(%sysfunc(strip(%superq(_jn_norm)))));
-  %let &out_list=%superq(_jn_norm);
+  %else %do;
+    %_pipr_ucl_assign_strip(out_text=%superq(out_list), value=%sysfunc(compbl(%sysfunc(strip(%superq(list))))));
+  %end;
 %mend;
 
 /* Abort if right_keep contains any join keys. Duplicate column names in output
@@ -112,8 +107,8 @@ File: src/pipr/_verbs/join.sas
   %let has_overlap=0;
   %let overlap_key=;
   %if %length(%superq(right_keep))=0 %then %do;
-    %let &out_has_overlap=0;
-    %let &out_key=;
+    %_pipr_ucl_assign(out_text=%superq(out_has_overlap), value=0);
+    %_pipr_ucl_assign(out_text=%superq(out_key), value=);
     %return;
   %end;
 
@@ -128,8 +123,8 @@ File: src/pipr/_verbs/join.sas
   %end;
 
 %overlap_done:
-  %let &out_has_overlap=&has_overlap;
-  %let &out_key=&overlap_key;
+  %_pipr_ucl_assign(out_text=%superq(out_has_overlap), value=&has_overlap);
+  %_pipr_ucl_assign(out_text=%superq(out_key), value=%superq(overlap_key));
 %mend;
 
 %macro _join_assert_right_keep_not_keys(on=, right_keep=, error_msg=);
@@ -345,7 +340,7 @@ File: src/pipr/_verbs/join.sas
       );
   quit;
 
-  %if %length(&&&outvar)=0 %then %let &outvar=;
+  %if %length(&&&outvar)=0 %then %_pipr_ucl_assign(out_text=%superq(outvar), value=);
 %mend;
 
 /* Picks HASH vs SQL for lookup-style joins.
@@ -391,7 +386,7 @@ File: src/pipr/_verbs/join.sas
        - SQL: multiplies rows
      So default to SQL unless user explicitly asks for HASH. */
   %if &_require_unique = 0 %then %do;
-    %let &out_method=SQL;
+    %_pipr_ucl_assign(out_text=%superq(out_method), value=SQL);
     %global PIPR_JOIN_LAST_METHOD;
     %let PIPR_JOIN_LAST_METHOD=SQL;
     %return;
@@ -402,7 +397,7 @@ File: src/pipr/_verbs/join.sas
   /* If right is a view, hash will be rebuilt every time the stream executes (especially painful in view pipelines).
      Prefer SQL (and possibly create view) in that case. */
   %if &is_view %then %do;
-    %let &out_method=SQL;
+    %_pipr_ucl_assign(out_text=%superq(out_method), value=SQL);
     %global PIPR_JOIN_LAST_METHOD;
     %let PIPR_JOIN_LAST_METHOD=SQL;
     %return;
@@ -414,10 +409,10 @@ File: src/pipr/_verbs/join.sas
   /* If NOBS unknown and auto_prefer_hash=0, choose SQL conservatively. */
   %if %length(&nobs)=0 %then %do;
     %if &_auto_prefer_hash %then %do;
-      %let &out_method=HASH;
+      %_pipr_ucl_assign(out_text=%superq(out_method), value=HASH);
     %end;
     %else %do;
-      %let &out_method=SQL;
+      %_pipr_ucl_assign(out_text=%superq(out_method), value=SQL);
     %end;
     %global PIPR_JOIN_LAST_METHOD;
     %let PIPR_JOIN_LAST_METHOD=&&&out_method;
@@ -426,7 +421,7 @@ File: src/pipr/_verbs/join.sas
 
   /* Quick NOBS gate */
   %if %sysevalf(&nobs > &auto_max_obs) %then %do;
-    %let &out_method=SQL;
+    %_pipr_ucl_assign(out_text=%superq(out_method), value=SQL);
     %global PIPR_JOIN_LAST_METHOD;
     %let PIPR_JOIN_LAST_METHOD=SQL;
     %return;
@@ -438,8 +433,8 @@ File: src/pipr/_verbs/join.sas
 
   %if %length(&row_bytes)=0 %then %do;
     /* no estimate => conservative */
-    %if &_auto_prefer_hash %then %let &out_method=HASH;
-    %else %let &out_method=SQL;
+    %if &_auto_prefer_hash %then %_pipr_ucl_assign(out_text=%superq(out_method), value=HASH);
+    %else %_pipr_ucl_assign(out_text=%superq(out_method), value=SQL);
 
     %global PIPR_JOIN_LAST_METHOD;
     %let PIPR_JOIN_LAST_METHOD=&&&out_method;
@@ -449,8 +444,8 @@ File: src/pipr/_verbs/join.sas
   %let mem_est_bytes=%sysevalf(&nobs * &row_bytes * &auto_overhead_factor);
   %let mem_cap_bytes=%sysevalf(&auto_max_mem_mb * 1024 * 1024);
 
-  %if %sysevalf(&mem_est_bytes <= &mem_cap_bytes) %then %let &out_method=HASH;
-  %else %let &out_method=SQL;
+  %if %sysevalf(&mem_est_bytes <= &mem_cap_bytes) %then %_pipr_ucl_assign(out_text=%superq(out_method), value=HASH);
+  %else %_pipr_ucl_assign(out_text=%superq(out_method), value=SQL);
 
   %global PIPR_JOIN_LAST_METHOD;
   %let PIPR_JOIN_LAST_METHOD=&&&out_method;

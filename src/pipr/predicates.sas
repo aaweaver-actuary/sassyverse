@@ -85,22 +85,15 @@ File: src/pipr/predicates.sas
 
 %macro _bootstrap_preds;
   %_pred_dbg(Bootstrapping predicates.sas with logging and assert dependencies);
-  %if not %sysmacexist(_abort) %then %do;
-    %macro _abort(msg);
-      %put ERROR: &msg;
-      %abort cancel;
-    %mend _abort;
-  %end;
-
-  %if not %sysmacexist(_pipr_require_assert) %then %do;
-    %macro _pipr_require_assert;
-      %if not %sysmacexist(assertTrue) %then %sbmod(assert);
-    %mend _pipr_require_assert;
-  %end;
-
-  %if not %sysmacexist(_pipr_autorun_tests) %then %do;
-    %macro _pipr_autorun_tests(test_macro);
-    %mend _pipr_autorun_tests;
+  %if (not %sysmacexist(_abort))
+      or (not %sysmacexist(_pipr_require_assert))
+      or (not %sysmacexist(_pipr_autorun_tests))
+      or (not %sysmacexist(_pipr_bool))
+      or (not %sysmacexist(_pipr_strip_matching_quotes))
+      or (not %sysmacexist(_pipr_lambda_normalize))
+      or (not %sysmacexist(_pipr_split_parmbuff))
+      or (not %sysmacexist(_pipr_require_nonempty)) %then %do;
+    %include 'util.sas';
   %end;
 
 
@@ -129,23 +122,14 @@ File: src/pipr/predicates.sas
 
 %macro _pred_require_nonempty(value=, msg=Predicate argument must be non-empty.);
   %_pred_dbg(_pred_require_nonempty called with value=%superq(value));
-  %if %length(%superq(value))=0 %then %_abort(%superq(msg));
+  %if not %sysmacexist(_pipr_require_nonempty) %then %_abort(predicates.sas requires _pipr_require_nonempty from util.sas.);
+  %_pipr_require_nonempty(value=%superq(value), msg=%superq(msg));
 %mend _pred_require_nonempty;
 
 %macro _pred_bool(value, default=0);
   %_pred_dbg(_pred_bool called with value=%superq(value) default=%superq(default));
-  %if %sysmacexist(_pipr_bool) %then %_pipr_bool(%superq(value), default=&default);
-  %else %do;
-    %local _raw _up;
-    %let _raw=%superq(value);
-    %if %length(%superq(_raw))=0 %then &default;
-    %else %do;
-      %let _up=%upcase(%superq(_raw));
-      %if %sysfunc(indexw(1 Y YES TRUE T ON, &_up)) > 0 %then 1;
-      %else %if %sysfunc(indexw(0 N NO FALSE F OFF, &_up)) > 0 %then 0;
-      %else &default;
-    %end;
-  %end;
+  %if not %sysmacexist(_pipr_bool) %then %_abort(predicates.sas requires _pipr_bool from util.sas.);
+  %_pipr_bool(%superq(value), default=%superq(default));
 %mend _pred_bool;
 
 %macro _pred_trace_enabled;
@@ -194,11 +178,15 @@ File: src/pipr/predicates.sas
 %_bootstrap_preds;
 
 %macro _pred_split_parmbuff(buf=, out_n=, out_prefix=_pred_seg);
-  %if not %sysmacexist(_pipr_split_parmbuff_segments) %then %do;
+  %if %sysmacexist(_pipr_split_parmbuff) %then %do;
+    %_pipr_split_parmbuff(buf=%superq(buf), out_n=&out_n, out_prefix=&out_prefix);
+  %end;
+  %else %if %sysmacexist(_pipr_split_parmbuff_segments) %then %do;
+    %_pipr_split_parmbuff_segments(buf=%superq(buf), out_n=&out_n, out_prefix=&out_prefix);
+  %end;
+  %else %do;
     %_abort(predicates.sas requires pipr util helpers to be loaded.);
   %end;
-  
-  %_pipr_split_parmbuff_segments(buf=%superq(buf), out_n=&out_n, out_prefix=&out_prefix);
 %mend _pred_split_parmbuff;
 
 /* 
@@ -222,18 +210,8 @@ Example
 %put &=mytext;  /* Output: hello */
 */;
 %macro _pred_strip_quotes(text=, out_text=);
-  %local _in _out;
-  /* Use %superq to safely reference the input text. 
-  If it were passed as a macro variable, this prevents
-  unintended resolution. */
-  %let _in=%superq(text);
-  data _null_;
-    length raw $32767 q $1;
-    raw = strip(symget('_in'));
-    raw = remove_matching_quotes(raw);
-    call symputx('_out', raw, 'L');
-  run;
-  %let &out_text=%superq(_out);
+  %if not %sysmacexist(_pipr_strip_matching_quotes) %then %_abort(predicates.sas requires _pipr_strip_matching_quotes from util.sas.);
+  %_pipr_strip_matching_quotes(text=%superq(text), out_text=&out_text);
 %mend _pred_strip_quotes;
 
 /* 
@@ -265,7 +243,7 @@ Example
     if length(raw) > 0 and substr(raw, length(raw), 1) = ';' then raw = substr(raw, 1, length(raw) - 1);
     call symputx('_out', strip(raw), 'L');
   run;
-  %let &out_text=%superq(_out);
+  %_pipr_ucl_assign(out_text=%superq(out_text), value=%superq(_out));
 %mend _trim_semis_from_str;
 
 
@@ -298,7 +276,7 @@ Example
     esc = escape_regex_chars(raw);
     call symputx('_out', esc, 'L');
   run;
-  %let &out_text=%superq(_out);
+  %_pipr_ucl_assign(out_text=%superq(out_text), value=%superq(_out));
 %mend _escape_regex_chars;
 
 /* 
@@ -364,7 +342,7 @@ Example
     call symputx('_out', out, 'L');
   run;
 
-  %let &out_prx=%superq(_out);
+  %_pipr_ucl_assign(out_text=%superq(out_prx), value=%superq(_out));
 %mend _convert_regex_to_prx;
 
 %macro _pred_sql_like_to_prx(pattern=, ignore_case=1, out_prx=);
@@ -392,7 +370,7 @@ Example
     call symputx('_out', out, 'L');
   run;
 
-  %let &out_prx=%superq(_out);
+  %_pipr_ucl_assign(out_text=%superq(out_prx), value=%superq(_out));
 %mend _pred_sql_like_to_prx;
 
 %macro _pred_registry_reset;
@@ -504,7 +482,7 @@ Example
 
   %_pred_macro_for_done:
   %if %length(%superq(_m))=0 %then %let _m=%superq(name);
-  %let &out_macro=%superq(_m);
+  %_pipr_ucl_assign(out_text=%superq(out_macro), value=%superq(_m));
 %mend _pred_macro_for;
 
 %macro _pred_eval_registered_call(name=, args=, out_expr=);
@@ -521,7 +499,7 @@ Example
 
   %_trim_semis_from_str(text=%superq(_expr), out_text=_expr);
   %_pred_log(level=DEBUG, msg=eval registered call done name=%superq(name) macro=%superq(_macro) expr_len=%length(%superq(_expr)));
-  %let &out_expr=%superq(_expr);
+  %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_expr));
 %mend _pred_eval_registered_call;
 
 %macro _pred_find_call(expr=, out_found=, out_prefix=, out_name=, out_args=, out_suffix=);
@@ -530,11 +508,11 @@ Example
   %if %sysfunc(symexist(_pipr_functions)) %then %let _registry=%upcase(%superq(_pipr_functions));
   %else %let _registry=;
 
-  %let &out_found=0;
-  %let &out_prefix=%superq(_expr);
-  %let &out_name=;
-  %let &out_args=;
-  %let &out_suffix=;
+  %_pipr_ucl_assign(out_text=%superq(out_found), value=0);
+  %_pipr_ucl_assign(out_text=%superq(out_prefix), value=%superq(_expr));
+  %_pipr_ucl_assign(out_text=%superq(out_name), value=);
+  %_pipr_ucl_assign(out_text=%superq(out_args), value=);
+  %_pipr_ucl_assign(out_text=%superq(out_suffix), value=);
 
   %if %length(%superq(_registry))=0 %then %return;
 
@@ -642,7 +620,7 @@ Example
   %let _work=%superq(expr);
   %_pred_log(level=DEBUG, msg=expand expr start len=%length(%superq(_work)) max_iter=&max_iter);
   %if %length(%superq(_work))=0 %then %do;
-    %let &out_expr=;
+    %_pipr_ucl_assign(out_text=%superq(out_expr), value=);
     %return;
   %end;
 
@@ -673,7 +651,7 @@ Example
 
   %_pred_expand_done:
   %_pred_log(level=DEBUG, msg=expand expr done len=%length(%superq(_work)));
-  %let &out_expr=%superq(_work);
+  %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_work));
 %mend _pred_expand_expr;
 
 %macro list_functions(kind=, out_list=);
@@ -697,7 +675,7 @@ Example
     %end;
   %end;
 
-  %if %length(%superq(out_list)) %then %let &out_list=%superq(_out);
+  %if %length(%superq(out_list)) %then %_pipr_ucl_assign(out_text=%superq(out_list), value=%superq(_out));
   %else %put NOTE: Registered functions: %superq(_out);
   %_pred_log(level=DEBUG, msg=list_functions kind=%superq(_kind) count=&_n out_len=%length(%superq(_out)));
 %mend list_functions;
@@ -717,11 +695,11 @@ Example
   %local _buf _n _i _seg _head _eq _val _pos;
   %_pred_log(level=DEBUG, msg=resolve_gen_args start name_in=%superq(name_in) kind_in=%superq(kind_in));
 
-  %let &out_expr=%superq(expr_in);
-  %let &out_args=%superq(args_in);
-  %let &out_name=%superq(name_in);
-  %let &out_overwrite=%superq(overwrite_in);
-  %let &out_kind=%superq(kind_in);
+  %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(expr_in));
+  %_pipr_ucl_assign(out_text=%superq(out_args), value=%superq(args_in));
+  %_pipr_ucl_assign(out_text=%superq(out_name), value=%superq(name_in));
+  %_pipr_ucl_assign(out_text=%superq(out_overwrite), value=%superq(overwrite_in));
+  %_pipr_ucl_assign(out_text=%superq(out_kind), value=%superq(kind_in));
 
   %let _buf=%superq(syspbuff);
   %if %length(%superq(_buf)) > 2 %then %do;
@@ -738,19 +716,19 @@ Example
         %if &_eq > 0 %then %let _val=%sysfunc(strip(%substr(%superq(_seg), %eval(&_eq+1))));
         %else %let _val=;
 
-        %if &_head=EXPR or &_head=EXPRESSION or &_head=BODY %then %let &out_expr=%superq(_val);
-        %else %if &_head=ARGS %then %let &out_args=%superq(_val);
-        %else %if &_head=NAME %then %let &out_name=%superq(_val);
-        %else %if &_head=OVERWRITE %then %let &out_overwrite=%superq(_val);
-        %else %if &_head=KIND %then %let &out_kind=%superq(_val);
+        %if &_head=EXPR or &_head=EXPRESSION or &_head=BODY %then %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_val));
+        %else %if &_head=ARGS %then %_pipr_ucl_assign(out_text=%superq(out_args), value=%superq(_val));
+        %else %if &_head=NAME %then %_pipr_ucl_assign(out_text=%superq(out_name), value=%superq(_val));
+        %else %if &_head=OVERWRITE %then %_pipr_ucl_assign(out_text=%superq(out_overwrite), value=%superq(_val));
+        %else %if &_head=KIND %then %_pipr_ucl_assign(out_text=%superq(out_kind), value=%superq(_val));
       %end;
       %else %do;
         %let _pos=%eval(&_pos + 1);
-        %if &_pos = 1 %then %let &out_expr=%superq(_seg);
-        %else %if &_pos = 2 %then %let &out_args=%superq(_seg);
-        %else %if &_pos = 3 %then %let &out_name=%superq(_seg);
-        %else %if &_pos = 4 %then %let &out_overwrite=%superq(_seg);
-        %else %if &_pos = 5 %then %let &out_kind=%superq(_seg);
+        %if &_pos = 1 %then %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_seg));
+        %else %if &_pos = 2 %then %_pipr_ucl_assign(out_text=%superq(out_args), value=%superq(_seg));
+        %else %if &_pos = 3 %then %_pipr_ucl_assign(out_text=%superq(out_name), value=%superq(_seg));
+        %else %if &_pos = 4 %then %_pipr_ucl_assign(out_text=%superq(out_overwrite), value=%superq(_seg));
+        %else %if &_pos = 5 %then %_pipr_ucl_assign(out_text=%superq(out_kind), value=%superq(_seg));
       %end;
       %_next_seg:
     %end;
@@ -855,21 +833,8 @@ Example
 %mend predicate;
 
 %macro _pred_lambda_normalize(expr=, out_expr=);
-  %local _in _out;
-  %let _in=%superq(expr);
-  data _null_;
-    length raw $32767;
-    raw = strip(symget('_in'));
-    if prxmatch('/^lambda\s*\(.*\)$/i', raw) then do;
-      openp = index(raw, '(');
-      if openp > 0 and substr(raw, length(raw), 1) = ')' then
-        raw = substr(raw, openp + 1, length(raw) - openp - 1);
-    end;
-    raw = strip(raw);
-    if length(raw) > 0 and substr(raw, 1, 1) = '~' then raw = strip(substr(raw, 2));
-    call symputx('_out', raw, 'L');
-  run;
-  %let &out_expr=%superq(_out);
+  %if not %sysmacexist(_pipr_lambda_normalize) %then %_abort(predicates.sas requires _pipr_lambda_normalize from util.sas.);
+  %_pipr_lambda_normalize(expr=%superq(expr), out_expr=&out_expr);
 %mend _pred_lambda_normalize;
 
 %macro _pred_bind_lambda(lambda=, col=, out_expr=);
@@ -884,7 +849,7 @@ Example
     out = prxchange(rx, -1, raw);
     call symputx('_out', strip(out), 'L');
   run;
-  %let &out_expr=%superq(_out);
+  %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_out));
 %mend _pred_bind_lambda;
 
 %macro _pred_parse_pred_spec(spec=, out_kind=, out_name=, out_args=, out_lambda=);
@@ -922,10 +887,10 @@ Example
     call symputx('_lambda', lambda, 'L');
   run;
 
-  %let &out_kind=%superq(_kind);
-  %let &out_name=%superq(_name);
-  %let &out_args=%superq(_args);
-  %let &out_lambda=%superq(_lambda);
+  %_pipr_ucl_assign(out_text=%superq(out_kind), value=%superq(_kind));
+  %_pipr_ucl_assign(out_text=%superq(out_name), value=%superq(_name));
+  %_pipr_ucl_assign(out_text=%superq(out_args), value=%superq(_args));
+  %_pipr_ucl_assign(out_text=%superq(out_lambda), value=%superq(_lambda));
 %mend _pred_parse_pred_spec;
 
 %macro _pred_eval_for_col(col=, pred=, args=, out_expr=);
@@ -961,14 +926,14 @@ Example
 
   %_trim_semis_from_str(text=%superq(_expr), out_text=_expr);
   %_pred_log(level=DEBUG, msg=eval_for_col done col=%superq(col) kind=%superq(_kind) expr_len=%length(%superq(_expr)));
-  %let &out_expr=%superq(_expr);
+  %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_expr));
 %mend _pred_eval_for_col;
 
 %macro _pred_parse_if_args(cols_in=, pred_in=, args_in=, out_cols=, out_pred=, out_args=);
   %local _buf _n _i _seg _head _eq _val _pos;
-  %let &out_cols=%superq(cols_in);
-  %let &out_pred=%superq(pred_in);
-  %let &out_args=%superq(args_in);
+  %_pipr_ucl_assign(out_text=%superq(out_cols), value=%superq(cols_in));
+  %_pipr_ucl_assign(out_text=%superq(out_pred), value=%superq(pred_in));
+  %_pipr_ucl_assign(out_text=%superq(out_args), value=%superq(args_in));
 
   %let _buf=%superq(syspbuff);
   %if %length(%superq(_buf)) > 2 %then %do;
@@ -985,15 +950,15 @@ Example
         %if &_eq > 0 %then %let _val=%sysfunc(strip(%substr(%superq(_seg), %eval(&_eq+1))));
         %else %let _val=;
 
-        %if &_head=COLS %then %let &out_cols=%superq(_val);
-        %else %if &_head=PRED or &_head=PREDICATE %then %let &out_pred=%superq(_val);
-        %else %if &_head=ARGS %then %let &out_args=%superq(_val);
+        %if &_head=COLS %then %_pipr_ucl_assign(out_text=%superq(out_cols), value=%superq(_val));
+        %else %if &_head=PRED or &_head=PREDICATE %then %_pipr_ucl_assign(out_text=%superq(out_pred), value=%superq(_val));
+        %else %if &_head=ARGS %then %_pipr_ucl_assign(out_text=%superq(out_args), value=%superq(_val));
       %end;
       %else %do;
         %let _pos=%eval(&_pos + 1);
-        %if &_pos = 1 %then %let &out_cols=%superq(_seg);
-        %else %if &_pos = 2 %then %let &out_pred=%superq(_seg);
-        %else %if &_pos = 3 %then %let &out_args=%superq(_seg);
+        %if &_pos = 1 %then %_pipr_ucl_assign(out_text=%superq(out_cols), value=%superq(_seg));
+        %else %if &_pos = 2 %then %_pipr_ucl_assign(out_text=%superq(out_pred), value=%superq(_seg));
+        %else %if &_pos = 3 %then %_pipr_ucl_assign(out_text=%superq(out_args), value=%superq(_seg));
       %end;
       %_next_if_seg:
     %end;
@@ -1002,7 +967,11 @@ Example
 
 %macro _pred_reduce(cols=, pred=, args=, joiner=OR, out_expr=);
   %local _cols _pred _args _join _n _i _col _col_expr _acc;
-  %let _cols=%sysfunc(compbl(%sysfunc(tranwrd(%superq(cols), %str(,), %str( )))));
+  %if %sysmacexist(_pipr_normalize_list) %then %do;
+    %_pipr_normalize_list(text=%superq(cols), collapse_commas=1);
+    %let _cols=%superq(_pipr_norm_out);
+  %end;
+  %else %let _cols=%sysfunc(compbl(%sysfunc(tranwrd(%superq(cols), %str(,), %str( )))));
   %let _pred=%superq(pred);
   %let _args=%superq(args);
   %let _join=%upcase(%superq(joiner));
@@ -1023,7 +992,7 @@ Example
     %else %let _acc=%superq(_acc) or (%superq(_col_expr));
   %end;
 
-  %let &out_expr=(%superq(_acc));
+  %_pipr_ucl_assign(out_text=%superq(out_expr), value=(%superq(_acc)));
   %_pred_log(level=DEBUG, msg=pred_reduce done joiner=%superq(_join) n=&_n expr_len=%length(%superq(_acc)));
 %mend _pred_reduce;
 
@@ -1207,6 +1176,28 @@ Example
 
       %_pred_sql_like_to_prx(pattern=%nrstr(A_%C), ignore_case=0, out_prx=_pp_like_rx);
       %assertEqual(%superq(_pp_like_rx), %str(/^A..*C$/));
+    %test_summary;
+
+    %test_case(shared helper wrappers in predicates remain compatible);
+      %assertEqual(%_pred_bool(YES), 1);
+      %assertEqual(%_pred_bool(NO), 0);
+      %assertEqual(%_pred_bool(, default=1), 1);
+
+      %_pred_split_parmbuff(
+        buf=%str(cols=a b c, pred=is_missing(), args=blank_is_missing=0),
+        out_n=_pp_sn,
+        out_prefix=_pp_seg
+      );
+      %assertEqual(&_pp_sn., 3);
+      %assertEqual(%superq(_pp_seg1), %str(cols=a b c));
+      %assertEqual(%superq(_pp_seg2), %str(pred=is_missing()));
+      %assertEqual(%superq(_pp_seg3), %str(args=blank_is_missing=0));
+
+      %_pred_lambda_normalize(expr=%str(lambda(.is_num and .name='POLICY_ID')), out_expr=_pp_l1);
+      %assertEqual(%superq(_pp_l1), %str(.is_num and .name='POLICY_ID'));
+
+      %_pred_require_nonempty(value=%str(ok), msg=should not abort);
+      %assertTrue(1, predicate non-empty wrapper accepts populated values);
     %test_summary;
 
 /*     %test_case(predicate trace gating follows shared log level); */

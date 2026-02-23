@@ -60,8 +60,8 @@ File: src/pipr/_verbs/rename.sas
 
   %let old_list=%sysfunc(compbl(&old_list));
   %let map=%sysfunc(compbl(&map));
-  %let &out_old=&old_list;
-  %let &out_map=&map;
+  %_pipr_ucl_assign(out_text=%superq(out_old), value=&old_list);
+  %_pipr_ucl_assign(out_text=%superq(out_map), value=&map);
 %mend;
 
 %macro _rename_emit_data(rename_map, data=, out=, as_view=0);

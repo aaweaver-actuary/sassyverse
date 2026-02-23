@@ -75,11 +75,11 @@ File: src/pipr/_verbs/filter.sas
 );
   %local _buf _n _i _seg _head _eq _val _where_acc;
 
-  %let &out_where=%superq(where_in);
-  %let &out_data=%superq(data_in);
-  %let &out_out=%superq(out_in);
-  %let &out_validate=%superq(validate_in);
-  %let &out_as_view=%superq(as_view_in);
+  %_pipr_ucl_assign(out_text=%superq(out_where), value=%superq(where_in));
+  %_pipr_ucl_assign(out_text=%superq(out_data), value=%superq(data_in));
+  %_pipr_ucl_assign(out_text=%superq(out_out), value=%superq(out_in));
+  %_pipr_ucl_assign(out_text=%superq(out_validate), value=%superq(validate_in));
+  %_pipr_ucl_assign(out_text=%superq(out_as_view), value=%superq(as_view_in));
 
   %let _where_acc=;
   %let _buf=%superq(syspbuff);
@@ -98,10 +98,10 @@ File: src/pipr/_verbs/filter.sas
         %if &_eq > 0 %then %let _val=%sysfunc(strip(%substr(%superq(_seg), %eval(&_eq+1))));
         %else %let _val=;
 
-        %if &_head=DATA %then %let &out_data=%superq(_val);
-        %else %if &_head=OUT %then %let &out_out=%superq(_val);
-        %else %if &_head=VALIDATE %then %let &out_validate=%superq(_val);
-        %else %if &_head=AS_VIEW %then %let &out_as_view=%superq(_val);
+        %if &_head=DATA %then %_pipr_ucl_assign(out_text=%superq(out_data), value=%superq(_val));
+        %else %if &_head=OUT %then %_pipr_ucl_assign(out_text=%superq(out_out), value=%superq(_val));
+        %else %if &_head=VALIDATE %then %_pipr_ucl_assign(out_text=%superq(out_validate), value=%superq(_val));
+        %else %if &_head=AS_VIEW %then %_pipr_ucl_assign(out_text=%superq(out_as_view), value=%superq(_val));
         %else %if &_head=WHERE_EXPR or &_head=MASK_EXPR or &_head=EXPR %then %let _where_acc=%superq(_val);
       %end;
       %else %do;
@@ -114,7 +114,7 @@ File: src/pipr/_verbs/filter.sas
   %end;
 
   %if %length(%superq(_where_acc))=0 %then %let _where_acc=%superq(where_in);
-  %let &out_where=%superq(_where_acc);
+  %_pipr_ucl_assign(out_text=%superq(out_where), value=%superq(_where_acc));
 %mend;
 
 %macro _where_if_parse_parmbuff(
@@ -133,12 +133,12 @@ File: src/pipr/_verbs/filter.sas
 );
   %local _buf _n _i _seg _head _eq _val _where_acc _pos;
 
-  %let &out_where=%superq(where_in);
-  %let &out_condition=%superq(condition_in);
-  %let &out_data=%superq(data_in);
-  %let &out_out=%superq(out_in);
-  %let &out_validate=%superq(validate_in);
-  %let &out_as_view=%superq(as_view_in);
+  %_pipr_ucl_assign(out_text=%superq(out_where), value=%superq(where_in));
+  %_pipr_ucl_assign(out_text=%superq(out_condition), value=%superq(condition_in));
+  %_pipr_ucl_assign(out_text=%superq(out_data), value=%superq(data_in));
+  %_pipr_ucl_assign(out_text=%superq(out_out), value=%superq(out_in));
+  %_pipr_ucl_assign(out_text=%superq(out_validate), value=%superq(validate_in));
+  %_pipr_ucl_assign(out_text=%superq(out_as_view), value=%superq(as_view_in));
 
   %let _where_acc=;
   %let _pos=0;
@@ -158,17 +158,17 @@ File: src/pipr/_verbs/filter.sas
         %if &_eq > 0 %then %let _val=%sysfunc(strip(%substr(%superq(_seg), %eval(&_eq+1))));
         %else %let _val=;
 
-        %if &_head=DATA %then %let &out_data=%superq(_val);
-        %else %if &_head=OUT %then %let &out_out=%superq(_val);
-        %else %if &_head=VALIDATE %then %let &out_validate=%superq(_val);
-        %else %if &_head=AS_VIEW %then %let &out_as_view=%superq(_val);
-        %else %if &_head=CONDITION %then %let &out_condition=%superq(_val);
+        %if &_head=DATA %then %_pipr_ucl_assign(out_text=%superq(out_data), value=%superq(_val));
+        %else %if &_head=OUT %then %_pipr_ucl_assign(out_text=%superq(out_out), value=%superq(_val));
+        %else %if &_head=VALIDATE %then %_pipr_ucl_assign(out_text=%superq(out_validate), value=%superq(_val));
+        %else %if &_head=AS_VIEW %then %_pipr_ucl_assign(out_text=%superq(out_as_view), value=%superq(_val));
+        %else %if &_head=CONDITION %then %_pipr_ucl_assign(out_text=%superq(out_condition), value=%superq(_val));
         %else %if &_head=WHERE_EXPR or &_head=EXPR %then %let _where_acc=%superq(_val);
       %end;
       %else %do;
         %let _pos=%eval(&_pos + 1);
         %if &_pos = 1 %then %let _where_acc=%superq(_seg);
-        %else %if &_pos = 2 %then %let &out_condition=%superq(_seg);
+        %else %if &_pos = 2 %then %_pipr_ucl_assign(out_text=%superq(out_condition), value=%superq(_seg));
         %else %if %length(%superq(_where_acc))=0 %then %let _where_acc=%superq(_seg);
         %else %let _where_acc=%superq(_where_acc), %superq(_seg);
       %end;
@@ -178,22 +178,22 @@ File: src/pipr/_verbs/filter.sas
   %end;
 
   %if %length(%superq(_where_acc))=0 %then %let _where_acc=%superq(where_in);
-  %let &out_where=%superq(_where_acc);
+  %_pipr_ucl_assign(out_text=%superq(out_where), value=%superq(_where_acc));
 %mend;
 
 %macro _filter_expand_where(where_expr=, out_where=);
   %local _in _out;
   %let _in=%superq(where_expr);
   %if %length(%superq(_in))=0 %then %do;
-    %let &out_where=;
+    %_pipr_ucl_assign(out_text=%superq(out_where), value=);
     %return;
   %end;
 
   %if %sysmacexist(_pred_expand_expr) %then %do;
     %_pred_expand_expr(expr=%superq(_in), out_expr=_out);
-    %let &out_where=%superq(_out);
+    %_pipr_ucl_assign(out_text=%superq(out_where), value=%superq(_out));
   %end;
-  %else %let &out_where=%superq(_in);
+  %else %_pipr_ucl_assign(out_text=%superq(out_where), value=%superq(_in));
 %mend;
 
 %macro filter(where_expr, data=, out=, validate=1, as_view=0) / parmbuff;

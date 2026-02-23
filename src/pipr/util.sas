@@ -26,11 +26,26 @@ File: src/pipr/util.sas
 6) Macros defined in this file
 - _abort
 - _tmpds
+- _pipr_tmpds
+- _pipr_split_parmbuff
+- _pipr_tokenize
+- _pipr_tokenize_run
+- _pipr_tokenize_assign
 - _pipr_split_parmbuff_segments
+- _pipr_ucl_prepare_input
+- _pipr_ucl_transform
+- _pipr_ucl_assign
+- _pipr_ucl_assign_strip
 - _pipr_unbracket_csv_lists
+- _pipr_normalize_list
 - _pipr_in_unit_tests
 - _pipr_require_assert
 - _pipr_bool
+- _pipr_require_nonempty
+- _pipr_strip_matching_quotes
+- _pipr_lambda_strip_wrapper
+- _pipr_lambda_strip_tilde
+- _pipr_lambda_normalize
 - _pipr_autorun_tests
 - test_pipr_util
 
@@ -57,15 +72,122 @@ File: src/pipr/util.sas
   %sysfunc(cats(work., &prefix., %sysfunc(putn(%sysfunc(datetime()), hex16.))))
 %mend;
 
+%macro _pipr_tmpds(prefix=_p);
+  %_tmpds(prefix=&prefix)
+%mend;
+
+%macro _pipr_split_parmbuff(buf=, out_n=, out_prefix=seg);
+  %_pipr_split_parmbuff_segments(buf=%superq(buf), out_n=%superq(out_n), out_prefix=%superq(out_prefix));
+%mend;
+
+%macro _pipr_util_dbg_enabled;
+  %if %symexist(_pipr_util_debug) %then %do;
+    %_pipr_bool(%superq(_pipr_util_debug), default=0)
+  %end;
+  %else %if %symexist(log_level) and "%upcase(%superq(log_level))"="DEBUG" %then 1;
+  %else 0;
+%mend;
+
+%macro _pipr_util_dbg(msg=);
+  %if %_pipr_util_dbg_enabled %then %do;
+    %put NOTE: [PIPR.UTIL] %superq(msg);
+  %end;
+%mend;
+
+%macro _pipr_tokenize_run(expr=, out_prefix=tok, split_on_comma=1, split_on_ws=0, out_count=_pipr_tok_n);
+  %local _pt_expr _pt_split_comma _pt_split_ws;
+  %global _pipr_tok_expr _pipr_tok_count;
+  %global &out_count;
+  %let _pt_expr=%superq(expr);
+  %let _pipr_tok_expr=%unquote(%superq(_pt_expr));
+  %let _pipr_tok_count=0;
+  %let _pt_split_comma=%_pipr_bool(%superq(split_on_comma), default=1);
+  %let _pt_split_ws=%_pipr_bool(%superq(split_on_ws), default=0);
+
+  %_pipr_util_dbg(msg=_pipr_tokenize_run start out_prefix=%superq(out_prefix) split_comma=&_pt_split_comma split_ws=&_pt_split_ws expr_len=%length(%superq(_pt_expr)));
+
+  data _null_;
+    length expr tok $32767 ch quote $1;
+    expr = symget('_pipr_tok_expr');
+    tok = '';
+    quote = '';
+    depth = 0;
+    n = 0;
+
+    do i = 1 to length(expr);
+      ch = substr(expr, i, 1);
+
+      if quote = '' then do;
+        if ch = "'" or ch = '"' then quote = ch;
+        else if ch = '(' then depth + 1;
+        else if ch = ')' and depth > 0 then depth + (-1);
+      end;
+      else if ch = quote then quote = '';
+
+      is_delim = 0;
+      if quote = '' and depth = 0 then do;
+        if (&_pt_split_comma) and ch = ',' then is_delim = 1;
+        else if (&_pt_split_ws) and ch in (' ', '09'x, '0A'x, '0D'x) then is_delim = 1;
+      end;
+
+      if is_delim then do;
+        if lengthn(strip(tok)) then do;
+          n + 1;
+          call symputx(cats("&out_prefix", n), strip(tok), 'G');
+          tok = '';
+        end;
+      end;
+      else tok = tok || ch;
+    end;
+
+    if lengthn(strip(tok)) then do;
+      n + 1;
+      call symputx(cats("&out_prefix", n), strip(tok), 'G');
+    end;
+
+    call symputx('_pipr_tok_count', n, 'G');
+  run;
+
+  %_pipr_ucl_assign(out_text=%superq(out_count), value=%superq(_pipr_tok_count));
+
+  %_pipr_util_dbg(msg=_pipr_tokenize_run done out_count=%superq(out_count) value=%superq(&out_count));
+%mend;
+
+%macro _pipr_tokenize_assign(out_n=, count=);
+  %_pipr_ucl_assign(out_text=%superq(out_n), value=%superq(count));
+%mend;
+
+/* Tokenize an expression at top-level (outside quotes/parentheses).
+   Supports configurable delimiters (comma and/or whitespace). */
+%macro _pipr_tokenize(expr=, out_n=, out_prefix=tok, split_on_comma=1, split_on_ws=0);
+  %global _pipr_tok_n;
+
+  %if %length(%superq(out_n)) %then %do;
+    %if not %symexist(&out_n) %then %global &out_n;
+  %end;
+
+  %_pipr_tokenize_run(
+    expr=%superq(expr),
+    out_prefix=%superq(out_prefix),
+    split_on_comma=%superq(split_on_comma),
+    split_on_ws=%superq(split_on_ws),
+    out_count=_pipr_tok_n
+  );
+  %_pipr_tokenize_assign(out_n=%superq(out_n), count=%superq(_pipr_tok_n));
+%mend;
+
 /* Split a parenthesized macro parmbuff string into top-level comma segments. */
 %macro _pipr_split_parmbuff_segments(buf=, out_n=, out_prefix=seg);
+  %global _pipr_sp_buf _pipr_sp_count;
+  %let _pipr_sp_buf=%unquote(%superq(buf));
+  %let _pipr_sp_count=0;
   %if %length(%superq(out_n)) %then %do;
     %if not %symexist(&out_n) %then %global &out_n;
   %end;
 
   data _null_;
     length buf seg $32767 ch quote $1;
-    buf = symget('buf');
+    buf = symget('_pipr_sp_buf');
 
     if length(buf) >= 2 and substr(buf, 1, 1) = '(' and substr(buf, length(buf), 1) = ')' then
       buf = substr(buf, 2, length(buf) - 2);
@@ -86,42 +208,35 @@ File: src/pipr/util.sas
       else if ch = quote then quote = '';
 
       if quote = '' and depth = 0 and ch = ',' then do;
-       __seg_count + 1;
-        /* Segment names are dynamic; publish globally so callers can consume them reliably. */
-        call symputx(cats(symget('out_prefix'),__seg_count), strip(seg), 'G');
+        if lengthn(strip(seg)) then do;
+          __seg_count + 1;
+          /* Segment names are dynamic; publish globally so callers can consume them reliably. */
+          call symputx(cats("&out_prefix",__seg_count), strip(seg), 'G');
+        end;
         seg = '';
       end;
-      else seg = cats(seg, ch);
+      else seg = seg || ch;
     end;
 
-    if length(strip(seg)) then do;
-     __seg_count + 1;
-      call symputx(cats(symget('out_prefix'),__seg_count), strip(seg), 'G');
+    if lengthn(strip(seg)) then do;
+      __seg_count + 1;
+      call symputx(cats("&out_prefix",__seg_count), strip(seg), 'G');
     end;
 
-    call symputx(symget('out_n'),__seg_count, 'F');
+    call symputx('_pipr_sp_count',__seg_count, 'G');
   run;
+
+  %_pipr_ucl_assign(out_text=%superq(out_n), value=%superq(_pipr_sp_count));
 %mend;
 
 %macro _pipr_ucl_prepare_input(text=, out_var=_pipr_ucl_in);
-  %global &out_var _pipr_ucl_in_len;
-  %let &out_var=%unquote(%superq(text));
-  %let _pipr_ucl_in_len=%length(%superq(&out_var));
+  %_pipr_ucl_assign(out_text=%superq(out_var), value=%unquote(%superq(text)));
 %mend;
 
 %macro _pipr_ucl_transform(in_var=, out_var=, out_raw_var=);
-  %global _pipr_ucl_srclen _pipr_ucl_outlen _pipr_ucl_outrawlen _pipr_ucl_emitcnt _pipr_ucl_pdepth _pipr_ucl_bdepth;
-  %let _pipr_ucl_srclen=0;
-  %let _pipr_ucl_outlen=0;
-  %let _pipr_ucl_outrawlen=0;
-  %let _pipr_ucl_emitcnt=0;
-  %let _pipr_ucl_pdepth=0;
-  %let _pipr_ucl_bdepth=0;
-
   data _null_;
     length src result raw_result $32767 ch quote $1;
     src = symget("&in_var");
-    call symputx('_pipr_ucl_srclen', lengthn(src), 'G');
 
     result = '';
     raw_result = '';
@@ -180,23 +295,31 @@ File: src/pipr/util.sas
     if pos > 0 then raw_result = substr(result, 1, pos);
     else raw_result = '';
 
-    call symputx('_pipr_ucl_outrawlen', lengthn(raw_result), 'G');
     call symputx("&out_raw_var", raw_result, 'G');
 
     result = compbl(strip(raw_result));
-    call symputx('_pipr_ucl_outlen', lengthn(result), 'G');
-    call symputx('_pipr_ucl_emitcnt', emit_count, 'G');
-    call symputx('_pipr_ucl_pdepth', paren_depth, 'G');
-    call symputx('_pipr_ucl_bdepth', bracket_depth, 'G');
     call symputx("&out_var", result, 'G');
   run;
 %mend;
 
 %macro _pipr_ucl_assign(out_text=, value=);
+  %global _pipr_ucl_assign_name _pipr_ucl_assign_value;
   %if %length(%superq(out_text)) %then %do;
-    %if not %symexist(&out_text) %then %global &out_text;
-    %let &out_text=%superq(value);
+    %let _pipr_ucl_assign_name=%superq(out_text);
+    %let _pipr_ucl_assign_value=%superq(value);
+    data _null_;
+      length _name $256 _val $32767;
+      _name = strip(symget('_pipr_ucl_assign_name'));
+      _val = symget('_pipr_ucl_assign_value');
+      call symputx(_name, _val, 'F');
+    run;
   %end;
+%mend;
+
+%macro _pipr_ucl_assign_strip(out_text=, value=);
+  %local _pipr_assign_strip;
+  %let _pipr_assign_strip=%sysfunc(strip(%superq(value)));
+  %_pipr_ucl_assign(out_text=%superq(out_text), value=%superq(_pipr_assign_strip));
 %mend;
 
 /* Convert bracket-wrapped comma lists to space-delimited lists.
@@ -208,27 +331,42 @@ File: src/pipr/util.sas
   %let _pipr_ucl_out=;
   %let _pipr_ucl_out_raw=;
 
-  %if %sysmacexist(dbg) %then %do;
-    %dbg(msg=%str(_pipr_unbracket_csv_lists: start out_text=%superq(out_text)));
-    %dbg(msg=%str(_pipr_unbracket_csv_lists: raw input=%superq(_pipr_ucl_in)));
-    %dbg(msg=%str(_pipr_unbracket_csv_lists: macro_input_len=&_pipr_ucl_in_len));
-  %end;
-
   %_pipr_ucl_transform(in_var=_pipr_ucl_in, out_var=_pipr_ucl_out, out_raw_var=_pipr_ucl_out_raw);
 
   %if %length(%superq(_pipr_ucl_out))=0 and %length(%superq(_pipr_ucl_out_raw))>0 %then %do;
-    %let _pipr_ucl_out=%sysfunc(compbl(%sysfunc(strip(%superq(_pipr_ucl_out_raw)))));
+    %let _pipr_ucl_out=%sysfunc(prxchange(%str(s/\s+/ /), -1, %superq(_pipr_ucl_out_raw)));
+    %let _pipr_ucl_out=%sysfunc(strip(%superq(_pipr_ucl_out)));
   %end;
 
   %_pipr_ucl_assign(out_text=%superq(out_text), value=%superq(_pipr_ucl_out));
+%mend;
 
-  %if %sysmacexist(dbg) %then %do;
-    %dbg(msg=%str(_pipr_unbracket_csv_lists: src_len=&_pipr_ucl_srclen out_raw_len=&_pipr_ucl_outrawlen out_len=&_pipr_ucl_outlen));
-    %dbg(msg=%str(_pipr_unbracket_csv_lists: emit_count=&_pipr_ucl_emitcnt paren_depth=&_pipr_ucl_pdepth bracket_depth=&_pipr_ucl_bdepth));
-    %dbg(msg=%str(_pipr_unbracket_csv_lists: normalized_raw=%superq(_pipr_ucl_out_raw)));
-    %dbg(msg=%str(_pipr_unbracket_csv_lists: normalized=%superq(_pipr_ucl_out)));
-    %if %length(%superq(out_text)) %then %dbg(msg=%str(_pipr_unbracket_csv_lists: assigned %superq(out_text)=%superq(&out_text)));
+/* Centralized list normalization used across verbs/predicates/validation.
+   - collapse_commas=0: preserve commas, enforce ", " spacing.
+   - collapse_commas=1: treat commas/whitespace as separators, collapse to single spaces. */
+%macro _pipr_normalize_list(text=, collapse_commas=0, out_text=);
+  %global _pipr_norm_out;
+  %local _collapse;
+
+  %let _pipr_norm_out=%superq(text);
+  %let _collapse=%_pipr_bool(%superq(collapse_commas), default=0);
+
+  %if %sysmacexist(_pipr_unbracket_csv_lists) %then %do;
+    %_pipr_unbracket_csv_lists(text=%superq(_pipr_norm_out));
+    %let _pipr_norm_out=%superq(_pipr_ucl_out);
   %end;
+
+  %if &_collapse %then %do;
+    %let _pipr_norm_out=%sysfunc(prxchange(%str(s/[\s,]+/ /), -1, %superq(_pipr_norm_out)));
+  %end;
+  %else %do;
+    %let _pipr_norm_out=%sysfunc(prxchange(%str(s/,\s*/,\, /), -1, %superq(_pipr_norm_out)));
+    %let _pipr_norm_out=%sysfunc(prxchange(%str(s/\s+/ /), -1, %superq(_pipr_norm_out)));
+  %end;
+
+  %let _pipr_norm_out=%sysfunc(prxchange(%str(s/\s+/ /), -1, %superq(_pipr_norm_out)));
+  %let _pipr_norm_out=%sysfunc(strip(%superq(_pipr_norm_out)));
+  %_pipr_ucl_assign(out_text=%superq(out_text), value=%superq(_pipr_norm_out));
 %mend;
 
 /* Returns 1 when unit tests are enabled for this session, else 0. */
@@ -258,6 +396,79 @@ File: src/pipr/util.sas
   %end;
 %mend;
 
+%macro _pipr_require_nonempty(value=, msg=Argument must be non-empty.);
+  %if %length(%superq(value))=0 %then %_abort(%superq(msg));
+%mend;
+
+%macro _pipr_strip_matching_quotes(text=, out_text=);
+  %local _in _out;
+  %global _pipr_stripq_in;
+  %let _in=%superq(text);
+  %let _pipr_stripq_in=%superq(_in);
+
+  data _null_;
+    length raw $32767 q $1;
+    raw = strip(symget('_pipr_stripq_in'));
+    if length(raw) >= 2 then do;
+      q = substr(raw, 1, 1);
+      if (q = "'" or q = '"') and substr(raw, length(raw), 1) = q then
+        raw = substr(raw, 2, length(raw) - 2);
+    end;
+    call symputx('_out', raw, 'L');
+  run;
+
+  %_pipr_ucl_assign(out_text=%superq(out_text), value=%superq(_out));
+%mend;
+
+%macro _pipr_lambda_normalize(expr=, out_expr=);
+  %global _pipr_lambda_stage1 _pipr_lambda_stage2;
+  %local _raw;
+  %let _raw=%superq(expr);
+
+  %_pipr_lambda_strip_wrapper(expr=%superq(_raw), out_expr=_pipr_lambda_stage1);
+  %_pipr_lambda_strip_tilde(expr=%superq(_pipr_lambda_stage1), out_expr=_pipr_lambda_stage2);
+
+  %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_pipr_lambda_stage2));
+%mend;
+
+%macro _pipr_lambda_strip_wrapper(expr=, out_expr=);
+  %local _in _out;
+  %global _pipr_lambda_wrap_in;
+  %let _in=%superq(expr);
+  %let _pipr_lambda_wrap_in=%superq(_in);
+
+  data _null_;
+    length raw $32767;
+    raw = strip(symget('_pipr_lambda_wrap_in'));
+
+    if prxmatch('/^lambda\s*\(.*\)$/i', raw) then do;
+      openp = index(raw, '(');
+      if openp > 0 and substr(raw, length(raw), 1) = ')' then
+        raw = substr(raw, openp + 1, length(raw) - openp - 1);
+    end;
+
+    call symputx('_out', raw, 'L');
+  run;
+
+  %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_out));
+%mend;
+
+%macro _pipr_lambda_strip_tilde(expr=, out_expr=);
+  %local _in _out;
+  %global _pipr_lambda_tilde_in;
+  %let _in=%superq(expr);
+  %let _pipr_lambda_tilde_in=%superq(_in);
+
+  data _null_;
+    length raw $32767;
+    raw = strip(symget('_pipr_lambda_tilde_in'));
+    if length(raw) > 0 and substr(raw, 1, 1) = '~' then raw = strip(substr(raw, 2));
+    call symputx('_out', raw, 'L');
+  run;
+
+  %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_out));
+%mend;
+
 /* Auto-run a test macro only when __unit_tests=1. */
 %macro _pipr_autorun_tests(test_macro);
   %if %_pipr_in_unit_tests %then %do;
@@ -273,6 +484,9 @@ File: src/pipr/util.sas
     %test_case(tmpds uses prefix and work);
       %let t=%_tmpds(prefix=_t_);
       %assertTrue(%eval(%index(&t, work._t_) = 1), tmpds starts with work._t_);
+
+      %let t2=%_pipr_tmpds(prefix=_t2_);
+      %assertTrue(%eval(%index(&t2, work._t2_) = 1), pipr_tmpds starts with work._t2_);
     %test_summary;
 
     %test_case(bool helper parses common values);
@@ -309,14 +523,102 @@ File: src/pipr/util.sas
       %assertEqual(&_n., 2);
       %assertEqual(actual=&_ps_local1., expected=%str(name=a));
       %assertEqual(actual=&_ps_local2., expected=%str(args=b));
+
+      %_pipr_split_parmbuff(
+        buf=%str(name=a, args=b),
+        out_n=_n,
+        out_prefix=_ps_local_alias
+      );
+      %assertEqual(&_n., 2);
+      %assertEqual(actual=&_ps_local_alias1., expected=%str(name=a));
+      %assertEqual(actual=&_ps_local_alias2., expected=%str(args=b));
+    %test_summary;
+
+    %test_case(shared tokenizer supports comma and whitespace splitting);
+      %global _pipr_util_debug;
+      %let _pipr_util_debug=1;
+      %_pipr_tokenize(
+        expr=%str(starts_with('policy') company_numb, ends_with('code')),
+        out_n=_pt_n,
+        out_prefix=_pt_tok,
+        split_on_comma=1,
+        split_on_ws=1
+      );
+      %assertEqual(&_pt_n., 3);
+      %assertEqual(actual=&_pt_tok1., expected=%str(starts_with('policy')));
+      %assertEqual(actual=&_pt_tok2., expected=company_numb);
+      %assertEqual(actual=&_pt_tok3., expected=%str(ends_with('code')));
+
+      %_pipr_tokenize(
+        expr=%str(cols=a b c, pred=is_missing(), args=blank_is_missing=0),
+        out_n=_pt_n2,
+        out_prefix=_pt_tok2,
+        split_on_comma=1,
+        split_on_ws=0
+      );
+      %assertEqual(&_pt_n2., 3);
+      %assertEqual(actual=&_pt_tok21., expected=%str(cols=a b c));
+      %assertEqual(actual=&_pt_tok22., expected=%str(pred=is_missing()));
+      %assertEqual(actual=&_pt_tok23., expected=%str(args=blank_is_missing=0));
+
+      %_pipr_tokenize(
+        expr=%str(cols=a b c),
+        out_n=_pt_n3,
+        out_prefix=_pt_tok3,
+        split_on_comma=1,
+        split_on_ws=0
+      );
+      %assertEqual(&_pt_n3., 1);
+      %assertEqual(actual=&_pt_tok31., expected=%str(cols=a b c));
+      %let _pipr_util_debug=0;
+    %test_summary;
+
+    %test_case(assign helper writes to caller-scoped target names);
+      %local _pt_local_out;
+      %let _pt_local_out=;
+      %_pipr_ucl_assign(out_text=_pt_local_out, value=%str(local scoped value));
+      %assertEqual(actual=%superq(_pt_local_out), expected=%str(local scoped value));
+    %test_summary;
+
+    %test_case(assign strip helper trims before assignment);
+      %local _pt_local_strip;
+      %let _pt_local_strip=;
+      %_pipr_ucl_assign_strip(out_text=_pt_local_strip, value=%str(  trimmed value  ));
+      %assertEqual(actual=%superq(_pt_local_strip), expected=%str(trimmed value));
+    %test_summary;
+
+    %test_case(shared string helpers normalize quotes and lambda syntax);
+      %let _pipr_util_debug=1;
+      %_pipr_strip_matching_quotes(text=%str('policy_state'), out_text=_pu_uq1);
+      %assertEqual(actual=%superq(_pu_uq1), expected=policy_state);
+
+      %_pipr_strip_matching_quotes(text=%str("home_state"), out_text=_pu_uq2);
+      %assertEqual(actual=%superq(_pu_uq2), expected=home_state);
+
+      %_pipr_lambda_normalize(expr=%str(lambda(.is_num and .name='POLICY_ID')), out_expr=_pu_l1);
+      %assertEqual(actual=%superq(_pu_l1), expected=%str(.is_num and .name='POLICY_ID'));
+
+      %_pipr_lambda_normalize(expr=%str(~.is_char), out_expr=_pu_l2);
+      %assertEqual(actual=%superq(_pu_l2), expected=%str(.is_char));
+
+      %_pipr_lambda_strip_wrapper(expr=%str(lambda(.is_char and .x='A')), out_expr=_pu_lw);
+      %assertEqual(actual=%superq(_pu_lw), expected=%str(.is_char and .x='A'));
+
+      %_pipr_lambda_strip_tilde(expr=%str(~.is_num), out_expr=_pu_lt);
+      %assertEqual(actual=%superq(_pu_lt), expected=%str(.is_num));
+      %let _pipr_util_debug=0;
+    %test_summary;
+
+    %test_case(shared non-empty guard allows populated values);
+      %_pipr_require_nonempty(value=%str(ok), msg=should not abort);
+      %assertTrue(1, non-empty guard passed);
     %test_summary;
 
     %test_case(bracket csv helper rewrites bracket lists);
-      %_pipr_unbracket_csv_lists(
+      %_pipr_normalize_list(
         text=%str(right_keep=[rpt_period_date, experian_bin], on=sb_policy_key)
       );
-      %let _pul_norm=%superq(_pipr_ucl_out);
-      %if %sysmacexist(dbg) %then %dbg(msg=%str(test_pipr_util: _pul_norm=%superq(_pul_norm)));
+      %let _pul_norm=%superq(_pipr_norm_out);
       %assertEqual(
         actual=%superq(_pul_norm),
         expected=%str(right_keep=rpt_period_date experian_bin, on=sb_policy_key)
@@ -324,15 +626,19 @@ File: src/pipr/util.sas
     %test_summary;
 
     %test_case(bracket csv helper preserves non-bracket spaces);
-      %_pipr_unbracket_csv_lists(
+      %_pipr_normalize_list(
         text=%str(right_keep=company_numb policy_sym policy_numb)
       );
-      %let _pul_norm_space=%superq(_pipr_ucl_out);
-      %if %sysmacexist(dbg) %then %dbg(msg=%str(test_pipr_util: _pul_norm_space=%superq(_pul_norm_space)));
+      %let _pul_norm_space=%superq(_pipr_norm_out);
       %assertEqual(
         actual=%superq(_pul_norm_space),
         expected=%str(right_keep=company_numb policy_sym policy_numb)
       );
+    %test_summary;
+
+    %test_case(central normalizer collapses commas for name lists);
+      %_pipr_normalize_list(text=%str([a, b], c), collapse_commas=1);
+      %assertEqual(actual=%superq(_pipr_norm_out), expected=%str(a b c));
     %test_summary;
 
     %test_case(ucl transform helper works directly);

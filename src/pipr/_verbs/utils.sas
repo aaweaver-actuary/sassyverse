@@ -87,24 +87,24 @@ File: src/pipr/_verbs/utils.sas
   %end;
   %else %let args=;
 
-  %let &out_verb=&verb;
-  %let &out_args=%superq(args);
+  %_pipr_ucl_assign(out_text=%superq(out_verb), value=&verb);
+  %_pipr_ucl_assign(out_text=%superq(out_args), value=%superq(args));
 %mend;
 
 %macro _step_has_validate(args, out_has);
   %local has;
   %global &out_has;
   %let has=%sysfunc(prxmatch(%str(/(^|\s|,)\s*validate\s*=/i), %superq(args)));
-  %let &out_has=&has;
+  %_pipr_ucl_assign(out_text=%superq(out_has), value=&has);
 %mend;
 
 %macro _step_call_positional(verb, args, in, out, as_view, pipe_validate, has_validate);
   %local _verb_uc _args_norm;
   %let _verb_uc=%upcase(%superq(verb));
   %let _args_norm=%superq(args);
-  %if %sysmacexist(_pipr_unbracket_csv_lists) %then %do;
-    %_pipr_unbracket_csv_lists(text=%superq(args));
-    %let _args_norm=%superq(_pipr_ucl_out);
+  %if %sysmacexist(_pipr_normalize_list) %then %do;
+    %_pipr_normalize_list(text=%superq(args), collapse_commas=0);
+    %let _args_norm=%superq(_pipr_norm_out);
   %end;
 
   %if %sysfunc(indexw(LEFT_JOIN INNER_JOIN LEFT_JOIN_HASH INNER_JOIN_HASH LEFT_JOIN_SQL INNER_JOIN_SQL, &_verb_uc)) > 0 %then %do;
@@ -138,9 +138,9 @@ File: src/pipr/_verbs/utils.sas
 %macro _step_call_named(verb, args, in, out, as_view, pipe_validate, has_validate);
   %local _args_norm;
   %let _args_norm=%superq(args);
-  %if %sysmacexist(_pipr_unbracket_csv_lists) %then %do;
-    %_pipr_unbracket_csv_lists(text=%superq(args));
-    %let _args_norm=%superq(_pipr_ucl_out);
+  %if %sysmacexist(_pipr_normalize_list) %then %do;
+    %_pipr_normalize_list(text=%superq(args), collapse_commas=0);
+    %let _args_norm=%superq(_pipr_norm_out);
   %end;
 
   %if %length(%superq(_args_norm)) %then %do;

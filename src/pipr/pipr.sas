@@ -89,14 +89,14 @@ File: src/pipr/pipr.sas
 );
   %local buf i seg seg_head seg_val eq_pos __seg_count;
 
-  %let &out_steps=%superq(steps_in);
-  %let &out_data=%superq(data_in);
-  %let &out_out=%superq(out_in);
-  %let &out_validate=%superq(validate_in);
-  %let &out_use_views=%superq(use_views_in);
-  %let &out_view_output=%superq(view_output_in);
-  %let &out_debug=%superq(debug_in);
-  %let &out_cleanup=%superq(cleanup_in);
+  %_pipr_ucl_assign(out_text=%superq(out_steps), value=%superq(steps_in));
+  %_pipr_ucl_assign(out_text=%superq(out_data), value=%superq(data_in));
+  %_pipr_ucl_assign(out_text=%superq(out_out), value=%superq(out_in));
+  %_pipr_ucl_assign(out_text=%superq(out_validate), value=%superq(validate_in));
+  %_pipr_ucl_assign(out_text=%superq(out_use_views), value=%superq(use_views_in));
+  %_pipr_ucl_assign(out_text=%superq(out_view_output), value=%superq(view_output_in));
+  %_pipr_ucl_assign(out_text=%superq(out_debug), value=%superq(debug_in));
+  %_pipr_ucl_assign(out_text=%superq(out_cleanup), value=%superq(cleanup_in));
 
   %let buf=%superq(syspbuff);
   %if %length(%superq(buf)) > 2 %then %do;
@@ -111,27 +111,36 @@ File: src/pipr/pipr.sas
         %if &eq_pos > 0 %then %let seg_val=%substr(%superq(seg), %eval(&eq_pos+1));
         %else %let seg_val=;
 
-        %if &seg_head=DATA %then %let &out_data=%sysfunc(strip(%superq(seg_val)));
-        %else %if &seg_head=OUT %then %let &out_out=%sysfunc(strip(%superq(seg_val)));
-        %else %if &seg_head=VALIDATE %then %let &out_validate=%sysfunc(strip(%superq(seg_val)));
-        %else %if &seg_head=USE_VIEWS %then %let &out_use_views=%sysfunc(strip(%superq(seg_val)));
-        %else %if &seg_head=VIEW_OUTPUT %then %let &out_view_output=%sysfunc(strip(%superq(seg_val)));
-        %else %if &seg_head=DEBUG %then %let &out_debug=%sysfunc(strip(%superq(seg_val)));
-        %else %if &seg_head=CLEANUP %then %let &out_cleanup=%sysfunc(strip(%superq(seg_val)));
-        %else %if &seg_head=STEPS %then %let &out_steps=%sysfunc(strip(%superq(seg_val)));
+        %if &seg_head=DATA %then %_pipr_ucl_assign_strip(out_text=%superq(out_data), value=%superq(seg_val));
+        %else %if &seg_head=OUT %then %_pipr_ucl_assign_strip(out_text=%superq(out_out), value=%superq(seg_val));
+        %else %if &seg_head=VALIDATE %then %_pipr_ucl_assign_strip(out_text=%superq(out_validate), value=%superq(seg_val));
+        %else %if &seg_head=USE_VIEWS %then %_pipr_ucl_assign_strip(out_text=%superq(out_use_views), value=%superq(seg_val));
+        %else %if &seg_head=VIEW_OUTPUT %then %_pipr_ucl_assign_strip(out_text=%superq(out_view_output), value=%superq(seg_val));
+        %else %if &seg_head=DEBUG %then %_pipr_ucl_assign_strip(out_text=%superq(out_debug), value=%superq(seg_val));
+        %else %if &seg_head=CLEANUP %then %_pipr_ucl_assign_strip(out_text=%superq(out_cleanup), value=%superq(seg_val));
+        %else %if &seg_head=STEPS %then %_pipr_ucl_assign_strip(out_text=%superq(out_steps), value=%superq(seg_val));
       %end;
-      %else %if %length(%superq(&out_steps))=0 %then %let &out_steps=%sysfunc(strip(%superq(seg)));
+      %else %if %length(%superq(&out_steps))=0 %then %_pipr_ucl_assign_strip(out_text=%superq(out_steps), value=%superq(seg));
     %end;
   %end;
 %mend;
 
 %macro _pipe_split_parmbuff_segments(buf=, out_n=, out_prefix=seg);
-  %if not %sysmacexist(_pipr_split_parmbuff_segments) %then %_abort(pipe() requires pipr util helpers to be loaded.);
-  %_pipr_split_parmbuff_segments(
-    buf=%superq(buf)
-    , out_n=%superq(out_n)
-    , out_prefix=%superq(out_prefix)
-  );
+  %if %sysmacexist(_pipr_split_parmbuff) %then %do;
+    %_pipr_split_parmbuff(
+      buf=%superq(buf)
+      , out_n=%superq(out_n)
+      , out_prefix=%superq(out_prefix)
+    );
+  %end;
+  %else %if %sysmacexist(_pipr_split_parmbuff_segments) %then %do;
+    %_pipr_split_parmbuff_segments(
+      buf=%superq(buf)
+      , out_n=%superq(out_n)
+      , out_prefix=%superq(out_prefix)
+    );
+  %end;
+  %else %_abort(pipe() requires pipr util helpers to be loaded.);
 %mend;
 
 /* Remove control characters and compact whitespace for safer token handling. */
@@ -139,17 +148,18 @@ File: src/pipr/pipr.sas
   %local _tmp;
   %let _tmp=%sysfunc(prxchange(%str(s/[^\x20-\x7E]+/ /), -1, %superq(value)));
   %let _tmp=%sysfunc(compbl(%superq(_tmp)));
-  %let &out=%sysfunc(strip(%superq(_tmp)));
+  %_pipr_ucl_assign_strip(out_text=%superq(out), value=%superq(_tmp));
 %mend;
 
 %macro _pipe_first_step(steps=, out_step=);
-  %let &out_step=%scan(%superq(steps), 1, |, m);
-  %let &out_step=%sysfunc(strip(%superq(&out_step)));
+  %local _step;
+  %let _step=%scan(%superq(steps), 1, |, m);
+  %_pipr_ucl_assign_strip(out_text=%superq(out_step), value=%superq(_step));
 %mend;
 
 %macro _pipe_is_data_step(step=, out_is=);
-  %if %length(%superq(step)) and %index(%superq(step), %str(%()) = 0 %then %let &out_is=1;
-  %else %let &out_is=0;
+  %if %length(%superq(step)) and %index(%superq(step), %str(%()) = 0 %then %_pipr_ucl_assign(out_text=%superq(out_is), value=1);
+  %else %_pipr_ucl_assign(out_text=%superq(out_is), value=0);
 %mend;
 
 %macro _pipe_steps_without_first(steps=, out_steps=);
@@ -166,22 +176,22 @@ File: src/pipr/pipr.sas
     %end;
   %end;
 
-  %let &out_steps=%superq(_new_steps);
+  %_pipr_ucl_assign(out_text=%superq(out_steps), value=%superq(_new_steps));
 %mend;
 
 %macro _pipe_infer_data(steps_in=, data_in=, out_steps=, out_data=);
   %local first_step is_data new_steps;
-  %let &out_steps=%superq(steps_in);
-  %let &out_data=%superq(data_in);
+  %_pipr_ucl_assign(out_text=%superq(out_steps), value=%superq(steps_in));
+  %_pipr_ucl_assign(out_text=%superq(out_data), value=%superq(data_in));
 
   %if %length(%superq(data_in))=0 %then %do;
     %_pipe_first_step(steps=%superq(steps_in), out_step=first_step);
     %_pipe_is_data_step(step=%superq(first_step), out_is=is_data);
 
     %if &is_data %then %do;
-      %let &out_data=%superq(first_step);
+      %_pipr_ucl_assign(out_text=%superq(out_data), value=%superq(first_step));
       %_pipe_steps_without_first(steps=%superq(steps_in), out_steps=new_steps);
-      %let &out_steps=%superq(new_steps);
+      %_pipr_ucl_assign(out_text=%superq(out_steps), value=%superq(new_steps));
     %end;
   %end;
 %mend;
@@ -190,16 +200,16 @@ File: src/pipr/pipr.sas
   %local _n;
 
   %let _n=%sysfunc(countw(%superq(steps), |, m));
-  %if &_n > 0 %then %let &out_last=%scan(%superq(steps), &_n, |, m);
-  %else %let &out_last=;
-  %let &out_n=&_n;
+  %if &_n > 0 %then %_pipr_ucl_assign(out_text=%superq(out_last), value=%scan(%superq(steps), &_n, |, m));
+  %else %_pipr_ucl_assign(out_text=%superq(out_last), value=);
+  %_pipr_ucl_assign(out_text=%superq(out_n), value=&_n);
 %mend;
 
 %macro _pipe_is_collect_verb(verb=, out_is=);
   %local _out;
   %if %length(%superq(out_is))=0 %then %let out_is=_pipe_is_collect_verb_out;
   %let _out=%sysfunc(indexw(COLLECT_TO COLLECT_INTO, %upcase(%superq(verb))));
-  %let &out_is=&_out;
+  %_pipr_ucl_assign(out_text=%superq(out_is), value=&_out);
 %mend;
 
 %macro _pipe_collect_args(step=, out_args=);
@@ -212,7 +222,7 @@ File: src/pipr/pipr.sas
   %end;
   %else %let _args=;
 
-  %let &out_args=%superq(_args);
+  %_pipr_ucl_assign(out_text=%superq(out_args), value=%superq(_args));
 %mend;
 
 %macro _pipe_extract_collect_out(steps_in=, out_in=, out_steps=, out_out=, out_collect_out=);
@@ -220,7 +230,7 @@ File: src/pipr/pipr.sas
 
   %_pipe_clean_value(value=%superq(steps_in), out=&out_steps);
   %_pipe_clean_value(value=%superq(out_in), out=&out_out);
-  %let &out_collect_out=;
+  %_pipr_ucl_assign(out_text=%superq(out_collect_out), value=);
   %let is_collect=0;
 
   %_pipe_get_last_step(steps=%superq(steps_in), out_last=last_step, out_n=n);
@@ -240,8 +250,8 @@ File: src/pipr/pipr.sas
       %let collect_out=%sysfunc(strip(%superq(args)));
       %_pipe_clean_value(value=%superq(collect_out), out=collect_out);
 
-      %let &out_collect_out=%superq(collect_out);
-      %if %length(%superq(out_in))=0 %then %let &out_out=%superq(collect_out);
+      %_pipr_ucl_assign(out_text=%superq(out_collect_out), value=%superq(collect_out));
+      %if %length(%superq(out_in))=0 %then %_pipr_ucl_assign(out_text=%superq(out_out), value=%superq(collect_out));
       %else %put WARNING: collect_to() ignored because out= is already provided.;
 
       %let new_steps=;
@@ -254,7 +264,7 @@ File: src/pipr/pipr.sas
       %end;
 
       %_pipe_clean_value(value=%superq(new_steps), out=new_steps);
-      %let &out_steps=%superq(new_steps);
+      %_pipr_ucl_assign(out_text=%superq(out_steps), value=%superq(new_steps));
     %end;
   %end;
 %mend;
@@ -272,22 +282,22 @@ File: src/pipr/pipr.sas
   out_next=
 );
   %if &i = &n %then %do;
-    %let &out_as_view=%sysfunc(ifc((&view_output=1) and (&supports_view>0), 1, 0));
-    %let &out_next=&out;
+    %_pipr_ucl_assign(out_text=%superq(out_as_view), value=%sysfunc(ifc((&view_output=1) and (&supports_view>0), 1, 0)));
+    %_pipr_ucl_assign(out_text=%superq(out_next), value=&out);
   %end;
   %else %do;
-    %let &out_as_view=%sysfunc(ifc((&use_views=1) and (&supports_view>0), 1, 0));
-    %if %eval(%sysfunc(mod(&i, 2))=1) %then %let &out_next=&tmp1;
-    %else %let &out_next=&tmp2;
+    %_pipr_ucl_assign(out_text=%superq(out_as_view), value=%sysfunc(ifc((&use_views=1) and (&supports_view>0), 1, 0)));
+    %if %eval(%sysfunc(mod(&i, 2))=1) %then %_pipr_ucl_assign(out_text=%superq(out_next), value=&tmp1);
+    %else %_pipr_ucl_assign(out_text=%superq(out_next), value=&tmp2);
   %end;
 %mend;
 
 %macro _pipe_steps_count(steps=, out_n=);
-  %let &out_n=%sysfunc(countw(%superq(steps), |, m));
+  %_pipr_ucl_assign(out_text=%superq(out_n), value=%sysfunc(countw(%superq(steps), |, m)));
 %mend;
 
 %macro _pipe_get_step(steps=, index=, out_step=);
-  %let &out_step=%scan(%superq(steps), &index, |, m);
+  %_pipr_ucl_assign(out_text=%superq(out_step), value=%scan(%superq(steps), &index, |, m));
 %mend;
 
 %macro _pipe_validate_inputs(data=, out=, steps=);
@@ -341,7 +351,7 @@ File: src/pipr/pipr.sas
   %_apply_step(%superq(step), &cur, &_nxt, &validate, &as_view);
   %_assert_ds_exists(&_nxt, error_msg=Step &i did not create expected output. Step token: %superq(step));
 
-  %let &out_next=&_nxt;
+  %_pipr_ucl_assign(out_text=%superq(out_next), value=&_nxt);
 %mend;
 
 %macro _pipe_cleanup_temps(tmp1=, tmp2=, out=, cleanup=1);

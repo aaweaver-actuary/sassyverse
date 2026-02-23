@@ -35,7 +35,6 @@ File: src/pipr/validation.sas
 - _by_vars_from_list
 - _assert_key_compatible
 - _key_attr_mismatch
-- _pipr_tmpds
 - _assert_unique_key
 - test_pipr_validation
 
@@ -57,8 +56,8 @@ File: src/pipr/validation.sas
     %let _mem=%upcase(&ds);
   %end;
 
-  %let &out_lib=&_lib;
-  %let &out_mem=&_mem;
+  %_pipr_ucl_assign(out_text=%superq(out_lib), value=&_lib);
+  %_pipr_ucl_assign(out_text=%superq(out_mem), value=&_mem);
 %mend;
 
 /* Check if a column exists in a dataset. If so, sets the output macro variable to 1, otherwise 0. */
@@ -78,7 +77,7 @@ File: src/pipr/validation.sas
       and upcase(name)=upcase("&col");
   quit;
 
-  %let &out_exists=%sysfunc(ifc(&_cnt > 0, 1, 0));
+  %_pipr_ucl_assign(out_text=%superq(out_exists), value=%sysfunc(ifc(&_cnt > 0, 1, 0)));
 %mend;
 
 %macro _cols_missing(ds, cols, out_missing);
@@ -87,12 +86,18 @@ File: src/pipr/validation.sas
     %if not %symexist(&out_missing) %then %global &out_missing;
   %end;
 
-  %let _cols_norm=%sysfunc(prxchange(%str(s/[\s,]+/ /), -1, %superq(cols)));
-  %let _cols_norm=%sysfunc(compbl(%sysfunc(strip(%superq(_cols_norm)))));
+  %if %sysmacexist(_pipr_normalize_list) %then %do;
+    %_pipr_normalize_list(text=%superq(cols), collapse_commas=1);
+    %let _cols_norm=%superq(_pipr_norm_out);
+  %end;
+  %else %do;
+    %let _cols_norm=%sysfunc(prxchange(%str(s/[\s,]+/ /), -1, %superq(cols)));
+    %let _cols_norm=%sysfunc(compbl(%sysfunc(strip(%superq(_cols_norm)))));
+  %end;
 
   %let n=%sysfunc(countw(%superq(_cols_norm), %str( )));
   %if &n=0 %then %do;
-    %let &out_missing=;
+    %_pipr_ucl_assign(out_text=%superq(out_missing), value=);
     %return;
   %end;
 
@@ -103,7 +108,7 @@ File: src/pipr/validation.sas
     %if &_exists = 0 %then %let _missing_accum=&_missing_accum &col;
   %end;
 
-  %let &out_missing=%sysfunc(compbl(%superq(_missing_accum)));
+  %_pipr_ucl_assign_strip(out_text=%superq(out_missing), value=%sysfunc(compbl(%superq(_missing_accum))));
 %mend;
 
 %macro _assert_ds_exists(ds, error_msg=);
@@ -155,8 +160,10 @@ File: src/pipr/validation.sas
   %if %length(%superq(out_clean)) %then %do;
     %if not %symexist(&out_clean) %then %global &out_clean;
   %end;
-  %let &out_clean=%sysfunc(prxchange(s/\bdescending\b//i, -1, &by_list));
-  %let &out_clean=%sysfunc(compbl(%superq(&out_clean)));
+  %local _out_clean;
+  %let _out_clean=%sysfunc(prxchange(s/\bdescending\b//i, -1, &by_list));
+  %let _out_clean=%sysfunc(compbl(%superq(_out_clean)));
+  %_pipr_ucl_assign(out_text=%superq(out_clean), value=%superq(_out_clean));
 %mend;
 
 %macro _by_vars_from_list(cleaned, out_vars);
@@ -172,7 +179,7 @@ File: src/pipr/validation.sas
     %let vars=&vars &tok;
   %end;
 
-  %let &out_vars=%sysfunc(compbl(%superq(vars)));
+  %_pipr_ucl_assign_strip(out_text=%superq(out_vars), value=%sysfunc(compbl(%superq(vars))));
 %mend;
 
 %macro _assert_key_compatible(left, right, keys, strict_char_len=0);
@@ -221,21 +228,18 @@ File: src/pipr/validation.sas
   %_get_col_attr(&left,  &key, &out_lt, &out_ll);
   %_get_col_attr(&right, &key, &out_rt, &out_rl);
 
-  %if %upcase(&&&out_lt) ne %upcase(&&&out_rt) %then %let &out_type_mismatch=1;
-  %else %let &out_type_mismatch=0;
+  %if %upcase(&&&out_lt) ne %upcase(&&&out_rt) %then %_pipr_ucl_assign(out_text=%superq(out_type_mismatch), value=1);
+  %else %_pipr_ucl_assign(out_text=%superq(out_type_mismatch), value=0);
 
-  %if %upcase(&&&out_lt)=CHAR and (&&&out_ll ne &&&out_rl) %then %let &out_len_mismatch=1;
-  %else %let &out_len_mismatch=0;
-%mend;
-
-%macro _pipr_tmpds(prefix=_p);
-  %if %sysmacexist(_tmpds) %then %_tmpds(prefix=&prefix);
-  %else %sysfunc(cats(work., &prefix., %sysfunc(putn(%sysfunc(datetime()), hex16.))));
+  %if %upcase(&&&out_lt)=CHAR and (&&&out_ll ne &&&out_rl) %then %_pipr_ucl_assign(out_text=%superq(out_len_mismatch), value=1);
+  %else %_pipr_ucl_assign(out_text=%superq(out_len_mismatch), value=0);
 %mend;
 
 %macro _assert_unique_key(ds, keys);
   %local dup_rows _dupchk;
-  %let _dupchk=%_pipr_tmpds(prefix=_dupchk_);
+  %if %sysmacexist(_pipr_tmpds) %then %let _dupchk=%_pipr_tmpds(prefix=_dupchk_);
+  %else %if %sysmacexist(_tmpds) %then %let _dupchk=%_tmpds(prefix=_dupchk_);
+  %else %let _dupchk=%sysfunc(cats(work., _dupchk_, %sysfunc(putn(%sysfunc(datetime()), hex16.))));
   proc sql noprint;
     create table &_dupchk as
     select &keys, count(*) as _n
