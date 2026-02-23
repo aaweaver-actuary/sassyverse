@@ -212,16 +212,30 @@ If input directory is missing or doesn't exist, falls back to WORK path.
 
 /* Ergonomic info: optional msg=, otherwise use parmbuff */
 %macro info(msg=) / parmbuff;
-	%local _msg;
-	%_log_extract_msg(msg=%superq(msg), out_var=_msg);
+	%local _msg _raw _len;
+	%let _raw=%superq(syspbuff);
+	%let _len=%length(%superq(_raw));
+	%if &_len >= 2 %then %do;
+		%let _raw=%qsubstr(%superq(_raw), 2, %eval(&_len - 2));
+		%if %upcase(%qsubstr(%superq(_raw), 1, 4))=MSG= %then %let _msg=%qsubstr(%superq(_raw), 5);
+		%else %let _msg=%superq(_raw);
+	%end;
+	%else %let _msg=%superq(msg);
 	%logtype(msg=%superq(_msg), type=INFO, to_console=1);
 %mend info;
 
 /* Ergonomic dbg: optional msg=, gated on log_level */
 %macro dbg(msg=) / parmbuff;
-	%local _msg;
+	%local _msg _raw _len;
 	%if %upcase(%superq(log_level))=DEBUG %then %do;
-		%_log_extract_msg(msg=%superq(msg), out_var=_msg);
+		%let _raw=%superq(syspbuff);
+		%let _len=%length(%superq(_raw));
+		%if &_len >= 2 %then %do;
+			%let _raw=%qsubstr(%superq(_raw), 2, %eval(&_len - 2));
+			%if %upcase(%qsubstr(%superq(_raw), 1, 4))=MSG= %then %let _msg=%qsubstr(%superq(_raw), 5);
+			%else %let _msg=%superq(_raw);
+		%end;
+		%else %let _msg=%superq(msg);
 		%logtype(msg=%superq(_msg), type=DEBUG, to_console=1);
 	%end;
 %mend dbg;

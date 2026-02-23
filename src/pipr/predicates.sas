@@ -128,13 +128,9 @@ File: src/pipr/predicates.sas
 
 %macro _pred_bool(value, default=0);
   %local _b;
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_bool IN value=%superq(value) default=%superq(default));
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_bool called with value=%superq(value) default=%superq(default));
   %if not %sysmacexist(_pipr_bool) %then %_abort(predicates.sas requires _pipr_bool from util.sas.);
   %let _b=%_pipr_bool(%superq(value), default=%superq(default));
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_bool RAW_OUT=%superq(_b));
   %let _b=%sysfunc(compress(%superq(_b), %str(01), k));
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_bool CLEAN_OUT=%superq(_b));
   %if %superq(_b)=1 %then 1;
   %else %if %superq(_b)=0 %then 0;
   %else %superq(_b);
@@ -180,19 +176,22 @@ File: src/pipr/predicates.sas
 
 %macro _pred_split_parmbuff(buf=, out_n=, out_prefix=_pred_seg);
   %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff IN out_n=%superq(out_n) out_prefix=%superq(out_prefix) buf=%superq(buf));
-  %if %sysmacexist(_pipr_split_parmbuff) %then %do;
-    %_pipr_split_parmbuff(buf=%superq(buf), out_n=%superq(out_n), out_prefix=%superq(out_prefix));
-  %end;
-  %else %if %sysmacexist(_pipr_split_parmbuff_segments) %then %do;
+  %if %sysmacexist(_pipr_split_parmbuff_segments) %then %do;
     %_pipr_split_parmbuff_segments(buf=%superq(buf), out_n=%superq(out_n), out_prefix=%superq(out_prefix));
+  %end;
+  %else %if %sysmacexist(_pipr_split_parmbuff) %then %do;
+    %_pipr_split_parmbuff(buf=%superq(buf), out_n=%superq(out_n), out_prefix=%superq(out_prefix));
   %end;
   %else %do;
     %_abort(predicates.sas requires pipr util helpers to be loaded.);
   %end;
   %if %length(%superq(out_n)) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT count=%superq(&out_n));
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg1=%superq(&out_prefix.1));
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg2=%superq(&out_prefix.2));
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg3=%superq(&out_prefix.3));
+  %if %symexist(&out_prefix.1) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg1=%superq(&out_prefix.1));
+  %else %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg1=);
+  %if %symexist(&out_prefix.2) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg2=%superq(&out_prefix.2));
+  %else %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg2=);
+  %if %symexist(&out_prefix.3) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg3=%superq(&out_prefix.3));
+  %else %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg3=);
 %mend _pred_split_parmbuff;
 
 /* 

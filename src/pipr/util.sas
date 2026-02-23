@@ -414,7 +414,6 @@ File: src/pipr/util.sas
 %macro _pipr_bool(value, default=0);
   %local _raw _up;
   %let _raw=%superq(value);
-  %dbg(msg=[PIPR.UTIL] _pipr_bool IN value=%superq(value) default=%superq(default));
   %if %length(%superq(_raw))=0 %then &default;
   %else %do;
     %let _up=%upcase(%superq(_raw));
@@ -469,13 +468,16 @@ File: src/pipr/util.sas
   %let _pipr_lambda_wrap_in=%superq(_in);
 
   data _null_;
-    length raw $32767;
+    length raw raw_up $32767;
     raw = strip(symget('_pipr_lambda_wrap_in'));
 
-    if prxmatch('/^lambda\s*\(.*\)$/i', raw) then do;
+    raw_up = upcase(raw);
+    if length(raw) >= 8 and substr(raw_up, 1, 6) = 'LAMBDA' then do;
       openp = index(raw, '(');
-      if openp > 0 and substr(raw, length(raw), 1) = ')' then
-        raw = substr(raw, openp + 1, length(raw) - openp - 1);
+      if openp > 0 and substr(raw, length(raw), 1) = ')' then do;
+        body_len = length(raw) - openp - 1;
+        if body_len >= 0 then raw = substr(raw, openp + 1, body_len);
+      end;
     end;
 
     call symputx('_out', raw, 'L');
