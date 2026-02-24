@@ -73,6 +73,17 @@ File: src/pipr/plan.sas
   %else %let _pipe_plan_where=%superq(_pipe_plan_where) and (%superq(_expr));
 %mend;
 
+%macro _pipe_plan_add_filter(expr=);
+  %local _expr _stmt;
+  %let _expr=%sysfunc(strip(%superq(expr)));
+  %if %length(%superq(_expr))=0 %then %return;
+  %if %length(%superq(_pipe_plan_stmt))=0 %then %_pipe_plan_add_where(expr=%superq(_expr));
+  %else %do;
+    %let _stmt=if not (%superq(_expr)) then delete;
+    %_pipe_plan_set_stmt(stmt=%superq(_stmt));
+  %end;
+%mend;
+
 %macro _pipe_plan_set_keep(cols=);
   %local _cols;
   %let _cols=%superq(cols);
@@ -127,9 +138,13 @@ File: src/pipr/plan.sas
   %else %if &_verb_uc=FILTER or &_verb_uc=WHERE %then %do;
     %if %sysmacexist(_filter_expand_where) %then %_filter_expand_where(where_expr=%superq(_args), out_where=_expr);
     %else %let _expr=%superq(_args);
-    %_pipe_plan_add_where(expr=%superq(_expr));
+    %_pipe_plan_add_filter(expr=%superq(_expr));
   %end;
-  %else %if &_verb_uc=WHERE_NOT or &_verb_uc=MASK %then %_pipe_plan_add_where(expr=not (%superq(_args)));
+  %else %if &_verb_uc=WHERE_NOT or &_verb_uc=MASK %then %do;
+    %if %sysmacexist(_filter_expand_where) %then %_filter_expand_where(where_expr=%superq(_args), out_where=_expr);
+    %else %let _expr=%superq(_args);
+    %_pipe_plan_add_filter(expr=not (%superq(_expr)));
+  %end;
   %else %if &_verb_uc=MUTATE or &_verb_uc=WITH_COLUMN %then %do;
     %if %sysmacexist(_mutate_normalize_stmt) %then %_mutate_normalize_stmt(%superq(_args), _stmt);
     %else %let _stmt=%superq(_args);
