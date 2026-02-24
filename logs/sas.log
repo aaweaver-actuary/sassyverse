@@ -1,0 +1,486 @@
+[2026-02-20T10:59:04] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq1 text='policy_state'
+[2026-02-20T10:59:04] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq1 value=policy_state
+[2026-02-20T10:59:04] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq2 text="home_state"
+[2026-02-20T10:59:04] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq2 value=home_state
+[2026-02-20T10:59:04] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq3 text=company_numb
+[2026-02-20T10:59:04] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq3 value=company_numb
+[2026-02-20T10:59:04] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_stu_n out_prefix=_stu_tok expr=starts_with('policy') company_numb ends_with('code') like('%state%')
+[2026-02-20T10:59:04] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_stu_n value=4
+[2026-02-20T10:59:04] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_stu_n out_prefix=_stu_tok expr=starts_with('policy'),company_numb,ends_with('code')
+[2026-02-20T10:59:05] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_stu_n value=3
+[2026-02-20T10:59:05] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_n out_prefix=_stu_tok_local expr=company_numb starts_with('policy')
+[2026-02-20T10:59:05] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_n value=2
+[2026-02-20T10:59:05] DEBUG | [PIPR.SEL] _sel_parse_call token=starts_with('policy') open= len= last= is_call= name= arg=
+[2026-02-20T10:59:05] DEBUG | [PIPR.SEL] _sel_parse_call token=company_numb open= len= last= is_call= name= arg=
+[2026-02-20T10:59:05] DEBUG | [PIPR.SEL] _sel_parse_call token=matches('state$') open= len= last= is_call= name= arg=
+[2026-02-20T10:59:05] DEBUG | [PIPR.SEL] _sel_parse_call token=cols_where(lambda(.is_char and prxmatch('/state/i', .name) > 0)) open= len= last= is_call= name= arg=
+[2026-02-20T10:59:05] DEBUG | [PIPR.SEL] _sel_parse_call token=unknown_fn('x') open= len= last= is_call= name= arg=
+[2026-02-20T11:03:29] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:29] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:30] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:31] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:31] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:31] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:31] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:31] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:31] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:31] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:32] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:33] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:33] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:33] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:33] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:33] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:34] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:34] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:34] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:34] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:34] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:34] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:34] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:35] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:36] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:37] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:37] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:03:38] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq1 text='policy_state'
+[2026-02-20T11:03:38] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq1 value=policy_state
+[2026-02-20T11:03:38] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq2 text="home_state"
+[2026-02-20T11:03:38] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq2 value=home_state
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq3 text=company_numb
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq3 value=company_numb
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_stu_n out_prefix=_stu_tok expr=starts_with('policy') company_numb ends_with('code') like('%state%')
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_stu_n value=4
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_stu_n out_prefix=_stu_tok expr=starts_with('policy'),company_numb,ends_with('code')
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_stu_n value=3
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_n out_prefix=_stu_tok_local expr=company_numb starts_with('policy')
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_n value=2
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_parse_call token=starts_with('policy') open=12 len=21 last=) is_call=1 name=STARTS_WITH arg='policy'
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text='policy'
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq value=policy
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_parse_call out is=1 name=STARTS_WITH arg=policy
+[2026-02-20T11:03:39] DEBUG | [PIPR.SEL] _sel_parse_call token=company_numb open=0 len=12 last=b is_call=0 name= arg=
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_parse_call out is=0 name= arg=
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_parse_call token=matches('state$') open=8 len=17 last=) is_call=1 name=MATCHES arg='state$'
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text='state$'
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq value=state$
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_parse_call out is=1 name=MATCHES arg=state$
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_parse_call token=cols_where(lambda(.is_char and prxmatch('/state/i', .name) > 0)) open=11 len=64 last=) is_call=1 name=COLS_WHERE arg=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq value=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_parse_call out is=1 name=COLS_WHERE arg=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_parse_call token=unknown_fn('x') open=11 len=15 last=) is_call=1 name=UNKNOWN_FN arg='x'
+[2026-02-20T11:03:40] DEBUG | [PIPR.SEL] _sel_parse_call out is=-1 name=UNKNOWN_FN arg='x'
+[2026-02-20T11:09:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:09:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:10:05] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq1 text='policy_state'
+[2026-02-20T11:10:05] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq1
+[2026-02-20T11:10:05] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq2 text="home_state"
+[2026-02-20T11:10:05] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq2
+[2026-02-20T11:10:05] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq3 text=company_numb
+[2026-02-20T11:10:05] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq3
+[2026-02-20T11:10:05] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_stu_n out_prefix=_stu_tok expr=starts_with('policy') company_numb ends_with('code') like('%state%')
+[2026-02-20T11:10:05] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_stu_n value=4
+[2026-02-20T11:10:05] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_stu_n out_prefix=_stu_tok expr=starts_with('policy'),company_numb,ends_with('code')
+[2026-02-20T11:10:05] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_stu_n value=3
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_n out_prefix=_stu_tok_local expr=company_numb starts_with('policy')
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_n value=2
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_parse_call token=starts_with('policy') open=12 len=21 last=) is_call=1 name=STARTS_WITH arg='policy'
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text='policy'
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_parse_call out is=1 name=STARTS_WITH arg=policy
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_parse_call token=company_numb open=0 len=12 last=b is_call=0 name= arg=
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_parse_call out is=0 name= arg=
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_parse_call token=matches('state$') open=8 len=17 last=) is_call=1 name=MATCHES arg='state$'
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text='state$'
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_parse_call out is=1 name=MATCHES arg=state$
+[2026-02-20T11:10:06] DEBUG | [PIPR.SEL] _sel_parse_call token=cols_where(lambda(.is_char and prxmatch('/state/i', .name) > 0)) open=11 len=64 last=) is_call=1 name=COLS_WHERE arg=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:10:07] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:10:07] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq
+[2026-02-20T11:10:07] DEBUG | [PIPR.SEL] _sel_parse_call out is=1 name=COLS_WHERE arg=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:10:07] DEBUG | [PIPR.SEL] _sel_parse_call token=unknown_fn('x') open=11 len=15 last=) is_call=1 name=UNKNOWN_FN arg='x'
+[2026-02-20T11:10:07] DEBUG | [PIPR.SEL] _sel_parse_call out is=-1 name=UNKNOWN_FN arg='x'
+[2026-02-20T11:21:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:21:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:04] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:05] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:05] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:05] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:22:06] DEBUG | [PIPR.UTIL] _pipr_tokenize_run start out_prefix=_pt_tok split_comma=1 split_ws=1 expr=starts_with('policy') company_numb, ends_with('code')
+[2026-02-20T11:22:07] DEBUG | [PIPR.UTIL] _pipr_tokenize_run done out_count=_pipr_tok_n value=3
+[2026-02-20T11:22:07] DEBUG | [PIPR.UTIL] _pipr_tokenize_run start out_prefix=_pt_tok2 split_comma=1 split_ws=0 expr=cols=a b c, pred=is_missing(), args=blank_is_missing=0
+[2026-02-20T11:22:07] DEBUG | [PIPR.UTIL] _pipr_tokenize_run done out_count=_pipr_tok_n value=3
+[2026-02-20T11:22:08] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq1 text='policy_state'
+[2026-02-20T11:22:08] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq1
+[2026-02-20T11:22:08] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq2 text="home_state"
+[2026-02-20T11:22:08] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq2
+[2026-02-20T11:22:09] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq3 text=company_numb
+[2026-02-20T11:22:09] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq3
+[2026-02-20T11:22:09] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_stu_n out_prefix=_stu_tok expr=starts_with('policy') company_numb ends_with('code') like('%state%')
+[2026-02-20T11:22:09] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_stu_n value=4
+[2026-02-20T11:22:09] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_stu_n out_prefix=_stu_tok expr=starts_with('policy'),company_numb,ends_with('code')
+[2026-02-20T11:22:09] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_stu_n value=3
+[2026-02-20T11:22:10] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_n out_prefix=_stu_tok_local expr=company_numb starts_with('policy')
+[2026-02-20T11:22:10] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_n value=2
+[2026-02-20T11:22:10] DEBUG | [PIPR.SEL] _sel_parse_call token=starts_with('policy') open=12 len=21 last=) is_call=1 name=STARTS_WITH arg='policy'
+[2026-02-20T11:22:10] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text='policy'
+[2026-02-20T11:22:10] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq
+[2026-02-20T11:22:10] DEBUG | [PIPR.SEL] _sel_parse_call out is=1 name=STARTS_WITH arg=policy
+[2026-02-20T11:22:10] DEBUG | [PIPR.SEL] _sel_parse_call token=company_numb open=0 len=12 last=b is_call=0 name= arg=
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_parse_call out is=0 name= arg=
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_parse_call token=matches('state$') open=8 len=17 last=) is_call=1 name=MATCHES arg='state$'
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text='state$'
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_parse_call out is=1 name=MATCHES arg=state$
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_parse_call token=cols_where(lambda(.is_char and prxmatch('/state/i', .name) > 0)) open=11 len=64 last=) is_call=1 name=COLS_WHERE arg=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_parse_call out is=1 name=COLS_WHERE arg=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_parse_call token=unknown_fn('x') open=11 len=15 last=) is_call=1 name=UNKNOWN_FN arg='x'
+[2026-02-20T11:22:11] DEBUG | [PIPR.SEL] _sel_parse_call out is=-1 name=UNKNOWN_FN arg='x'
+[2026-02-20T11:22:12] DEBUG | [PIPR.SEL] _sel_regex_to_prx_core start regex=state$ flags=i
+[2026-02-20T11:22:12] DEBUG | [PIPR.SEL] _sel_regex_to_prx_core done out=/state$/i
+[2026-02-20T11:22:12] DEBUG | [PIPR.SEL] _sel_regex_to_prx_core start regex=/^state$/ flags=i
+[2026-02-20T11:22:12] DEBUG | [PIPR.SEL] _sel_regex_to_prx_core done out=/\/^state$\//i
+[2026-02-20T11:52:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:52:59] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:00] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:01] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:02] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:03] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:53:04] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq1 text='policy_state'
+[2026-02-20T11:53:04] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq1
+[2026-02-20T11:53:05] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq2 text="home_state"
+[2026-02-20T11:53:05] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq2
+[2026-02-20T11:53:05] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_stu_uq3 text=company_numb
+[2026-02-20T11:53:05] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_stu_uq3
+[2026-02-20T11:53:05] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_stu_n out_prefix=_stu_tok expr=starts_with('policy') company_numb ends_with('code') like('%state%')
+[2026-02-20T11:53:05] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_stu_n value=0
+[2026-02-20T11:53:05] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_stu_n out_prefix=_stu_tok expr=starts_with('policy'),company_numb,ends_with('code')
+[2026-02-20T11:53:05] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_stu_n value=0
+[2026-02-20T11:53:05] DEBUG | [PIPR.SEL] _sel_tokenize start out_n=_n out_prefix=_stu_tok_local expr=company_numb starts_with('policy')
+[2026-02-20T11:53:05] DEBUG | [PIPR.SEL] _sel_tokenize done out_n=_n value=0
+[2026-02-20T11:53:06] DEBUG | [PIPR.SEL] _sel_parse_call token=starts_with('policy') open=12 len=21 last=) is_call=1 name=STARTS_WITH arg='policy'
+[2026-02-20T11:53:06] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text='policy'
+[2026-02-20T11:53:06] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq
+[2026-02-20T11:53:06] DEBUG | [PIPR.SEL] _sel_parse_call out is= name= arg=
+[2026-02-20T11:53:06] DEBUG | [PIPR.SEL] _sel_parse_call token=company_numb open=0 len=12 last=b is_call=0 name= arg=
+[2026-02-20T11:53:06] DEBUG | [PIPR.SEL] _sel_parse_call out is= name= arg=
+[2026-02-20T11:53:06] DEBUG | [PIPR.SEL] _sel_parse_call token=matches('state$') open=8 len=17 last=) is_call=1 name=MATCHES arg='state$'
+[2026-02-20T11:53:07] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text='state$'
+[2026-02-20T11:53:07] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq
+[2026-02-20T11:53:07] DEBUG | [PIPR.SEL] _sel_parse_call out is= name= arg=
+[2026-02-20T11:53:07] DEBUG | [PIPR.SEL] _sel_parse_call token=cols_where(lambda(.is_char and prxmatch('/state/i', .name) > 0)) open=11 len=64 last=) is_call=1 name=COLS_WHERE arg=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:53:07] DEBUG | [PIPR.SEL] _sel_unquote start out_text=_arg_unq text=lambda(.is_char and prxmatch('/state/i', .name) > 0)
+[2026-02-20T11:53:07] DEBUG | [PIPR.SEL] _sel_unquote done out_text=_arg_unq
+[2026-02-20T11:53:07] DEBUG | [PIPR.SEL] _sel_parse_call out is= name= arg=
+[2026-02-20T11:53:07] DEBUG | [PIPR.SEL] _sel_parse_call token=unknown_fn('x') open=11 len=15 last=) is_call=1 name=UNKNOWN_FN arg='x'
+[2026-02-20T11:53:07] DEBUG | [PIPR.SEL] _sel_parse_call out is= name= arg=
+[2026-02-20T11:53:08] DEBUG | [PIPR.SEL] _sel_regex_to_prx_core start regex=state$ flags=i
+[2026-02-20T11:53:08] DEBUG | [PIPR.SEL] _sel_regex_to_prx_core done out=/state$/i
+[2026-02-20T11:53:08] DEBUG | [PIPR.SEL] _sel_regex_to_prx_core start regex=/^state$/ flags=i
+[2026-02-20T11:53:08] DEBUG | [PIPR.SEL] _sel_regex_to_prx_core done out=/\/^state$\//i
+[2026-02-20T11:57:50] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:50] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:51] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:52] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:53] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:54] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:55] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:55] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:55] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:55] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:55] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:55] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:55] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:55] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:55] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:55] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:56] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:57] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:58] DEBUG | msg=, out_var=_msg
+[2026-02-20T11:57:58] DEBUG | msg=, out_var=_msg

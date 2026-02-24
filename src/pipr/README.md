@@ -57,12 +57,6 @@ Behavior:
 - `debug=1`: print step-level planning/logging.
 - `cleanup=1`: remove temporary working datasets.
 
-Planner internals:
-
-- Planner state/build logic is centralized in `src/pipr/plan.sas`.
-- `%_pipe_plan_serialize(out_plan=...)` returns a text snapshot of the current plan.
-- `%_pipe_plan_replay(plan=..., out=...)` replays a supported serialized plan via the data-step builder path.
-
 Boolean-like values accepted:
 
 - `1/0`, `YES/NO`, `TRUE/FALSE`, `Y/N`, `ON/OFF`

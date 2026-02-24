@@ -66,7 +66,7 @@ File: src/pipr/_verbs/mutate.sas
   out_validate=,
   out_as_view=
 );
-  %local _buf _n _i _kind _head _val _stmt_acc;
+  %local _buf _n _i _seg _head _eq _val _stmt_acc;
 
   %_pipr_ucl_assign(out_text=%superq(out_stmt), value=%superq(stmt_in));
   %_pipr_ucl_assign(out_text=%superq(out_data), value=%superq(data_in));
@@ -77,30 +77,29 @@ File: src/pipr/_verbs/mutate.sas
   %let _stmt_acc=;
   %let _buf=%superq(syspbuff);
   %if %length(%superq(_buf)) > 2 %then %do;
-    %if not %sysmacexist(_pipr_parse_parmbuff) %then %_abort(mutate() requires pipr util helpers to be loaded.);
-    %_pipr_parse_parmbuff(
-      buf=%superq(_buf),
-      recognized=%str(DATA OUT VALIDATE AS_VIEW STMT),
-      out_n=_n,
-      out_prefix=_mt_pb
-    );
+    %if not %sysmacexist(_pipr_split_parmbuff_segments) %then %_abort(mutate() requires pipr util helpers to be loaded.);
+    %_pipr_split_parmbuff_segments(buf=%superq(_buf), out_n=_n, out_prefix=_mt_seg);
 
     %do _i=1 %to &_n;
-      %let _kind=&&_mt_pb_kind&_i;
-      %let _head=&&_mt_pb_head&_i;
-      %let _val=&&_mt_pb_val&_i;
+      %let _seg=%sysfunc(strip(%superq(_mt_seg&_i)));
+      %if %length(%superq(_seg)) > 0 %then %do;
+        %let _head=%upcase(%sysfunc(strip(%scan(%superq(_seg), 1, =))));
+        %if %sysfunc(indexw(DATA OUT VALIDATE AS_VIEW STMT, &_head)) > 0 %then %do;
+          %let _eq=%index(%superq(_seg), %str(=));
+          %if &_eq > 0 %then %let _val=%substr(%superq(_seg), %eval(&_eq+1));
+          %else %let _val=;
 
-      %if &_kind=N %then %do;
           %if &_head=DATA %then %_pipr_ucl_assign_strip(out_text=%superq(out_data), value=%superq(_val));
           %else %if &_head=OUT %then %_pipr_ucl_assign_strip(out_text=%superq(out_out), value=%superq(_val));
           %else %if &_head=VALIDATE %then %_pipr_ucl_assign_strip(out_text=%superq(out_validate), value=%superq(_val));
           %else %if &_head=AS_VIEW %then %_pipr_ucl_assign_strip(out_text=%superq(out_as_view), value=%superq(_val));
           %else %if &_head=STMT %then %let _stmt_acc=%sysfunc(strip(%superq(_val)));
-      %end;
-      %else %do;
-        /* Treat unknown segments as mutate expressions (supports mutate(a=x+1, b=a*2)). */
-        %if %length(%superq(_stmt_acc))=0 %then %let _stmt_acc=%superq(_val);
-        %else %let _stmt_acc=%superq(_stmt_acc), %superq(_val);
+        %end;
+        %else %do;
+          /* Treat unknown segments as mutate expressions (supports mutate(a=x+1, b=a*2)). */
+          %if %length(%superq(_stmt_acc))=0 %then %let _stmt_acc=%superq(_seg);
+          %else %let _stmt_acc=%superq(_stmt_acc), %superq(_seg);
+        %end;
       %end;
     %end;
   %end;

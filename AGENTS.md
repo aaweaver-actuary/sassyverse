@@ -2,20 +2,6 @@
 
 This repo is a SAS macro toolkit that emulates tidyverse-style workflows plus general utilities. Key goals: reliability, test coverage, portability.
 
-## First 60 Seconds (Do This Before Any Edit)
-
-1. Identify the current branch immediately.
-2. Classify the requested work type before changing code:
-  - Feature -> `feature/*`
-  - Bug fix -> `bugfix/*`
-  - Refactor -> `refactor/*`
-  - Docs-only -> `docs/*`
-3. If current branch type does not match the work type, STOP and switch/create the correct branch from latest `main`.
-4. If on `main`, do not implement any change directly; create/switch to the correct branch type first.
-
-- This branch check is mandatory and must be one of the first actions in every task.
-- Do not proceed to file edits, staging, or commits until branch/work-type alignment is confirmed.
-
 ## Entry points
 
 - Root entry: sassyverse.sas
@@ -148,60 +134,6 @@ This repo is a SAS macro toolkit that emulates tidyverse-style workflows plus ge
   - Repeated pattern in many modules: `%if not %sysmacexist(assertTrue) %then %sbmod(assert);` and similar guarded test wrappers.
   - Candidate: one shared test bootstrap macro used by both core and pipr module tests.
 
-## Formalized Working Plan (Current)
-
-This section captures the practical workflow and architecture expectations that have been repeatedly validated during recent pipr hardening work.
-
-### 1) Runtime-first debugging workflow
-
-- Always reproduce with the deterministic loader/test path first:
-  - `%sassyverse_init(base_path=..., include_pipr=1, include_tests=0)` for load-only checks.
-  - `%sassyverse_run_tests(base_path=..., include_pipr=1)` or targeted module tests for deterministic execution order.
-- Triage in this order:
-  1. Compile/import errors (for example, unmatched `%if/%else`, dummy macro compiled).
-  2. Macro resolution errors (for example, apparent invocation not resolved).
-  3. Behavioral assertion failures.
-- When collecting logs, prioritize the first failing block and immediately adjacent debug lines instead of full-log review.
-
-### 2) Logging and debug contract
-
-- Use a single debug entrypoint: `%dbg(...)`.
-- `%dbg`/`%info` should carry diagnostics, but avoid high-volume routine noise in stable paths.
-- Prefer failure-only debug statements for hot helpers (tokenizers/parsers).
-- Put debug statements next to decision points and outputs that determine control flow.
-- Do not include unescaped semicolons in inline `%if ... %then %dbg(...)` messages; this can terminate the statement early and break `%else` pairing.
-
-### 3) Purity rule for value-returning macros
-
-- Macros that return values inline (used inside `%let`, `%if`, or expression contexts) must be side-effect free.
-- Do not call `%dbg`, `%info`, DATA steps, or other output-emitting macros from return-value helpers.
-- If diagnostics are needed, log at the caller/orchestrator level, not inside value-return helpers.
-
-### 4) Parser and tokenizer organization
-
-- `src/pipr/util.sas` owns reusable parsing/tokenization primitives.
-- Module wrappers (for example in predicates) should be thin adapters that:
-  - normalize inputs,
-  - call shared util helpers,
-  - map outputs to module-specific variable names.
-- Keep fallback behavior explicit and local when needed for compatibility, but prefer central primitives as the source of truth.
-
-### 5) Test and regression expectations for parser changes
-
-- Any parser/tokenizer fix must include or update a deterministic test case that covers:
-  - nested parentheses,
-  - quoted commas,
-  - named/value argument segments,
-  - and caller-scoped output variable assignment.
-- When a failure involves unresolved symbols, include at least one test assertion that checks both count and token contents.
-
-### 6) Safe change protocol during active debugging
-
-- Keep patches minimal and directly tied to the current failing signal.
-- Resolve compile-time syntax issues before iterating on behavioral fixes.
-- After each fix, re-run targeted tests first, then broader suites if needed.
-- Keep branch work linear and visible with focused `[BUGFIX]`/`[DEBUG]` commits.
-
 ## Testing Expectations
 
 - All new features must include test cases that demonstrate the expected behavior and edge cases.
@@ -213,38 +145,6 @@ This section captures the practical workflow and architecture expectations that 
 - Do not remove or revert unrelated changes.
 
 ## What to do when...
-
-### Branch Safety (Critical)
-
-- Feature, bugfix, refactor, and docs implementation are NEVER allowed on `main`.
-- If your current branch is `main`, you MUST stop implementation work and create/switch to the correct branch type (`feature/*`, `bugfix/*`, `refactor/*`, or `docs/*`) before making any code changes.
-- Direct commits to `main` are prohibited for all feature, bugfix, refactor, and docs work; all such changes must flow through a PR.
-- Treat any attempt to implement on `main` as a hard safety violation to be corrected immediately.
-
-### Branch Scope and Course-Correction (Critical)
-
-- A `feature/*` branch is single-purpose and must only contain commits for that specific feature.
-- If unrelated work is discovered while building a feature (for example: bugfix, refactor, docs cleanup), do NOT continue mixing that work into the feature branch.
-- Use branch names by intent:
-  - `feature/<feature-name>` for feature implementation only.
-  - `bugfix/<bug-name>` for defect fixes only.
-  - `refactor/<topic>` for structural/code-quality changes only.
-  - `docs/<topic>` for documentation-only changes.
-
-#### Required interruption protocol
-
-When feature work uncovers a separate fix that must happen first:
-
-1. Stop feature implementation immediately.
-2. Create a new branch from latest `main` for that fix (`bugfix/*`, `refactor/*`, or `docs/*` as appropriate).
-3. Implement and test the fix in that branch only.
-4. Merge that fix branch back to `main` through PR.
-5. Return to the original `feature/*` branch.
-6. Sync latest `main` into the feature branch (merge or rebase per repo policy).
-7. Resume feature work.
-
-- Never continue feature commits on top of an unmerged fix branch.
-- Never leave required prerequisite fixes stranded only in a feature branch.
 
 ### 1. You encounter changes in the working tree that you did not make:
   1. Review the changes to understand what they are and why they might be there.
@@ -294,5 +194,3 @@ When feature work uncovers a separate fix that must happen first:
 5. All new features have corresponding test cases that demonstrate the expected behavior and edge cases.
 
 ## NEVER MAKE ANY CHANGES TO THE MAIN BRANCH. ALL WORK MUST BE DONE ON A FEATURE BRANCH AND MERGED VIA PR.
-
-## HARD STOP RULE: IF YOU ARE ON `main`, DO NOT IMPLEMENT FEATURES. SWITCH TO A `feature/*` BRANCH FIRST.

@@ -178,7 +178,6 @@ File: sassyverse.sas
         | pipr/_verbs/rename.sas
         | pipr/_verbs/select.sas
         | pipr/_verbs/summarise.sas
-        | pipr/plan.sas
         | pipr/pipr.sas
       ),
       out_failed=_sv_failed
