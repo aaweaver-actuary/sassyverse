@@ -83,8 +83,12 @@ File: src/pipr/predicates.sas
 
 /* Predicate and function helpers for row-wise expressions in filter()/data steps. */
 
+%macro _pred_dbg(msg=);
+  %if %sysmacexist(dbg) %then %dbg(msg=%superq(msg));
+%mend _pred_dbg;
+
 %macro _bootstrap_preds;
-  %dbg(msg=[PIPR.PRED.DEBUG] Bootstrapping predicates.sas with logging and assert dependencies);
+  %_pred_dbg(msg=[PIPR.PRED.DEBUG] Bootstrapping predicates.sas with logging and assert dependencies);
   %if (not %sysmacexist(_abort))
       or (not %sysmacexist(_pipr_require_assert))
       or (not %sysmacexist(_pipr_autorun_tests))
@@ -112,16 +116,25 @@ File: src/pipr/predicates.sas
 
 %init_pred_logging;
 
+/* Return 1 if logging is enabled, 0 otherwise */
 %macro _pred_logging_enabled;
   %if %symexist(_pred_log_enabled) and %superq(_pred_log_enabled)=1 %then 1;
   %else 0;
 %mend _pred_logging_enabled;
 
-%macro _pred_logging_on; %let _pred_log_enabled=1; %mend _pred_logging_on;
-%macro _pred_logging_off; %let _pred_log_enabled=0; %mend _pred_logging_off;
+/* Enable logging, regardless of current state */
+%macro _pred_logging_on; 
+  %let _pred_log_enabled=1; 
+%mend _pred_logging_on;
 
+/* Disable logging, regardless of current state */
+%macro _pred_logging_off; 
+  %let _pred_log_enabled=0; 
+%mend _pred_logging_off;
+
+/* Require a non-empty value, otherwise abort with a message */
 %macro _pred_require_nonempty(value=, msg=Predicate argument must be non-empty.);
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_require_nonempty called with value=%superq(value));
+  %_pred_dbg(msg=[PIPR.PRED.DEBUG] _pred_require_nonempty called with value=%superq(value));
   %if not %sysmacexist(_pipr_require_nonempty) %then %_abort(predicates.sas requires _pipr_require_nonempty from util.sas.);
   %_pipr_require_nonempty(value=%superq(value), msg=%superq(msg));
 %mend _pred_require_nonempty;
@@ -176,7 +189,7 @@ File: src/pipr/predicates.sas
 
 %macro _pred_split_parmbuff(buf=, out_n=, out_prefix=_pred_seg);
   %local _pred_sp_n _pred_sp_i _pred_sp_buf _pred_fb_n _pred_tok;
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff IN out_n=%superq(out_n) out_prefix=%superq(out_prefix) buf=%superq(buf));
+  %_pred_dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff IN out_n=%superq(out_n) out_prefix=%superq(out_prefix) buf=%superq(buf));
   %if not %sysmacexist(_pipr_tokenize) %then %_abort(predicates.sas requires _pipr_tokenize from util.sas.);
 
   %let _pred_sp_buf=%superq(buf);
@@ -198,7 +211,7 @@ File: src/pipr/predicates.sas
   %if %superq(_pred_sp_n)=0 and %length(%superq(_pred_sp_buf))>0 %then %do;
     %let _pred_fb_n=%sysfunc(countw(%superq(_pred_sp_buf), %str(,)));
     %if &_pred_fb_n > 0 %then %do;
-      %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff fallback=countw n=&_pred_fb_n);
+      %_pred_dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff fallback=countw n=&_pred_fb_n);
       %let _pred_sp_n=&_pred_fb_n;
       %do _pred_sp_i=1 %to &_pred_fb_n;
         %let _pred_tok=%qscan(%superq(_pred_sp_buf), &_pred_sp_i, %str(,));
@@ -216,9 +229,9 @@ File: src/pipr/predicates.sas
     %if not %symexist(&out_n) %then %global &out_n;
     %let &out_n=%superq(_pred_sp_n);
   %end;
-  %if %length(%superq(out_n)) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT count=%superq(&out_n));
-  %if %superq(_pred_sp_n)=0 %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT no segments buf_len=%length(%superq(_pred_sp_buf)));
-  %else %if %symexist(&out_prefix.1) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg1=%superq(&out_prefix.1));
+  %if %length(%superq(out_n)) %then %_pred_dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT count=%superq(&out_n));
+  %if %superq(_pred_sp_n)=0 %then %_pred_dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT no segments buf_len=%length(%superq(_pred_sp_buf)));
+  %else %if %symexist(&out_prefix.1) %then %_pred_dbg(msg=[PIPR.PRED.DEBUG] _pred_split_parmbuff OUT seg1=%superq(&out_prefix.1));
 %mend _pred_split_parmbuff;
 
 /* 
@@ -346,7 +359,7 @@ Example
   %let _raw=%superq(regex);
   %_pred_strip_quotes(text=%superq(_raw), out_text=_raw);
   %let _ic=%_pred_bool(%superq(ignore_case), default=1);
-  %dbg(msg=[PIPR.PRED.DEBUG] _convert_regex_to_prx IN raw=%superq(_raw) ignore_case=%superq(ignore_case) ic_norm=%superq(_ic));
+  %_pred_dbg(msg=[PIPR.PRED.DEBUG] _convert_regex_to_prx IN raw=%superq(_raw) ignore_case=%superq(ignore_case) ic_norm=%superq(_ic));
 
   data _null_;
     length raw body flags out $32767;
@@ -385,7 +398,7 @@ Example
     call symputx('_out', out, 'L');
   run;
 
-  %dbg(msg=[PIPR.PRED.DEBUG] _convert_regex_to_prx OUT prx=%superq(_out));
+  %_pred_dbg(msg=[PIPR.PRED.DEBUG] _convert_regex_to_prx OUT prx=%superq(_out));
   %_pipr_ucl_assign(out_text=%superq(out_prx), value=%superq(_out));
 %mend _convert_regex_to_prx;
 
@@ -878,10 +891,10 @@ Example
 %mend predicate;
 
 %macro _pred_lambda_normalize(expr=, out_expr=);
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_lambda_normalize IN expr=%superq(expr) out_expr=%superq(out_expr));
+  %_pred_dbg(msg=[PIPR.PRED.DEBUG] _pred_lambda_normalize IN expr=%superq(expr) out_expr=%superq(out_expr));
   %if not %sysmacexist(_pipr_lambda_normalize) %then %_abort(predicates.sas requires _pipr_lambda_normalize from util.sas.);
   %_pipr_lambda_normalize(expr=%superq(expr), out_expr=&out_expr);
-  %if %length(%superq(out_expr)) %then %dbg(msg=[PIPR.PRED.DEBUG] _pred_lambda_normalize OUT value=%superq(&out_expr));
+  %if %length(%superq(out_expr)) %then %_pred_dbg(msg=[PIPR.PRED.DEBUG] _pred_lambda_normalize OUT value=%superq(&out_expr));
 %mend _pred_lambda_normalize;
 
 %macro _pred_bind_lambda(lambda=, col=, out_expr=);
@@ -978,7 +991,7 @@ Example
 
 %macro _pred_parse_if_args(cols_in=, pred_in=, args_in=, out_cols=, out_pred=, out_args=);
   %local _buf _n _i _seg _head _eq _val _pos;
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_parse_if_args IN syspbuff=%superq(syspbuff));
+  %_pred_dbg(msg=[PIPR.PRED.DEBUG] _pred_parse_if_args IN syspbuff=%superq(syspbuff));
   %_pipr_ucl_assign(out_text=%superq(out_cols), value=%superq(cols_in));
   %_pipr_ucl_assign(out_text=%superq(out_pred), value=%superq(pred_in));
   %_pipr_ucl_assign(out_text=%superq(out_args), value=%superq(args_in));
@@ -1011,7 +1024,7 @@ Example
       %_next_if_seg:
     %end;
   %end;
-  %dbg(msg=[PIPR.PRED.DEBUG] _pred_parse_if_args OUT cols=%superq(&out_cols) pred=%superq(&out_pred) args=%superq(&out_args));
+  %_pred_dbg(msg=[PIPR.PRED.DEBUG] _pred_parse_if_args OUT cols=%superq(&out_cols) pred=%superq(&out_pred) args=%superq(&out_args));
 %mend _pred_parse_if_args;
 
 %macro _pred_reduce(cols=, pred=, args=, joiner=OR, out_expr=);

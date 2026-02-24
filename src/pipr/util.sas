@@ -64,6 +64,10 @@ File: src/pipr/util.sas
   %abort cancel;
 %mend;
 
+%macro _pipr_dbg(msg=);
+  %if %sysmacexist(dbg) %then %dbg(msg=%superq(msg));
+%mend;
+
 
 /*
     Generate a temporary dataset name with a given prefix. The name is based on the current datetime to ensure uniqueness.
@@ -153,8 +157,8 @@ File: src/pipr/util.sas
 
   %_pipr_ucl_assign(out_text=%superq(out_count), value=%superq(_pipr_tok_count));
   %if %superq(&out_count)=0 and %length(%superq(_pt_expr))>0 %then %do;
-    %dbg(msg=[PIPR.UTIL] _pipr_tokenize_run FAIL out_prefix=%superq(out_prefix) split_comma=&_pt_split_comma split_ws=&_pt_split_ws expr_len=%superq(_pipr_tok_dbg_len) depth_end=%superq(_pipr_tok_dbg_depth) quote_end=%superq(_pipr_tok_dbg_quote) first=%superq(_pipr_tok_dbg_first) last=%superq(_pipr_tok_dbg_last));
-    %dbg(msg=[PIPR.UTIL] _pipr_tokenize_run FAIL expr_sample=%superq(_pipr_tok_dbg_expr));
+    %_pipr_dbg(msg=[PIPR.UTIL] _pipr_tokenize_run FAIL out_prefix=%superq(out_prefix) split_comma=&_pt_split_comma split_ws=&_pt_split_ws expr_len=%superq(_pipr_tok_dbg_len) depth_end=%superq(_pipr_tok_dbg_depth) quote_end=%superq(_pipr_tok_dbg_quote) first=%superq(_pipr_tok_dbg_first) last=%superq(_pipr_tok_dbg_last));
+    %_pipr_dbg(msg=[PIPR.UTIL] _pipr_tokenize_run FAIL expr_sample=%superq(_pipr_tok_dbg_expr));
   %end;
 %mend;
 
@@ -355,9 +359,17 @@ File: src/pipr/util.sas
 %mend;
 
 %macro _pipr_ucl_assign(out_text=, value=);
+  %local _pipr_ucl_out _pipr_ucl_value;
+  %let _pipr_ucl_out=%superq(out_text);
+  %let _pipr_ucl_value=%superq(value);
   %if %length(%superq(out_text)) %then %do;
     %if not %symexist(&out_text) %then %global &out_text;
-    %let &out_text=%superq(value);
+    data _null_;
+      length _out _val $32767;
+      _out = symget('_pipr_ucl_out');
+      _val = symget('_pipr_ucl_value');
+      call symputx(_out, _val, 'F');
+    run;
   %end;
 %mend;
 
@@ -469,20 +481,20 @@ File: src/pipr/util.sas
   %global _pipr_lambda_stage1 _pipr_lambda_stage2;
   %local _raw;
   %let _raw=%superq(expr);
-  %dbg(msg=[PIPR.UTIL] _pipr_lambda_normalize IN expr=%superq(expr) out_expr=%superq(out_expr));
+  %_pipr_dbg(msg=[PIPR.UTIL] _pipr_lambda_normalize IN expr=%superq(expr) out_expr=%superq(out_expr));
 
   %_pipr_lambda_strip_wrapper(expr=%superq(_raw), out_expr=_pipr_lambda_stage1);
   %_pipr_lambda_strip_tilde(expr=%superq(_pipr_lambda_stage1), out_expr=_pipr_lambda_stage2);
 
   %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_pipr_lambda_stage2));
-  %if %length(%superq(out_expr)) %then %dbg(msg=[PIPR.UTIL] _pipr_lambda_normalize OUT value=%superq(&out_expr));
+  %if %length(%superq(out_expr)) %then %_pipr_dbg(msg=[PIPR.UTIL] _pipr_lambda_normalize OUT value=%superq(&out_expr));
 %mend;
 
 %macro _pipr_lambda_strip_wrapper(expr=, out_expr=);
   %local _in _out;
   %global _pipr_lambda_wrap_in;
   %let _in=%superq(expr);
-  %dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_wrapper IN expr=%superq(expr) out_expr=%superq(out_expr));
+  %_pipr_dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_wrapper IN expr=%superq(expr) out_expr=%superq(out_expr));
   %let _pipr_lambda_wrap_in=%superq(_in);
 
   data _null_;
@@ -502,14 +514,14 @@ File: src/pipr/util.sas
   run;
 
   %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_out));
-  %if %length(%superq(out_expr)) %then %dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_wrapper OUT value=%superq(&out_expr));
+  %if %length(%superq(out_expr)) %then %_pipr_dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_wrapper OUT value=%superq(&out_expr));
 %mend;
 
 %macro _pipr_lambda_strip_tilde(expr=, out_expr=);
   %local _in _out;
   %global _pipr_lambda_tilde_in;
   %let _in=%superq(expr);
-  %dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_tilde IN expr=%superq(expr) out_expr=%superq(out_expr));
+  %_pipr_dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_tilde IN expr=%superq(expr) out_expr=%superq(out_expr));
   %let _pipr_lambda_tilde_in=%superq(_in);
 
   data _null_;
@@ -520,7 +532,7 @@ File: src/pipr/util.sas
   run;
 
   %_pipr_ucl_assign(out_text=%superq(out_expr), value=%superq(_out));
-  %if %length(%superq(out_expr)) %then %dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_tilde OUT value=%superq(&out_expr));
+  %if %length(%superq(out_expr)) %then %_pipr_dbg(msg=[PIPR.UTIL] _pipr_lambda_strip_tilde OUT value=%superq(&out_expr));
 %mend;
 
 /* Auto-run a test macro only when __unit_tests=1. */
