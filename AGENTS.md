@@ -2,6 +2,20 @@
 
 This repo is a SAS macro toolkit that emulates tidyverse-style workflows plus general utilities. Key goals: reliability, test coverage, portability.
 
+## First 60 Seconds (Do This Before Any Edit)
+
+1. Identify the current branch immediately.
+2. Classify the requested work type before changing code:
+  - Feature -> `feature/*`
+  - Bug fix -> `bugfix/*`
+  - Refactor -> `refactor/*`
+  - Docs-only -> `docs/*`
+3. If current branch type does not match the work type, STOP and switch/create the correct branch from latest `main`.
+4. If on `main`, do not implement any change directly; create/switch to the correct branch type first.
+
+- This branch check is mandatory and must be one of the first actions in every task.
+- Do not proceed to file edits, staging, or commits until branch/work-type alignment is confirmed.
+
 ## Entry points
 
 - Root entry: sassyverse.sas
@@ -202,9 +216,9 @@ This section captures the practical workflow and architecture expectations that 
 
 ### Branch Safety (Critical)
 
-- Feature development and bugfix implementation are NEVER allowed on `main`.
-- If your current branch is `main`, you MUST stop implementation work and create/switch to a `feature/*` branch before making any code changes.
-- Direct commits to `main` are prohibited for all feature and refactor work; all such changes must flow through a PR.
+- Feature, bugfix, refactor, and docs implementation are NEVER allowed on `main`.
+- If your current branch is `main`, you MUST stop implementation work and create/switch to the correct branch type (`feature/*`, `bugfix/*`, `refactor/*`, or `docs/*`) before making any code changes.
+- Direct commits to `main` are prohibited for all feature, bugfix, refactor, and docs work; all such changes must flow through a PR.
 - Treat any attempt to implement on `main` as a hard safety violation to be corrected immediately.
 
 ### Branch Scope and Course-Correction (Critical)
