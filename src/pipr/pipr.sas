@@ -471,7 +471,7 @@ Planner note
   %let view_output_work=%_pipr_bool(%superq(view_output_work), default=0);
   %let debug_work=%_pipr_bool(%superq(debug_work), default=0);
   %let cleanup_work=%_pipr_bool(%superq(cleanup_work), default=1);
-  %let _execute=%sysfunc(ifc(%length(%superq(collect_out))>0,1,0));
+  %let _execute=%sysfunc(ifc(%length(%superq(out_work))>0,1,0));
 
   %_pipe_validate_inputs(data=&data_work, out=&out_work, steps=&steps_work, require_out=&_execute);
 
@@ -1175,6 +1175,77 @@ Planner note
       %assertEqual(&_sum_y2., 10);
     %test_summary;
 
+    %test_case(pipe executes when out= is provided without collect_to);
+      %pipe(
+        data=work._pipe_in,
+        out=work._pipe_out_no_collect,
+        steps=%str(filter(x > 1) | mutate(y = x * 2) | select(x y)),
+        use_views=0,
+        cleanup=1
+      );
+
+      proc sql noprint;
+        select count(*) into :_cnt_no_collect trimmed from work._pipe_out_no_collect;
+        select sum(y) into :_sum_y_no_collect trimmed from work._pipe_out_no_collect;
+      quit;
+
+      %assertEqual(&_cnt_no_collect., 2);
+      %assertEqual(&_sum_y_no_collect., 10);
+    %test_summary;
+
+    %test_case(planner preserves mutate then filter semantics);
+      %pipe(
+        work._pipe_in
+        | mutate(y = x * 2)
+        | filter(y > 2)
+        | collect_to(work._pipe_mut_then_filter_out)
+        , use_views=0
+        , cleanup=1
+      );
+
+      proc sql noprint;
+        select count(*) into :_cnt_mut_then_filter trimmed from work._pipe_mut_then_filter_out;
+        select sum(y) into :_sum_mut_then_filter trimmed from work._pipe_mut_then_filter_out;
+      quit;
+
+      %assertEqual(&_cnt_mut_then_filter., 2);
+      %assertEqual(&_sum_mut_then_filter., 10);
+    %test_summary;
+
+    %test_case(mask and where_not expand predicate expressions in plans);
+      data work._pipe_mask_in;
+        x=.; output;
+        x=1; output;
+        x=2; output;
+      run;
+
+      %pipe(
+        work._pipe_mask_in
+        | mask(is_missing(x))
+        | collect_to(work._pipe_mask_out)
+        , use_views=0
+        , cleanup=1
+      );
+
+      proc sql noprint;
+        select count(*) into :_cnt_mask trimmed from work._pipe_mask_out;
+      quit;
+      %assertEqual(&_cnt_mask., 2);
+
+      %pipe(
+        work._pipe_mask_in
+        | where_not(is_missing(x))
+        | collect_to(work._pipe_where_not_out)
+        , use_views=0
+        , cleanup=1
+      );
+
+      proc sql noprint;
+        select count(*) into :_cnt_where_not trimmed from work._pipe_where_not_out;
+      quit;
+      %assertEqual(&_cnt_where_not., 2);
+    %test_summary;
+
     %test_case(positional steps with comma args);
       data work._pipe_right;
         id=1; z=5; output;
@@ -1295,6 +1366,7 @@ Planner note
 
   proc datasets lib=work nolist;
     delete _pipe_in _pipe_out _pipe_view_in _pipe_view_out _pipe_out_ifc _pipe_out_multi _pipe_out_multi_compact _pipe_pred _pipe_pred_out _pipe_mut_pred _pipe_out_wc_multi _pipe_out2 _pipe_right _pipe_in2 _pipe_out3 _pipe_bool_in _pipe_bool_out _pipe_sel _pipe_sel_out _pipe_sel_out2 _pipe_dup_in _pipe_keys_in _pipe_keys_out;
+    delete _pipe_out_no_collect _pipe_mut_then_filter_out _pipe_mask_in _pipe_mask_out _pipe_where_not_out;
     delete _pipe_out_view_final _pipe_dup_out_view / memtype=view;
   quit;
 %mend test_pipe;
