@@ -207,6 +207,31 @@ This section captures the practical workflow and architecture expectations that 
 - Direct commits to `main` are prohibited for all feature and refactor work; all such changes must flow through a PR.
 - Treat any attempt to implement on `main` as a hard safety violation to be corrected immediately.
 
+### Branch Scope and Course-Correction (Critical)
+
+- A `feature/*` branch is single-purpose and must only contain commits for that specific feature.
+- If unrelated work is discovered while building a feature (for example: bugfix, refactor, docs cleanup), do NOT continue mixing that work into the feature branch.
+- Use branch names by intent:
+  - `feature/<feature-name>` for feature implementation only.
+  - `bugfix/<bug-name>` for defect fixes only.
+  - `refactor/<topic>` for structural/code-quality changes only.
+  - `docs/<topic>` for documentation-only changes.
+
+#### Required interruption protocol
+
+When feature work uncovers a separate fix that must happen first:
+
+1. Stop feature implementation immediately.
+2. Create a new branch from latest `main` for that fix (`bugfix/*`, `refactor/*`, or `docs/*` as appropriate).
+3. Implement and test the fix in that branch only.
+4. Merge that fix branch back to `main` through PR.
+5. Return to the original `feature/*` branch.
+6. Sync latest `main` into the feature branch (merge or rebase per repo policy).
+7. Resume feature work.
+
+- Never continue feature commits on top of an unmerged fix branch.
+- Never leave required prerequisite fixes stranded only in a feature branch.
+
 ### 1. You encounter changes in the working tree that you did not make:
   1. Review the changes to understand what they are and why they might be there.
   2. If the changes are unrelated to your current task, your task is to immediately dispatch a subagent to perform a peer review of the code. This review should focus on identifying the source of the changes, assessing their relevance, and determining if they were intentional or accidental. 
