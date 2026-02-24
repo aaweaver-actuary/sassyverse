@@ -2,3 +2,4 @@ initial_sas_logfile
 init_script.sas
 .pw
 logs/sas.log
+logs/*.log
