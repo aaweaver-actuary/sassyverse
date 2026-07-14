@@ -1,0 +1,1208 @@
+/* MODULE DOC
+File: src/assert.sas
+
+1) Purpose in overall project
+- General-purpose core utility module used by sassyverse contributors and downstream workflows.
+
+2) High-level approach
+- Defines reusable macro helpers and their tests, with small wrappers around common SAS patterns.
+
+3) Code organization and why this scheme was chosen
+- Public macros are grouped by theme, followed by focused unit tests and guarded autorun hooks.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define utility macros and any private helper macros they require.
+- Where needed, lazily import dependencies (for example assert/logging helpers).
+- Expose a small public API with deterministic text/data-step output.
+- Include test macros that exercise nominal and edge cases.
+- Run tests only when __unit_tests is enabled to avoid production noise.
+
+5) Acknowledged implementation deficits
+- Macro-language utilities have limited static guarantees and rely on disciplined caller inputs.
+- Some historical APIs prioritize backward compatibility over perfect consistency.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- _log_styles
+- symbol_dne
+- test_symbol_dne
+- itit_globals
+- reset_test_counts
+- assertTrue
+- assertFalse
+- assertEqual
+- assertNotEqual
+- test_suite
+- test_case
+- test_summary
+- test_assertions
+- run_assertion_tests
+
+7) Expected side effects from running/include
+- Defines 14 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): logPASS, logFAIL, logERROR, testCount, testFailures, testErrors, testSuite, isCurrentlyInTestCase, currentTestCaseName, testCaseCount, testCaseFailures, testCaseErrors.
+- Executes top-level macro call(s) on include: _log_styles, run_assertion_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+*/
+%macro _bootstrap_assert;
+	
+%if %sysfunc(libref(sbfuncs)) ne 0 %then %do;
+  libname sbfuncs "%sysfunc(pathname(work))";
+%end;
+%mend _bootstrap_assert;
+
+%_bootstrap_assert;
+
+%put======================>> Loading assert.sas;
+
+%macro _log_styles;
+	%global logPASS logFAIL logERROR;
+	%let logPASS=NOTE: [PASS];
+	%let logFAIL=ERROR: [FAIL];
+	%let logERROR=ERROR: [ERROR];
+%mend;
+
+%_log_styles;
+
+%macro symbol_dne(symbol);
+	%if %symexist(%unquote(%str(&symbol.)))=0 %then %let out=1;
+	%else %if "%sysfunc(strip(%unquote(%str(&symbol.))))"="" %then %let out=1;
+	%else %let out=0;
+	&out.
+%mend;
+
+%macro test_symbol_dne;
+	%test_suite(Symbol DNE tests);
+
+	%test_summary;
+%mend test_symbol_dne;
+
+%macro itit_globals;
+	%if %symbol_dne(testCount) %then %do;
+		%global testCount;
+		%let testCount=0;
+	%end;
+	%if %symbol_dne(testFailures) %then %do;
+		%global testFailures;
+		%let testFailures=0;
+	%end;
+	%if %symbol_dne(testErrors) %then %do;
+		%global testErrors;
+		%let testErrors=0;
+	%end;
+%mend;
+
+%macro reset_test_counts;
+	%global testCount testErrors testFailures;
+	%let testCount=0;
+	%let testFailures=0;
+	%let testErrors=0;
+%mend;
+
+%macro assertTrue(condition, message);
+	/*
+	Assert that the given condition that evaluates to either 0
+	(for false) or 1 (for true) is true.
+
+	Logs a PASS if 1, FAIL if 0, and ERROR if anything else.
+
+	@param condition : Macro expression resolving to 1 for true
+	or 0 for false
+	@param message : A message that prints regardless of whether the
+	test passes to identify and describe the test.
+	 */
+	%itit_globals;
+	%if %symbol_dne(isCurrentlyInTestCase) %then %let isCurrentlyInTestCase=0;
+	%let result=0;
+
+	%let testPass=%eval(&testCount - &testFailures);
+	%let testCount=%eval(&testCount + 1);
+
+	%if %eval(&condition)=1 %then %do;
+		%let result=1;
+		%let testPass=%eval(&testPass + 1);
+		%put &logPASS. - &testPass.|&testFailures.|&testErrors. - &message;
+	%end;
+	%else %if %eval(&condition)=0 %then %do;
+		%let testFailures=%eval(&testFailures + 1);
+		%put &logFAIL. - &testPass.|&testFailures.|&testErrors. - &message;
+	%end;
+	%else %do;
+		%let result=-1;
+		%let testErrors=%eval(&testErrors + 1);
+		%put &logERROR. - &testPass.|&testFailures.|&testErrors. - &message.;
+		%put &logERROR. - &testPass.|&testFailures.|&testErrors. - &condition.
+			evaluates to %eval(&condition);
+		%put &logERROR. - &testPass.|&testFailures.|&testErrors. - &condition.
+			must evaluate to either 0 or 1;
+	%end;
+
+	%if &isCurrentlyInTestCase.=1 %then %do;
+		%let testCaseCount=%eval(&testCaseCount + 1);
+		%if %eval(&result=0) %then %let testCaseFailures=%eval(&testCaseFailures + 1);
+		%else %if %eval(&result=-1) %then %let testCaseErrors=%eval(&testCaseErrors + 1);
+	%end;
+
+%mend;
+
+%macro assertFalse(condition, message);
+	%if %eval(&condition)=0 %then %let cond=1;
+	%else %let cond=0;
+	%assertTrue(%eval(&cond.), &message.);
+%mend;
+
+%macro assertEqual(actual, expected);
+	%local _is_num_a _is_num_b _eq;
+	%if %length(%superq(actual))=0 or %length(%superq(expected))=0 %then %do;
+		%if %superq(actual)=%superq(expected) %then %let _eq=1;
+		%else %let _eq=0;
+	%end;
+	%else %do;
+	%let _is_num_a=%sysfunc(verify(%superq(actual),%str(0123456789.+-eE)));
+	%let _is_num_b=%sysfunc(verify(%superq(expected),%str(0123456789.+-eE)));
+	%if &_is_num_a=0 and &_is_num_b=0 %then %do;
+		%let _eq=%sysevalf(%superq(actual) = %superq(expected));
+	%end;
+	%else %do;
+		%if %superq(actual)=%superq(expected) %then %let _eq=1;
+		%else %let _eq=0;
+	%end;
+	%end;
+	%let message=Asserted that [%superq(actual)]=[%superq(expected)];
+	%assertTrue(%eval(&_eq), %superq(message));
+%mend;
+
+%macro assertNotEqual(actual, expected);
+	%local _is_num_a _is_num_b _eq;
+	%if %length(%superq(actual))=0 or %length(%superq(expected))=0 %then %do;
+		%if %superq(actual)=%superq(expected) %then %let _eq=1;
+		%else %let _eq=0;
+	%end;
+	%else %do;
+	%let _is_num_a=%sysfunc(verify(%superq(actual),%str(0123456789.+-eE)));
+	%let _is_num_b=%sysfunc(verify(%superq(expected),%str(0123456789.+-eE)));
+	%if &_is_num_a=0 and &_is_num_b=0 %then %do;
+		%let _eq=%sysevalf(%superq(actual) = %superq(expected));
+	%end;
+	%else %do;
+		%if %superq(actual)=%superq(expected) %then %let _eq=1;
+		%else %let _eq=0;
+	%end;
+	%end;
+	%let message=Asserted that [%superq(actual)]!=[%superq(expected)];
+	%assertFalse(%eval(&_eq), %superq(message));
+%mend;
+
+/* options nonotes nosource nodetails; /* Suppress warnings that these functions were previously compiled */ */
+
+/* proc fcmp outlib=sbfuncs.fn.assert; */
+/* 	/* These subroutines are otherwise identical to the macros, but */
+/* 	   are compiled	subroutines that can test data in a data step.*/ */
+/* 	subroutine assertTrue(condition $, message $); */
+/* 	length cmd $ 32767; */
+/* 		cmd=strip(cats('%nrstr(%assertTrue)(', condition, ', "', message, '")')); */
+/* 	put cmd=; */
+/* 	call execute(cmd); */
+/* 	endsub; */
+
+/* 	subroutine assertFalse(condition $, message $); */
+/* 	length cmd $ 32767; */
+/* 	cmd=cats('%nrstr(%assertFalse)(', condition, ', "', message, '")'); */
+/* 	put cmd=; */
+/* 	call execute(cmd); */
+/* 	/* call execute(cats('%nrstr(%assertFalse)(', condition, ', "', message, */
+/* 	'")')); */ */
+/* 	endsub; */
+
+/* 	subroutine assertEqual(actual $, expected $); */
+/* 	length cmd $ 32767; */
+/* 	cmd=cats('%nrstr(%assertEqual)(', actual, ', ', expected, ')'); */
+/* 	put cmd=; */
+/* 	call execute(cmd); */
+/* 	/* call execute(cats('%nrstr(%assertEqual)(', actual, ', ', expected')')); */ */
+/* 	endsub; */
+
+/* 	subroutine assertNotEqual(actual $, expected $); */
+/* 	length cmd $ 32767; */
+/* 	cmd=cats('%nrstr(%assertNotEqual)(', actual, ', ', expected, ')'); */
+/* 	put cmd=; */
+/* 	call execute(cmd); */
+/* 	/* call execute(cats('%nrstr(%assertNotEqual)(', actual, ', ', expected')')); */ */
+/* 	endsub; */
+/* run; */
+
+/* options notes source details; */
+/* options cmplib=sbfuncs.fn; */;
+
+%macro test_suite(name);
+	%global testSuite isCurrentlyInTestCase;
+	%let isCurrentlyInTestCase=0;
+	%let testSuite=&name.;
+	%put======================>> Running unit tests for &name.;
+	%reset_test_counts;
+%mend test_suite;
+
+
+%macro test_case / parmbuff;
+	%global currentTestCaseName isCurrentlyInTestCase testCaseCount testCaseFailures testCaseErrors;
+	%global testCaseSysccStart testCaseSyserrStart;
+	%local _buf _title _len;
+	%let _buf=%superq(syspbuff);
+	%let _len=%length(%superq(_buf));
+	%if &_len >= 2 %then %do;
+		%if %qsubstr(%superq(_buf), 1, 1)=%str(%() and %qsubstr(%superq(_buf), &_len, 1)=%str(%)) %then %do;
+			%let _title=%qsubstr(%superq(_buf), 2, %eval(&_len-2));
+		%end;
+		%else %let _title=%superq(_buf);
+	%end;
+	%else %let _title=%superq(_buf);
+	%let currentTestCaseName=%unquote(%superq(_title));
+	%put======================>> Running test case: [&currentTestCaseName.];
+	%let isCurrentlyInTestCase=1;
+	%let testCaseCount=0;
+	%let testCaseFailures=0;
+	%let testCaseErrors=0;
+	%let testCaseSysccStart=%sysfunc(inputn(%superq(syscc), best32.));
+	%let testCaseSyserrStart=%sysfunc(inputn(%superq(syserr), best32.));
+%mend test_case;
+
+%macro test_summary;
+	%if &isCurrentlyInTestCase.=1 %then %do;
+		%local _tc_syscc_start _tc_syserr_start _tc_syscc_end _tc_syserr_end;
+		%let _tc_syscc_start=%sysfunc(inputn(%superq(testCaseSysccStart), best32.));
+		%let _tc_syserr_start=%sysfunc(inputn(%superq(testCaseSyserrStart), best32.));
+		%let _tc_syscc_end=%sysfunc(inputn(%superq(syscc), best32.));
+		%let _tc_syserr_end=%sysfunc(inputn(%superq(syserr), best32.));
+
+		%if %sysevalf(&_tc_syscc_end > &_tc_syscc_start) or %sysevalf(&_tc_syserr_end > &_tc_syserr_start) %then %do;
+			%let testErrors=%eval(&testErrors + 1);
+			%let testCaseErrors=%eval(&testCaseErrors + 1);
+			%put &logERROR. - Runtime/system error detected during test case [&currentTestCaseName.]. SYSCC &_tc_syscc_start -> &_tc_syscc_end, SYSERR &_tc_syserr_start -> &_tc_syserr_end.;
+		%end;
+
+		%put======================>> Test Case Summary;
+		%put ;
+		%put |----------------------------------|;
+		%put | &currentTestCaseName;
+		%put |----------------------------------|;
+		%put |----------------------------------|;
+		%put | Test Count: | &testCaseCount;
+		%put |----------------------------------|;
+		%put | Test Failures: | &testCaseFailures;
+		%put |----------------------------------|;
+		%put | Test Errors: | &testCaseErrors;
+		%put |----------------------------------|;
+		%put |----------------------------------|;
+		%put ;
+
+		%if &testCaseFailures=0 and &testCaseErrors=0 %then %put &logPASS. - All tests for [&currentTestCaseName.] passed;
+		%else %put &logFAIL. - Some tests for [&currentTestCaseName.] failed;
+
+		%put======================>> Test Case Summary [DONE];
+
+		%let isCurrentlyInTestCase=0;
+	%end;
+	%else %do;
+		%put======================>> Test Summary;
+		%put ;
+		%put |----------------------------------|;
+		%put | &testSuite;
+		%put |----------------------------------|;
+		%put |----------------------------------|;
+		%put | Test Count: | &testCount;
+		%put |----------------------------------|;
+		%put | Test Failures: | &testFailures;
+		%put |----------------------------------|;
+		%put | Test Errors: | &testErrors;
+		%put |----------------------------------|;
+		%put |----------------------------------|;
+		%put ;
+		%if &testFailures=0 and &testErrors=0 %then %put &logPASS. - All tests
+			passed;
+		%else %put &logFAIL. - Some tests failed;
+
+		%put======================>> Test Summary [DONE];
+
+	%end;
+	%put======================>> Running unit tests for &testSuite [DONE];
+%mend test_summary;
+
+%put======================>> Loading assert.sas [DONE];
+
+/* Test these assertion macros */
+%macro test_assertions;
+	%test_suite(Testing assert);
+
+		%test_case(Testing macro versions of assertions);
+			%assertTrue(1, 1 is true);
+			%assertFalse(0, 0 is false);
+			%assertEqual(1, 1);
+			%assertNotEqual(1, 0);
+			%assertEqual(%str(note='a,b'), %str(note='a,b'));
+			%assertNotEqual(%str(note='a,b'), %str(note='a,c'));
+
+			%assertTrue(%symbol_dne(asdafasdf), 'asdafasdf' was not previously defined);
+		%test_summary;
+	%test_summary;
+%mend test_assertions;
+
+/* Alias for test_assertions so I don't have to remember the full name */
+%macro test_assert;
+	%test_assertions;
+%mend test_assert;
+
+/* Macro to run assertion tests when __unit_tests is set */
+%macro run_assertion_tests;
+	%if %symexist(__unit_tests) %then %do;
+		%if %superq(__unit_tests)=1 %then %do;
+			%test_assertions;
+		%end;
+	%end;
+%mend run_assertion_tests;
+
+%run_assertion_tests;
+/* MODULE DOC
+File: src/strings.sas
+
+1) Purpose in overall project
+- General-purpose core utility module used by sassyverse contributors and downstream workflows.
+
+2) High-level approach
+- Defines reusable macro helpers and their tests, with small wrappers around common SAS patterns.
+
+3) Code organization and why this scheme was chosen
+- Public macros are grouped by theme, followed by focused unit tests and guarded autorun hooks.
+- Code is organized as helper macros first, public API second, and tests/autorun guards last to reduce contributor onboarding time and import risk.
+
+4) Detailed pseudocode algorithm
+- Define utility macros and any private helper macros they require.
+- Where needed, lazily import dependencies (for example assert/logging helpers).
+- Expose a small public API with deterministic text/data-step output.
+- Include test macros that exercise nominal and edge cases.
+- Run tests only when __unit_tests is enabled to avoid production noise.
+
+5) Acknowledged implementation deficits
+- Macro-language utilities have limited static guarantees and rely on disciplined caller inputs.
+- Some historical APIs prioritize backward compatibility over perfect consistency.
+- Contributor docs are still text comments; there is no generated API reference yet.
+
+6) Macros defined in this file
+- __does_str_func_exist
+- define_str_funcs
+- str__index
+- str__replace
+- str__trim
+- str__upper
+- str__lower
+- str__len
+- str__length
+- str__contains
+- str__split
+- str__slice
+- str__startswith
+- str__endswith
+- str__join2
+- str__reverse
+- str__find
+- str__format
+- __str__split_parmbuf
+- __str__format_parmbuf
+- test_strings
+- run_string_tests
+
+7) Expected side effects from running/include
+- Defines 22 macro(s) in the session macro catalog.
+- May create/update GLOBAL macro variable(s): func_exists.
+- Executes top-level macro call(s) on include: run_string_tests.
+- Contains guarded test autorun hooks; tests execute only when __unit_tests indicates test mode.
+*/
+%macro __does_str_func_exist(func_name);
+    %global func_exists;
+
+    /* Define the functions in a function library, after checking that it doesn't already exist inside the sbfuncs.fn dataset */
+    data check_lib;
+        set sb_funcs.fns( keep=type subtype _key_ where=( type="Header" and
+            subtype="Function" ) );
+
+        drop type subtype;
+    run;
+
+    proc sql noprint;
+        select _key_ into :func_exists separated by ' ' from check_lib where
+            _key_="&func_name.";
+    quit;
+
+    %if %length(&func_exists) > 0 %then %do;
+        %let func_exists=1;
+        %return;
+    %end;
+    %else %do;
+        %let func_exists=0;
+    %end;
+
+    &func_exists.
+%mend __does_str_func_exist;
+
+%macro define_str_funcs;
+
+    proc fcmp outlib=sb_funcs.fn.str;
+        /* Function: str__split */
+        /* Splits a string into an array of strings using a delimiter. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to split. */
+        /* delimiter - The delimiter to split the string on. Default is a space. */
+        /*  */
+        /* Returns: */
+        /* An array of strings. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=andy|is|a|cool|guy; */
+        /* %let arr=str__split(&str, |); */
+        /* %put &arr; */
+        /*  */
+        /* Output: */
+        /* andy is a cool guy */
+        function str__split(str $, delimiter $) $ ;
+        length str $ 32767;
+        length delimiter $ 32767;
+        length result $ 32767;
+        length i n;
+
+        if missing(delimiter) then delimiter=' ';
+
+        n=countw(str, delimiter);
+        do i=1 to n;
+            result=catx(' ', result, scan(str, i, delimiter));
+        end;
+        return (result);
+        endsub;
+
+        /* Function: index */
+        /* Returns the position of a substring within a string. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to search. */
+        /* substr - The substring to search for. */
+        /*  */
+        /* Returns: */
+        /* The position of the substring within the string, or -1 if the substring is not found. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=andy is a cool guy; */
+        /* %let pos=index(&str, cool); */
+        /* %put &pos; */
+        /* Output: 11 */
+        function str__index(str $, substr $) ;
+        length str $ 32767;
+        length substr $ 32767;
+        length pos;
+        pos=find(str, substr);
+        return (pos);
+        endsub;
+
+        /* Function: str__replace */
+        /* Replaces all occurrences of a substring within a string. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to search. */
+        /* substr - The substring to search for. */
+        /* replacement - The string to replace the substring with. */
+        /*  */
+        /* Returns: */
+        /* The modified string. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=andy is a cool guy; */
+        /* %let newstr=str__replace(&str, cool, awesome); */
+        /* %put &newstr; */
+        /* Output: andy is a awesome guy */
+        function str__replace(str $, substr $, replacement $) $ 32767;
+        length str $ 32767;
+        length substr $ 32767;
+        length replacement $ 32767;
+        length newstr $ 32767;
+        newstr=tranwrd(str, substr, replacement);
+        return (newstr);
+        endsub;
+
+        /* Function: str__trim */
+        /* Removes all leading and trailing spaces from a string. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to trim. */
+        /*  */
+        /* Returns: */
+        /* The trimmed string. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=   andy is a cool guy   ; */
+        /* %let newstr=str__trim(&str); */
+        /* %put &newstr; */
+        /* Output: andy is a cool guy */
+        function str__trim(str $) $ 32767;
+        length str $ 32767;
+        length newstr $ 32767;
+        newstr=strip(str);
+        return (newstr);
+        endsub;
+
+        /* Function: str__upper */
+        /* Converts a string to uppercase. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to convert. */
+        /*  */
+        /* Returns: */
+        /* The uppercase string. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=andy is a cool guy; */
+        /* %let newstr=str__upper(&str); */
+        /* %put &newstr; */
+        /* Output: ANDY IS A COOL GUY */
+        function str__upper(str $) $ 32767;
+        length str $ 32767;
+        length newstr $ 32767;
+        newstr=upcase(str);
+        return (newstr);
+        endsub;
+
+        /* Function: str__lower */
+        /* Converts a string to lowercase. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to convert. */
+        /*  */
+        /* Returns: */
+        /* The lowercase string. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=ANDY IS A COOL GUY; */
+        /* %let newstr=str__lower(&str); */
+        /* %put &newstr; */
+        /* Output: andy is a cool guy */
+        function str__lower(str $) $ 32767;
+        length str $ 32767;
+        length newstr $ 32767;
+        newstr=lowcase(str);
+        return (newstr);
+        endsub;
+
+        /* Function: str__length */
+        /* Returns the length of a string. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to measure. */
+        /*  */
+        /* Returns: */
+        /* The length of the string. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=andy is a cool guy; */
+        /* %let len=str__length(&str); */
+        /* %put &len; */
+        /* Output: 19 */
+        function str__length(str $) ;
+        length str $ 32767;
+        length len;
+        len=length(str);
+        return (len);
+        endsub;
+
+        /* Function: str__contains */
+        /* Checks if a string contains a substring. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to search. */
+        /* substr - The substring to search for. */
+        /*  */
+        /* Returns: */
+        /* 1 if the substring is found, 0 otherwise. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=andy is a cool guy; */
+        /* %let contains=str__contains(&str, cool); */
+        /* %let notcontains=str__contains(&str, awesome); */
+        /* %put &contains &notcontains; */
+        /* Output: 1 0 */
+        function str__contains(str $, substr $) ;
+        length str $ 32767;
+        length substr $ 32767;
+        length contains;
+        contains=index(str, substr) > 0;
+        return (contains);
+        endsub;
+
+        /* Function: str__startswith */
+        /* Checks if a string starts with a substring. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to search. */
+        /* substr - The substring to search for. */
+        /*  */
+        /* Returns: */
+        /* 1 if the string starts with the substring, 0 otherwise. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=andy is a cool guy; */
+        /* %let starts=str__startswith(&str, andy); */
+        /* %let notstarts=str__startswith(&str, cool); */
+        /* %put &starts &notstarts; */
+        /* Output: 1 0 */
+        function str__startswith(str $, substr $) ;
+        length str $ 32767;
+        length substr $ 32767;
+        length starts;
+        starts=substr(str, 1, length(substr))=substr;
+        return (starts);
+        endsub;
+
+        /* Function: str__endswith */
+        /* Checks if a string ends with a substring. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to search. */
+        /* substr - The substring to search for. */
+        /*  */
+        /* Returns: */
+        /* 1 if the string ends with the substring, 0 otherwise. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=andy is a cool guy; */
+        /* %let ends=str__endswith(&str, guy); */
+        /* %let notends=str__endswith(&str, cool); */
+        /* %put &ends &notends; */
+        /* Output: 1 0 */
+        function str__endswith(str $, substr $) ;
+        length str $ 32767;
+        length substr $ 32767;
+        length ends;
+        ends=substr(str, length(str) - length(substr) + 1)=substr;
+        return (ends);
+        endsub;
+
+        /* Function: str__join */
+        /* Joins an array of strings into a single string using a delimiter. */
+        /*  */
+        /* Parameters: */
+        /* arr - The array of strings to join. */
+        /* delimiter - The delimiter to join the strings with. Default is a space. */
+        /*  */
+        /* Returns: */
+        /* The joined string. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let arr=andy is a cool guy; */
+        /* %let str=str__join(&arr, |); */
+        /* %put &str; */
+        /* Output: andy|is|a|cool|guy */
+        function str__join(arr[*], delimiter $=' ') $ 32767;
+        length delimiter $ 32767;
+        length str $ 32767;
+        length i n;
+        n=dim(arr);
+        do i=1 to n;
+            str=catx(delimiter, str, arr[i]);
+        end;
+        return (str);
+        endsub;
+
+        /* Function: str__reverse */
+        /* Reverses a string. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to reverse. */
+        /*  */
+        /* Returns: */
+        /* The reversed string. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=andy is a cool guy; */
+        /* %let rev=str__reverse(&str); */
+        /* %put &rev; */
+        /* Output: yug looc a si ydna */
+        function str__reverse(str $) $ 32767;
+        length str $ 32767;
+        length rev $ 32767;
+        length i n;
+        n=length(str);
+        do i=n to 1 by -1;
+            rev=cat(rev, substr(str, i, 1));
+        end;
+        return (rev);
+        endsub;
+
+        /* Function: str__find */
+        /* Finds the first occurrence of a substring within a string. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to search. */
+        /* substr - The substring to search for. */
+        /*  */
+        /* Returns: */
+        /* The position of the substring within the string, or -1 if the substring is not found. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=andy is a cool guy; */
+        /* %let pos=str__find(&str, cool); */
+        /* %put &pos; */
+        /* Output: 11 */
+        function str__find(str $, substr $) ;
+        length str $ 32767;
+        length substr $ 32767;
+        length pos;
+        pos=index(str, substr);
+        return (pos);
+        endsub;
+
+        /* Function: str__format */
+        /* Formats a string using a format string. */
+        /*  */
+        /* Parameters: */
+        /* str - The string to format, containing one or more placeholders. */
+        /* args - The arguments to replace the placeholders with. */
+        /*  */
+        /* Returns: */
+        /* The formatted string. */
+        /*  */
+        /* Example: */
+        /*  */
+        /* %let str=Hello, %s! Today is %s. It is %s degrees outside.; */
+        /* %let formatted=str__format(&str, Andy, Monday, 75); */
+        /* %put &formatted; */
+        /* Output: Hello, Andy! Today is Monday. It is 75 degrees outside. */
+        function str__format(str $, args[*]) $ 32767;
+        length str $ 32767;
+        length formatted $ 32767;
+        length i n;
+        n=dim(args);
+        formatted=str;
+        do i=1 to n;
+            formatted=tranwrd(formatted, cats('%', put(i, 1.)), args[i]);
+        end;
+        return (formatted);
+        endsub;
+    run;
+
+
+%mend define_str_funcs;
+
+/*%define_str_funcs;*/
+/**/
+/*options cmplib=(sb_funcs.fn);*/
+
+/* Returns the position of a substring within a string, or -1 if the substring is not found */
+%macro str__index(
+    str /* String to search */
+    , substr /* Substring to search for */
+);
+    %let out=%sysfunc(find(&str, &substr));
+
+    %if &out <= 0 %then %do;
+        %let out=-1;
+    %end;
+
+    &out.
+%mend str__index;
+
+/* Replaces all occurrences of a substring within a string */
+%macro str__replace(
+    str /* String to search */
+    , substr /* Substring to search for */
+    , replacement /* String to replace the substring with */
+);
+    %let out=%sysfunc(tranwrd(&str, &substr, &replacement));
+    &out.
+%mend str__replace;
+
+/* Removes all leading and trailing spaces from a string */
+%macro str__trim(
+    str /* String to trim */
+);
+    %let out=%sysfunc(strip(&str));
+    &out.
+%mend str__trim;
+
+%macro str__upper(
+    str /* String to convert */
+);
+    %let out=%sysfunc(upcase(&str));
+    &out.
+%mend str__upper;
+
+/* Returns the lowercase version of a string */
+%macro str__lower(
+    str /* String to convert */
+);
+    %let out=%sysfunc(lowcase(&str));
+    &out.
+%mend str__lower;
+
+/* Returns the number of characters in a string */
+%macro str__len(
+    str /* String to take the length of */
+);
+    %let out=%length(&str.);
+    &out.
+%mend str__len;
+
+/* Alias for str__len */
+%macro str__length(
+    str /* String to take the length of */
+);
+    %let out=%str__len(&str.);
+    &out.
+%mend str__length;
+
+/* Returns 1 if a string contains a substring, 0 otherwise */
+%macro str__contains(
+    str /* String to search */
+    , substr /* Substring to search for */
+);
+    %if %str__index(&str., &substr.) > 0 %then %do;
+        %let out=1;
+    %end;
+    %else %let out=0;
+    &out.
+%mend str__contains;
+
+/* Return the same string, split by a delimiter */
+%macro str__split(
+    str /* String to split */
+    , delim=' ' /* Delimiter to split the string on. Default is a space */
+);
+    %local i n out token;
+    %if %length(%superq(delim))=0 %then %let delim=%str( );
+    %let n=%sysfunc(countw(%superq(str), %superq(delim)));
+    %let out=;
+    %if &n > 0 %then %do;
+        %let out=%qscan(%superq(str), 1, %superq(delim));
+        %do i=2 %to &n;
+            %let token=%qscan(%superq(str), &i., %superq(delim));
+            %let out=&out %superq(token);
+        %end;
+    %end;
+
+    &out.
+%mend str__split;
+
+/* Returns a string sliced from the start to the end */
+%macro str__slice(
+    str /* String to slice */
+    , start /* Start index */
+    , end /* End index */
+);
+    %if %length(&end.) = 0 %then %let end=%str__len(&str.);
+    %if %length(&start.) = 0 %then %let start=1;
+
+    %let n_chars=%eval(&end. - &start. + 1);
+    %let out=%substr(&str., &start., &n_chars.);
+    &out.
+%mend str__slice;
+
+/* Returns 1 if a string starts with a substring, 0 otherwise */
+%macro str__startswith(
+    s /* String to check */
+    , substr /* Substring to check for */
+);
+
+    %let slice=%str__slice(&s., 1, %str__len(&substr.));
+    %if &slice. = &substr. %then %do;
+        %let out=1;
+    %end;
+    %else %do;
+        %let out=0;
+    %end;
+    &out.
+%mend str__startswith;
+
+/* Returns 1 if a string ends with a substring, 0 otherwise */
+%macro str__endswith(
+    str /* String to check */
+    , substr /* Substring to check for */
+);
+    %let len=%str__len(&str.);
+    %let substr_len=%str__len(&substr.);
+    %let start_pos=%eval(&len. - &substr_len. + 1);
+    %let slice=%str__slice(&str., &start_pos., &len.);
+    %if &slice. = &substr. %then %do;
+        %let out=1;
+    %end;
+    %else %do;
+        %let out=0;
+    %end;
+    &out.
+%mend str__endswith;
+
+/* Joins two strings into a single string, with a delimiter in between */
+%macro str__join2(
+    s1 /* First string */
+    , s2 /* Second string */
+    ,delim /* Delimiter to join the strings with. Default is a space */
+);
+    %if %length(&delim.) = 0 %then %do;
+        %let delim=%str( );
+    %end;
+
+
+    %let out=%sysfunc(catx(&delim, &s1, &s2));
+    &out.
+%mend str__join2;
+
+/* Reverses a string */
+%macro str__reverse(
+    str /* String to reverse */
+);
+    %let len=%str__len(&str.);
+    %let out=;
+    %do i=&len. %to 1 %by -1;
+        %if %length(%superq(out))=0 %then %let out=%substr(&str., &i, 1);
+        %else %let out=%sysfunc(cat(&out, %substr(&str., &i, 1)));
+    %end;
+
+    &out.
+%mend str__reverse;
+
+/* Finds the first occurrence of a substring within a string */
+%macro str__find(
+    str /* String to search */
+    , substr /* Substring to search for */
+);
+    %let out=%str__index(&str., &substr.);
+    &out.
+%mend str__find;
+
+/* Formats a string using a format string, with placeholders given by {} */
+%macro str__format(
+    str /* String to format, containing one or more placeholders given by {} */
+    , args /* Arguments to replace the placeholders with, separated by spaces */
+);
+
+    %local i n out arg pos len prefix suffix;
+    %let n=%sysfunc(countw(%superq(args), %str( )));
+    %let out=%superq(str);
+    %do i=1 %to &n;
+        %let arg=%scan(%superq(args), &i., %str( ));
+        %if %sysfunc(index(%superq(out), %str({}&i))) > 0 %then %do;
+            %let out=%sysfunc(tranwrd(%superq(out), %str({}&i), %superq(arg)));
+        %end;
+        %else %if %sysfunc(index(%superq(out), %str({}))) > 0 %then %do;
+            %let pos=%sysfunc(index(%superq(out), %str({})));
+            %let len=%length(%superq(out));
+            %if &pos > 1 %then %let prefix=%qsubstr(%superq(out), 1, %eval(&pos-1));
+            %else %let prefix=;
+            %if %eval(&pos+2) <= &len %then %let suffix=%qsubstr(%superq(out), %eval(&pos+2));
+            %else %let suffix=;
+            %let out=%superq(prefix)%superq(arg)%superq(suffix);
+        %end;
+    %end;
+
+    &out.
+%mend str__format;
+
+/* Test helpers: allow ergonomic calls without %str by using ~ as a separator. */
+%macro __str__split_parmbuf / parmbuff;
+    %local buf sep str delim n i out token;
+    %let sep=%str(~);
+    %let buf=%superq(syspbuff);
+    %if %length(&buf) < 2 %then %do;
+        %str__split(, )
+        %return;
+    %end;
+    %let buf=%substr(&buf, 2, %eval(%length(&buf) - 2));
+    %let n=%sysfunc(countw(%superq(buf), &sep));
+    %let str=%qscan(%superq(buf), 1, &sep);
+    %if &n >= 2 %then %let delim=%qscan(%superq(buf), 2, &sep);
+    %else %let delim=;
+    %let str=%sysfunc(strip(%superq(str)));
+    %let delim=%sysfunc(strip(%superq(delim)));
+    %if %length(%superq(delim))=0 %then %let delim=%str( );
+    %let n=%sysfunc(countw(%superq(str), %superq(delim)));
+    %let out=;
+    %if &n > 0 %then %do;
+        %let out=%qscan(%superq(str), 1, %superq(delim));
+        %do i=2 %to &n;
+            %let token=%qscan(%superq(str), &i., %superq(delim));
+            %let out=&out %superq(token);
+        %end;
+    %end;
+    &out.
+%mend __str__split_parmbuf;
+
+%macro __str__format_parmbuf / parmbuff;
+    %local buf sep str args n i out arg pos len prefix suffix;
+    %let sep=%str(~);
+    %let buf=%superq(syspbuff);
+    %if %length(&buf) < 2 %then %do;
+        %str__format(, )
+        %return;
+    %end;
+    %let buf=%substr(&buf, 2, %eval(%length(&buf) - 2));
+    %let n=%sysfunc(countw(%superq(buf), &sep));
+    %let str=%qscan(&buf, 1, &sep);
+    %if &n >= 2 %then %let args=%qscan(&buf, 2, &sep);
+    %else %let args=;
+    %let str=%sysfunc(strip(%superq(str)));
+    %let args=%sysfunc(strip(%superq(args)));
+    %let n=%sysfunc(countw(%superq(args), %str( )));
+    %let out=%superq(str);
+    %do i=1 %to &n;
+        %let arg=%scan(%superq(args), &i., %str( ));
+        %if %sysfunc(index(%superq(out), %str({}&i))) > 0 %then %do;
+            %let out=%sysfunc(tranwrd(%superq(out), %str({}&i), %superq(arg)));
+        %end;
+        %else %if %sysfunc(index(%superq(out), %str({}))) > 0 %then %do;
+            %let pos=%sysfunc(index(%superq(out), %str({})));
+            %let len=%length(%superq(out));
+            %if &pos > 1 %then %let prefix=%qsubstr(%superq(out), 1, %eval(&pos-1));
+            %else %let prefix=;
+            %if %eval(&pos+2) <= &len %then %let suffix=%qsubstr(%superq(out), %eval(&pos+2));
+            %else %let suffix=;
+            %let out=%superq(prefix)%superq(arg)%superq(suffix);
+        %end;
+    %end;
+    &out.
+%mend __str__format_parmbuf;
+
+%macro test_strings;
+
+    %test_suite(Unit tests for string.sas);
+        %let strIndex1=%str__index(andy is a cool guy, cool);
+        %let strFnd1=%str__find(andy is a cool guy, cool);
+        %assertEqual(&strIndex1., 11); /* Test 1*/
+        %assertEqual(&strFind1., 11); /* Test 2*/
+
+        %let strIndex2=%str__index(andy is a cool guy, awesome);
+        %let strFind2=%str__find(andy is a cool guy, awesome);
+        %assertEqual(&strIndex2., -1); /* Test 3*/
+        %assertEqual(&strFind2., -1); /* Test 4*/
+
+        %let strReplace1=%str__replace(andy is a cool guy, cool, awesome);
+        %assertEqual(&strReplace1., andy is a awesome guy); /* Test 5*/
+
+        %let strReplaceNotFound=%str__replace(andy is a cool guy, awesome, cool);
+        %assertEqual(&strReplaceNotFound., andy is a cool guy); /* Test 6*/
+
+        %let strLen1=%str__len(andy);
+        %let strLen1a=%str__length(andy);
+        %assertEqual(&strLen1., 4); /* Test 7*/
+        %assertEqual(&strLen1a., 4); /* Test 8*/
+
+        %let strLen2=%str__len(andy weaver);
+        %let strLen2a=%str__length(andy weaver);
+        %assertEqual(&strLen2., 11); /* Test 9*/
+        %assertEqual(&strLen2a., 11); /* Test 10*/
+
+        %let strTrim1=%str__trim( andy is a cool guy );
+        %assertEqual(&strTrim1., andy is a cool guy); /* Test 11*/
+
+        %let strUpper1=%str__upper(andy is a cool guy);
+        %assertEqual(&strUpper1., ANDY IS A COOL GUY); /* Test 12*/
+
+        %let strLower1=%str__lower(ANDY IS A COOL GUY);
+        %assertEqual(&strLower1., andy is a cool guy); /* Test 13*/
+
+        %let strLower2=%str__lower(Andy is a Cool Guy);
+        %assertEqual(&strLower2., andy is a cool guy); /* Test 14*/
+
+        %let strContains1=%str__contains(andy is a cool guy, cool);
+        %assertTrue(&strContains1., [andy is a cool guy] does actually contain [cool]); /* Test 15 */
+
+        %let strContains2=%str__contains(andy is a cool guy, awesome);
+        %assertFalse(&strContains2., [andy is a cool guy] does not contain [awesome]); /* Test 16 */
+
+        %let strSlice1=%str__slice(andy is a cool guy, 1, 4);
+        %assertEqual(&strSlice1., andy); /* Test 17 */
+
+        %let strSlice2=%str__slice(andy is a cool guy, 6, 7);
+        %assertEqual(&strSlice2., is); /* Test 18 */
+
+        %let strSlice3=%str__slice(andy is a cool guy, 11, 14);
+        %assertEqual(&strSlice3., cool); /* Test 19 */
+
+        %let strSlice4=%str__slice(andy is a cool guy,, 4);
+        %assertEqual(&strSlice4., andy); /* Test 20 */
+
+        %let strSlice5=%str__slice(andy is a cool guy, 6,);
+        %assertEqual(&strSlice5., is a cool guy); /* Test 21 */
+
+        %assertTrue(
+            %str__startswith(andy is a cool guy, andy),
+            [andy is a cool guy] does start with [andy]
+        );  /* Test 22*/
+        %assertFalse(
+            %str__startswith(andy is a cool guy, cool),
+            [andy is a cool guy] does not start with [cool]
+        ); /* Test 23*/
+
+        %assertTrue(
+            %str__endswith(andy is a cool guy, guy),
+            [andy is a cool guy] does end with [guy]
+        ); /* Test 24 */
+        %assertFalse(
+            %str__endswith(andy is a cool guy, cool),
+            [andy is a cool guy] does not end with [cool]
+        ); /* Test 25 */
+
+        %let strJoin1=%str__join2(andy, is);
+        %assertEqual(&strJoin1., andy is); /* Test 26 */
+
+        %let strJoin2=%str__join2(andy, is, |);
+        %assertEqual("&strJoin2.", "andy|is"); /* Test 27 */
+
+        %let strSplit1=%__str__split_parmbuf(andy|is|a|cool|guy~|);
+        %assertEqual("&strSplit1.", "andy is a cool guy"); /* Test 28 */
+
+        %let strFormat1=%str__format(Hello {}, Andy);
+        %assertEqual("&strFormat1.", "Hello Andy"); /* Test 29 */
+
+        %let strReverse1=%str__reverse(andy);
+        %assertEqual("&strReverse1.", "ydna"); /* Test 30 */
+
+        %let strSplit2=%__str__split_parmbuf(a,b,c~,);
+        %assertEqual("&strSplit2.", "a b c"); /* Test 31 */
+
+        %let strFormat2=%str__format({} + {}, 1 2);
+        %assertEqual("&strFormat2.", "1 + 2"); /* Test 32 */
+
+        %let strFormat3=%str__format(Hello, );
+        %assertEqual("&strFormat3.", "Hello"); /* Test 33 */
+
+    %test_summary;
+%mend test_strings;
+
+/* Macro to run string tests when __unit_tests is set */
+%macro run_string_tests;
+    %if %symexist(__unit_tests) %then %do;
+        %if %superq(__unit_tests)=1 %then %do;
+            %test_strings;
+        %end;
+    %end;
+%mend run_string_tests;
+
+%run_string_tests;
+/* Showcase: run the str__* helpers from src/strings.sas and print the results */
+data str_demo;
+    length fn $16 input $24 result $24;
+    fn='str__upper';   input='andy is a cool guy'; result="%str__upper(andy is a cool guy)"; output;
+    fn='str__replace'; input='cool -> awesome';    result="%str__replace(andy is a cool guy, cool, awesome)"; output;
+    fn='str__slice';   input='chars 11-14';        result="%str__slice(andy is a cool guy, 11, 14)"; output;
+    fn='str__index';   input='find cool';          result="%str__index(andy is a cool guy, cool)"; output;
+    fn='str__len';     input='andy';               result="%str__len(andy)"; output;
+run;
+proc print data=str_demo noobs; run;

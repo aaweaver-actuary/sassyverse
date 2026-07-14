@@ -1,0 +1,14 @@
+NOTE: Jenner v1.5.30 (build v1.5.30+unknown.20260714T043649Z.x86_64-unknown-linux-gnu)
+
+NOTE: Option OBS changed to 100.
+NOTE: Library SBFUNCS assigned path=/tmp/work/r_f6c235006af8451ab8899aec7e722cd9/work/40d84332-b117-496a-8fdb-e14f4316e051.
+NOTE: DATA str_demo
+
+
+NOTE: Wrote str_demo (5 rows, 3 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: PROC PRINT data=str_demo
+
+NOTE: PROC PRINT completed: 5 observations printed, 3 variables

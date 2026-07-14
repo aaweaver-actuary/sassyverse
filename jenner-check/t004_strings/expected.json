@@ -1,0 +1,19 @@
+{
+  "_captured_at": "2026-07-14T05:43:36.780621Z",
+  "_captured_run_id": "r_27c8ee5d35b74b9c84263b9df4b4a82c",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: [PASS] - All tests for [(index find replace)] passed",
+    "NOTE: [PASS] - All tests for [(len trim case)] passed",
+    "NOTE: [PASS] - All tests for [(contains slice startswith endswith)] passed"
+  ],
+  "log_does_not_contain": [
+    "ERROR:",
+    "[JENNER-ERROR"
+  ],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}

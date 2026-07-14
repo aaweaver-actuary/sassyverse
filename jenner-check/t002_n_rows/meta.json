@@ -1,0 +1,7 @@
+{
+  "bundle": "t002_n_rows",
+  "source_file": "src/n_rows.sas",
+  "source_blob_sha": "e4753f78894f8e1bdbedb855a4ce6e8b63e7259d",
+  "source_commit": "a14a0481efb822968e7aebd3ea311f65e845d9f8",
+  "notes": "Exercises %n_rows from src/n_rows.sas against small inline mock datasets (populated, filtered, and empty), verified with the repo's own %assertEqual."
+}

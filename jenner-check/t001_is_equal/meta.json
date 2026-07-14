@@ -1,0 +1,7 @@
+{
+  "bundle": "t001_is_equal",
+  "source_file": "src/is_equal.sas",
+  "source_blob_sha": "f8070b09d70a15d364eafdd142f664dd5e20a5e7",
+  "source_commit": "a14a0481efb822968e7aebd3ea311f65e845d9f8",
+  "notes": "Exercises %is_equal / %is_not_equal from src/is_equal.sas with numeric, character, and mixed-type inputs, verified with the repo's own %assertEqual."
+}
