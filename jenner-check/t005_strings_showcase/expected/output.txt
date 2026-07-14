@@ -1,0 +1,9 @@
+
+          fn               input                 result
+------------  ------------------  ---------------------
+str__upper    andy is a cool guy  ANDY IS A COOL GUY
+str__replace  cool -> awesome     andy is a awesome guy
+str__slice    chars 11-14         cool
+str__index    find cool           11
+str__len      andy                4
+

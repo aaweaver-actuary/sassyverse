@@ -1,0 +1,7 @@
+{
+  "bundle": "t005_strings_showcase",
+  "source_file": "src/strings.sas",
+  "source_blob_sha": "534e281e3a73155e3f965ee83ff36b19fd3227a9",
+  "source_commit": "a14a0481efb822968e7aebd3ea311f65e845d9f8",
+  "notes": "Runs the str__* helpers (str__upper, str__replace, str__slice, str__index, str__len) from src/strings.sas and prints the results as a small table so the listing is visible. Used as the copy-paste curl example in the PR body."
+}
