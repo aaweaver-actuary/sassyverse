@@ -1,0 +1,7 @@
+{
+  "bundle": "t003_lists",
+  "source_file": "src/lists.sas",
+  "source_blob_sha": "951c35bbb385f43e999c495541f5882047b14ba1",
+  "source_commit": "a14a0481efb822968e7aebd3ea311f65e845d9f8",
+  "notes": "Exercises the list macros (%len, %nth, %first, %last, %concat, %sorted, %transform) from src/lists.sas, verified with the repo's own %assertEqual/%assertTrue."
+}

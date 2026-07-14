@@ -1,0 +1,76 @@
+NOTE: Jenner v1.5.30 (build v1.5.30+unknown.20260714T020019Z.x86_64-unknown-linux-gnu)
+
+NOTE: Option OBS changed to 100.
+NOTE: Library SBFUNCS assigned path=/tmp/work/r_27c8ee5d35b74b9c84263b9df4b4a82c/work/6a8709c6-98b2-4184-8674-ef75c66b9536.
+NOTE: [PASS] - 1|0|0 - Asserted that [11]=[11]
+NOTE: [PASS] - 2|0|0 - Asserted that [11]=[11]
+NOTE: [PASS] - 3|0|0 - Asserted that [-1]=[-1]
+NOTE: [PASS] - 4|0|0 - Asserted that [andy is a awesome guy]=[andy is a awesome guy]
+
+|----------------------------------|
+| (index find replace)
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 4
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests for [(index find replace)] passed
+NOTE: [PASS] - 5|0|0 - Asserted that [4]=[4]
+NOTE: [PASS] - 6|0|0 - Asserted that [11]=[11]
+NOTE: [PASS] - 7|0|0 - Asserted that [andy is a cool guy]=[andy is a cool guy]
+NOTE: [PASS] - 8|0|0 - Asserted that [ANDY IS A COOL GUY]=[ANDY IS A COOL GUY]
+NOTE: [PASS] - 9|0|0 - Asserted that [andy is a cool guy]=[andy is a cool guy]
+
+|----------------------------------|
+| (len trim case)
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 5
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests for [(len trim case)] passed
+NOTE: [PASS] - 10|0|0 - contains cool
+NOTE: [PASS] - 11|0|0 - does not contain awesome
+NOTE: [PASS] - 12|0|0 - Asserted that [andy]=[andy]
+NOTE: [PASS] - 13|0|0 - Asserted that [cool]=[cool]
+NOTE: [PASS] - 14|0|0 - starts with andy
+NOTE: [PASS] - 15|0|0 - ends with guy
+
+|----------------------------------|
+| (contains slice startswith endswith)
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 6
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests for [(contains slice startswith endswith)] passed
+
+|----------------------------------|
+| sassyverse strings compatibility check
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 15
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests
+			passed

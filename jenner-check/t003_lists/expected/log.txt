@@ -1,0 +1,68 @@
+NOTE: Jenner v1.5.30 (build v1.5.30+unknown.20260714T020019Z.x86_64-unknown-linux-gnu)
+
+NOTE: Option OBS changed to 100.
+NOTE: Library SBFUNCS assigned path=/tmp/work/r_2808b347c9c948e1837c3c2538fde111/work/1e69ee6f-21f0-4a2c-bfe0-fa84c64a857f.
+NOTE: [PASS] - 1|0|0 - Asserted that [4]=[4]
+NOTE: [PASS] - 2|0|0 - Asserted that [b]=[b]
+NOTE: [PASS] - 3|0|0 - Asserted that [a]=[a]
+NOTE: [PASS] - 4|0|0 - Asserted that [d]=[d]
+
+|----------------------------------|
+| (len nth first last)
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 4
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests for [(len nth first last)] passed
+NOTE: [PASS] - 5|0|0 - Asserted that [a b c d]=[a b c d]
+NOTE: [PASS] - 6|0|0 - Asserted that [1 2 3]=[1 2 3]
+
+|----------------------------------|
+| (concat and sorted)
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 2
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests for [(concat and sorted)] passed
+NOTE: [PASS] - 7|0|0 - Asserted that ['a' , 'b']=['a' , 'b']
+
+|----------------------------------|
+| (transform quotes and delimits)
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 1
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests for [(transform quotes and delimits)] passed
+
+|----------------------------------|
+| sassyverse lists compatibility check
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 7
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests
+			passed

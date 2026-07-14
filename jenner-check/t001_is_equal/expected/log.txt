@@ -1,0 +1,69 @@
+NOTE: Jenner v1.5.30 (build v1.5.30+unknown.20260714T020019Z.x86_64-unknown-linux-gnu)
+
+NOTE: Option OBS changed to 100.
+NOTE: Library SBFUNCS assigned path=/tmp/work/r_7f1954c8dd6c49899592995ba2e788a3/work/8ee6e23f-0827-4732-8945-839d3f778295.
+NOTE: [PASS] - 1|0|0 - Asserted that [1]=[1]
+NOTE: [PASS] - 2|0|0 - Asserted that [1]=[1]
+NOTE: [PASS] - 3|0|0 - Asserted that [0]=[0]
+
+|----------------------------------|
+| (numeric equality)
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 3
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests for [(numeric equality)] passed
+NOTE: [PASS] - 4|0|0 - Asserted that [1]=[1]
+NOTE: [PASS] - 5|0|0 - Asserted that [0]=[0]
+NOTE: [PASS] - 6|0|0 - Asserted that [1]=[1]
+
+|----------------------------------|
+| (character equality)
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 3
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests for [(character equality)] passed
+NOTE: [PASS] - 7|0|0 - Asserted that [0]=[0]
+NOTE: [PASS] - 8|0|0 - Asserted that [0]=[0]
+
+|----------------------------------|
+| (mixed types compare unequal)
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 2
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests for [(mixed types compare unequal)] passed
+
+|----------------------------------|
+| sassyverse is_equal compatibility check
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 8
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests
+			passed

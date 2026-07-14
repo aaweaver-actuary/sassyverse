@@ -1,0 +1,61 @@
+NOTE: Jenner v1.5.30 (build v1.5.30+unknown.20260714T020019Z.x86_64-unknown-linux-gnu)
+
+NOTE: Option OBS changed to 100.
+NOTE: Library SBFUNCS assigned path=/tmp/work/r_cd87cbc4e94a49f4afe00aee4e1ff929/work/97ae5ce6-6027-4522-9f13-8dd9a29a6e2d.
+NOTE: DATA work.policies
+
+NOTE: Processing inline DATALINES (4 lines)
+
+NOTE: Read 4 rows from DATALINES.
+NOTE: Wrote work.policies (4 rows, 2 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: DATA work.high
+
+
+NOTE: Read 4 rows from work.policies.
+NOTE: Wrote work.high (2 rows, 2 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: DATA work.empty
+
+
+NOTE: Wrote work.empty (0 rows, 1 columns).
+NOTE: DATA elapsed:
+  wall  0.00 seconds
+  cpu   0.00 seconds
+NOTE: [PASS] - 1|0|0 - Asserted that [4]=[4]
+NOTE: [PASS] - 2|0|0 - Asserted that [4]=[4]
+NOTE: [PASS] - 3|0|0 - Asserted that [2]=[2]
+NOTE: [PASS] - 4|0|0 - Asserted that [0]=[0]
+
+|----------------------------------|
+| (row counts)
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 4
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests for [(row counts)] passed
+
+|----------------------------------|
+| sassyverse n_rows compatibility check
+|----------------------------------|
+|----------------------------------|
+| Test Count: | 4
+|----------------------------------|
+| Test Failures: | 0
+|----------------------------------|
+| Test Errors: | 0
+|----------------------------------|
+|----------------------------------|
+
+NOTE: [PASS] - All tests
+			passed

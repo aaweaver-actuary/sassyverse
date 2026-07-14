@@ -1,0 +1,17 @@
+{
+  "_captured_at": "2026-07-14T05:43:33.650643Z",
+  "_captured_run_id": "r_cd87cbc4e94a49f4afe00aee4e1ff929",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: [PASS] - All tests for [(row counts)] passed"
+  ],
+  "log_does_not_contain": [
+    "ERROR:",
+    "[JENNER-ERROR"
+  ],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "_captured_at": "2026-07-14T05:43:32.386319Z",
+  "_captured_run_id": "r_7f1954c8dd6c49899592995ba2e788a3",
+  "status": "ok",
+  "exit_code": 0,
+  "log_contains": [
+    "NOTE: [PASS] - All tests for [(numeric equality)] passed",
+    "NOTE: [PASS] - All tests for [(character equality)] passed",
+    "NOTE: [PASS] - All tests for [(mixed types compare unequal)] passed"
+  ],
+  "log_does_not_contain": [
+    "ERROR:",
+    "[JENNER-ERROR"
+  ],
+  "diagnostics": {
+    "parse_warnings": [],
+    "runtime_warnings": []
+  }
+}

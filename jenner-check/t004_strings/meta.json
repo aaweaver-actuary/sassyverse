@@ -1,0 +1,7 @@
+{
+  "bundle": "t004_strings",
+  "source_file": "src/strings.sas",
+  "source_blob_sha": "534e281e3a73155e3f965ee83ff36b19fd3227a9",
+  "source_commit": "a14a0481efb822968e7aebd3ea311f65e845d9f8",
+  "notes": "Exercises the string macros (%str__index, %str__find, %str__replace, %str__len, %str__trim, %str__upper/lower, %str__contains, %str__slice, %str__startswith/endswith) from src/strings.sas, verified with the repo's own assertions."
+}
